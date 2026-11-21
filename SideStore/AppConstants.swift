@@ -136,7 +136,7 @@ public enum AppConstants {
         public static let appleAuthDevices          = Constants.URLs.appleAuthDevices
         public static let appleAccount              = URL(string: "https://account.apple.com")!
 
-        public static let pairingDocumentation      = URL(string: "https://izzv.github.io/SuperStore/downloads/")!
+        public static let pairingDocumentation      = URL(string: "https://izzv.github.io/SuperStore/pairing.html")!
         public static let errorCodesDocumentation   = URL(string: "https://izzv.github.io/SuperStore/")!
         public static let sideStoreWebsite          = URL(string: "https://izzv.github.io/SuperStore/")!
         public static let sideStoreGitHub           = URL(string: "https://github.com/izzv/SuperStore")!

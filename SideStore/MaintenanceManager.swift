@@ -76,7 +76,7 @@ public final class MaintenanceManager {
             case 7:
                 await migratePairingFiles()
             case 9:
-                await removeSideStoreBranding()
+                await removeSideStoreSources()
             default:
                 break
             }
@@ -178,38 +178,27 @@ private extension MaintenanceManager {
         }
     }
 
-    func removeSideStoreBranding() async {
+    func removeSideStoreSources() async {
         let context = DatabaseManager.shared.viewContext
         await context.perform {
-            let sourceRequest: NSFetchRequest<Source> = Source.fetchRequest()
-            let sources = (try? context.fetch(sourceRequest)) ?? []
+            let fetchRequest: NSFetchRequest<Source> = Source.fetchRequest()
+            let sources = (try? context.fetch(fetchRequest)) ?? []
+
             let brandedSources = sources.filter { source in
                 guard let host = source.sourceURL.host?.lowercased() else { return false }
                 return host == "sidestore.io" || host.hasSuffix(".sidestore.io")
             }
-            let sourceIDs = Set(brandedSources.map { $0.objectID })
+            guard !brandedSources.isEmpty else { return }
 
-            let newsRequest: NSFetchRequest<NewsItem> = NewsItem.fetchRequest()
-            let newsItems = (try? context.fetch(newsRequest)) ?? []
-            let brandedNews = newsItems.filter { item in
-                if let source = item.source, sourceIDs.contains(source.objectID) { return true }
-                let text = item.title + " " + item.caption
-                return text.localizedCaseInsensitiveContains("sidestore")
-            }
-            guard !brandedSources.isEmpty || !brandedNews.isEmpty else { return }
-
-            for item in brandedNews {
-                context.delete(item)
-            }
             for source in brandedSources {
                 context.delete(source)
             }
 
             do {
                 try context.save()
-                debugLog("[MaintenanceManager] Removed \(brandedSources.count) SideStore source(s) and \(brandedNews.count) news item(s).")
+                debugLog("[MaintenanceManager] Removed \(brandedSources.count) SideStore source(s) and their news.")
             } catch {
-                debugLog("[MaintenanceManager] Failed to remove SideStore branding from the database: \(error)")
+                debugLog("[MaintenanceManager] Failed to remove the SideStore sources: \(error)")
             }
         }
     }
