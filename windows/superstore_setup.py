@@ -320,7 +320,11 @@ def main(argv=None):
     say("")
 
     if args.download:
-        ipa, release = download_ipa(args.out)
+        try:
+            ipa, release = download_ipa(args.out)
+        except Exception as error:
+            say("Download failed: %s" % error)
+            return 1
         say("")
         say("Release %s, published %s." % (release.get("version"), release.get("date")))
         say("")
@@ -352,7 +356,11 @@ def main(argv=None):
 
     if args.pair:
         say("Pairing. Unlock the iPhone and tap Trust if it asks.")
-        record, summary = pair_device(serial)
+        try:
+            record, summary = pair_device(serial)
+        except Exception as error:
+            say("Pairing failed: %s" % error)
+            return 1
         pairing = save_pairing_record(record)
         say("Paired %s (iOS %s)." % (summary.get("name"), summary.get("ios")))
         say("Pairing file: %s" % pairing)
@@ -369,13 +377,25 @@ def main(argv=None):
         if not pairing:
             say("No pairing file yet. Run --pair first.")
             return 1
-        send_pairing_file(serial, pairing)
+        try:
+            send_pairing_file(serial, pairing)
+        except Exception as error:
+            say("Could not copy the pairing file into the app: %s" % error)
+            return 1
         say("Copied %s into SuperStore's Documents folder." % pairing)
         say("")
 
     if args.install:
         say("Installing %s..." % args.install)
-        install_ipa(serial, args.install, progress=lambda pct: sys.stdout.write("\r  %3d%%" % pct))
+        try:
+            install_ipa(serial, args.install, progress=lambda pct: sys.stdout.write("\r  %3d%%" % pct))
+        except Exception as error:
+            say()
+            say("Install failed: %s" % error)
+            if "verification" in str(error).lower():
+                say("iOS only installs builds signed with your Apple ID, so sign the published")
+                say(".ipa once with SideStore or Sideloadly and install that copy here.")
+            return 1
         say("")
         say("Installed.")
         pairing = existing_pairing_file()
