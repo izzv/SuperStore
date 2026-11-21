@@ -239,9 +239,10 @@ SRP_WIDTH = 256
 MAX_ATTEMPTS = 5
 ATTEMPT_WINDOW = 24 * 3600
 THROTTLE_COOLDOWN = 20 * 60
-CREDENTIAL_CODES = {-5000, -20970}
+CREDENTIAL_CODES = {-5000, -20970, -22406}
 CREDENTIAL_WORDS = (
     "entered incorrectly",
+    "correct password",
     "incorrect",
     "wrong password",
     "password you entered",
@@ -590,6 +591,23 @@ class AppleLogin:
                     return plistlib.loads(body[index:])
                 except Exception:
                     start = index + 1
+        trimmed = body.strip()
+        if trimmed[:1] == b"<" and b"<plist" not in trimmed[:64]:
+            head = (
+                b"<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                b"<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" "
+                b"\"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">"
+                b"<plist version=\"1.0\">"
+            )
+            tail = b""
+            for close in (b"</dict>", b"</array>"):
+                end = trimmed.rfind(close)
+                if end >= 0:
+                    tail = close
+                    trimmed = trimmed[: end + len(close)]
+                    break
+            if tail:
+                return plistlib.loads(head + trimmed + b"</plist>")
         return plistlib.loads(body)
 
     def _unpack(self, body):
