@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "name": "SuperStore",
+  "identifier": "https://izzv.github.io/SuperStore/source.json",
+  "sourceURL": "https://izzv.github.io/SuperStore/source.json",
+  "websiteURL": "https://izzv.github.io/SuperStore",
+  "iconURL": "https://izzv.github.io/SuperStore/assets/icon.png",
+  "tintColor": "7C5CFF",
+  "apps": [
+    {
+      "name": "SuperStore",
+      "bundleIdentifier": "com.superstore.SuperStore",
+      "developerName": "izzv",
+      "subtitle": "An alternative app store for iOS",
+      "localizedDescription": "SuperStore installs and refreshes sideloaded apps with your own Apple ID, entirely on the phone. This entry is how an installed copy learns about new published builds: when a newer version appears here, My Apps offers an Update that downloads it and installs it over the copy on the phone.",
+      "iconURL": "https://izzv.github.io/SuperStore/assets/icon.png",
+      "tintColor": "7C5CFF",
+      "category": "utilities",
+      "downloadURL": "https://izzv.github.io/SuperStore/downloads/SuperStore.ipa",
+      "permissions": {
+        "entitlements": {
+          "aps-environment": "Push notifications remind you before sideloaded apps expire.",
+          "com.apple.developer.siri": "Siri shortcuts refresh all your apps.",
+          "com.apple.security.application-groups": "Shares its database with the Home Screen widget.",
+          "get-task-allow": "Keeps a sideloaded copy debuggable."
+        },
+        "privacy": {
+          "NSLocalNetwork": "Finds a Bonjour service on your local network. Not needed for core features.",
+          "NSLocationWhenInUse": "Keeps background refreshes running while the app is open.",
+          "NSLocationAlwaysAndWhenInUse": "Keeps background refreshes running while the app is in the background."
+        }
+      },
+      "versions": [
+        {
+          "version": "0.1",
+          "date": "2026-11-21T00:00:00Z",
+          "localizedDescription": "The first published build.",
+          "downloadURL": "https://izzv.github.io/SuperStore/downloads/SuperStore-v0.1.ipa",
+          "size": 26533683,
+          "sha256": "09be9db92d43ac16b56f618e0ab189f621a99d38981d33831be37d8aaf96b585"
+        }
+      ]
+    }
+  ]
+}

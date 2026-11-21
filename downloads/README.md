@@ -7,6 +7,7 @@ Published builds live here.
 | `SuperStore.ipa` | always the newest release — this is what both Download buttons serve |
 | `SuperStore-v<version>.ipa` | a permanent copy of each published version |
 | `versions.json` | the list the page reads: newest version, its release date, the archive |
+| `../source.json` | SuperStore's own update feed: the newest build, which My Apps offers as an Update |
 
 The Windows setup is not stored here: the `windows-setup` release on GitHub holds
 it as a single asset that every build replaces, and the page links to that URL.
@@ -24,7 +25,13 @@ in `Build.xcconfig` on `develop` is what changes it.
 3. Add a row to the top of `versions.json`. Only the newest entry gets `"latest": true`;
    remove it from the one below. `date` is the day the build was published, as
    `YYYY-MM-DD`.
-4. Commit and push — Pages picks it up on the next build, and the page shows the version
+4. Update `../source.json`, which is the feed the app itself reads. Its `versions` list
+   is newest first and only the first entry is offered, so replace it: `version` is the
+   label without the `v`, `date` is `YYYY-MM-DDT00:00:00Z`, `downloadURL` is the
+   permanent `downloads/SuperStore-v<version>.ipa` link, and `size` and `sha256` are the
+   file's exact numbers (`stat -c %s`, `sha256sum`). An installed copy compares that
+   version with its own and shows Update in My Apps when it is newer.
+5. Commit and push — Pages picks it up on the next build, and the page shows the version
    and date straight from that first row.
 
 ```json
