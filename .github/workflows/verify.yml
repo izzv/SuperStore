@@ -94,12 +94,25 @@ jobs:
       - name: Package unsigned IPA
         run: |
           set -o pipefail
-          APP=$(find "$DERIVED_DATA/Build/Products/Debug-iphoneos" -maxdepth 1 -name '*.app' | head -1)
-          if [ -z "$APP" ]; then
+          # Take the app the scheme actually built, not whichever bundle happens
+          # to sit next to it (extensions and helpers land in the same folder).
+          PRODUCTS="$DERIVED_DATA/Build/Products/Debug-iphoneos"
+          APP="$PRODUCTS/SideStore.app"
+          if [ ! -d "$APP" ]; then
+            APP=$(du -sk "$PRODUCTS"/*.app 2>/dev/null | sort -rn | head -1 | cut -f2-)
+          fi
+          if [ -z "$APP" ] || [ ! -d "$APP" ]; then
             echo "no .app was produced" >&2
+            ls -la "$PRODUCTS" >&2
             exit 1
           fi
-          echo "packaging $APP"
+          EXEC=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
+          if [ -z "$EXEC" ] || [ ! -f "$APP/$EXEC" ]; then
+            echo "bundle has no executable: $APP" >&2
+            exit 1
+          fi
+          echo "packaging $APP (executable: $EXEC)"
+          du -sh "$APP"
           rm -rf build/ipa && mkdir -p build/ipa/Payload
           cp -R "$APP" build/ipa/Payload/
           cd build/ipa
