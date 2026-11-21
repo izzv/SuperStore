@@ -932,7 +932,19 @@ class SetupApp:
             self.log("Could not open %s (%s)." % (workdir(), error), "error")
 
 
+def hide_console():
+    if sys.platform != "win32":
+        return
+    try:
+        handle = ctypes.windll.kernel32.GetConsoleWindow()
+        if handle:
+            ctypes.windll.user32.ShowWindow(handle, 0)
+    except Exception:
+        pass
+
+
 def launch_window():
+    hide_console()
     app = SetupApp()
     app.run()
 
