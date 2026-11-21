@@ -1,10 +1,25 @@
-# SuperStore
+<p align="center">
+  <img src="branding/superstore-icon-1024.png" width="120" alt="SuperStore">
+</p>
 
-> An untethered, community-driven sideloading app store for iOS — built on [SideStore](https://github.com/SideStore/SideStore), which is itself a fork of [AltStore](https://github.com/rileytestut/AltStore).
+<h1 align="center">SuperStore</h1>
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
+<p align="center">
+  <em>An untethered, community-driven sideloading app store for iOS.</em><br>
+  Built on <a href="https://github.com/SideStore/SideStore">SideStore</a>, which is itself a fork of
+  <a href="https://github.com/rileytestut/AltStore">AltStore</a>.
+</p>
 
-**SuperStore is a work in progress.** Nothing has been released from this fork yet: it builds (CI compiles it on every push), but it has not been signed, installed or tested on a device under the SuperStore name.
+<p align="center">
+  <a href="https://github.com/izzv/SuperStore/actions/workflows/verify.yml"><img src="https://github.com/izzv/SuperStore/actions/workflows/verify.yml/badge.svg?branch=develop" alt="Verify"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-8b5cf6" alt="License: AGPL-3.0"></a>
+  <img src="https://img.shields.io/badge/platform-iOS%2014%2B-lightgrey" alt="Platform: iOS 14+">
+  <img src="https://img.shields.io/badge/language-Swift-f05138" alt="Swift">
+  <a href="https://github.com/izzv/SuperStore/commits/develop"><img src="https://img.shields.io/github/last-commit/izzv/SuperStore/develop" alt="Last commit"></a>
+  <a href="https://izzv.github.io/SuperStore/"><img src="https://img.shields.io/badge/website-live-22d3ee" alt="Website"></a>
+</p>
+
+> **SuperStore is a work in progress.** Nothing has been released from this fork yet: it builds (CI compiles it on every push to `develop`), but it has not been signed, installed or tested on a device under the SuperStore name.
 
 ---
 
