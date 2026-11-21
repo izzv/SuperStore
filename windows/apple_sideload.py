@@ -16,6 +16,7 @@ import json
 import os
 import plistlib
 import secrets
+import shutil
 import time
 import gzip
 import json
@@ -1170,11 +1171,13 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
 def sign(ipa_path, identity, output_path):
     import ipasign
 
+    scratch = workdir() / "sign-tmp"
     result = ipasign.Key(
         _materialise(identity.p12, "p12"),
         _materialise(identity.profile, "mobileprovision"),
         P12_PASSWORD,
-    ).sign(str(ipa_path), str(output_path))
+    ).sign(str(ipa_path), str(output_path), tmp_folder=str(scratch))
+    shutil.rmtree(scratch, ignore_errors=True)
     return result
 
 

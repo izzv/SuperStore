@@ -57,8 +57,7 @@ certificate and a provisioning profile for the connected iPhone, and signs the
   produce on its own, so the helper asks an anisette server for it. The server
   sees the machine identity, never the Apple ID or the password. The list is at
   the top of `apple_sideload.py`; the first one that answers is used. To use your
-  own, type its address in the `Anisette` field (or pass `--anisette-server`),
-  and see `anisette/README.md` for hosting one on this PC.
+  own, type its address in the `Anisette` field (or pass `--anisette-server`).
 - The profile Apple issues has to carry the app group SuperStore keeps its
   database in, so the helper registers `group.<bundle id>` on the team, turns the
   app group capability on for the app id and links the two before asking for the
@@ -72,6 +71,27 @@ certificate and a provisioning profile for the connected iPhone, and signs the
   start a sign-in and stops there: no password, no attempt spent. It says whether
   Apple is answering or throttling right now.
 - While a wait is running, `Try anyway` (or `--force`) spends an attempt now.
+
+## Hosting an anisette server
+
+`Host one here`, under the `Anisette` field, runs an anisette server on this PC
+without a second window: it fetches one machine identity, serves it to every
+device on the network for ten minutes at a time, and fills the field in with the
+address the internet sees (`http://<public ip>:6969`), naming the network address
+in the log. Press it again to stop. If the public address cannot be looked up it
+says so and uses the network address instead, and the public one only answers
+from outside once TCP 6969 is forwarded to this machine.
+
+The same server runs from a terminal, and that is the file the website hands out:
+
+```
+python anisette_server.py               # port 6969, prints all three addresses
+python anisette_server.py --port 7000   # somewhere else
+```
+
+`/` and `/v3/get_headers` serve the headers, `/v3/client_info` the client info,
+`/health` the upstream in use. `?refresh=1` forces a new identity; restarting the
+process also does.
 
 ## What it does
 
