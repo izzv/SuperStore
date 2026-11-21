@@ -904,6 +904,33 @@ def save_identity(identity):
     return path
 
 
+def find_cached_p12(der):
+    """The .p12 already on this PC whose certificate is the one Apple holds."""
+    folder = workdir() / "signing"
+    if not folder.exists():
+        return None
+    for path in sorted(folder.iterdir()):
+        blob = b""
+        try:
+            if path.suffix.lower() == ".json":
+                blob = base64.b64decode(json.loads(path.read_text(encoding="utf-8")).get("p12") or "")
+            elif path.suffix.lower() == ".p12":
+                blob = path.read_bytes()
+        except Exception:
+            continue
+        if not blob:
+            continue
+        try:
+            _key, certificate, _chain = pkcs12.load_key_and_certificates(blob, P12_PASSWORD.encode())
+        except Exception:
+            continue
+        if certificate is None:
+            continue
+        if certificate.public_bytes(serialization.Encoding.DER) == der:
+            return blob
+    return None
+
+
 class Developer:
     """Apple's developer services, on the JSON:API surface Xcode uses now."""
 
@@ -1087,15 +1114,9 @@ class Developer:
             ]))
             .sign(key, hashes.SHA256())
         )
-        created = self._call("/v1/certificates", "POST", {
-            "data": {
-                "type": "certificates",
-                "attributes": {
-                    "certificateType": "DEVELOPMENT",
-                    "csrContent": request.public_bytes(serialization.Encoding.PEM).decode(),
-                },
-            },
-        })
+        created, reused = self.create_certificate(request)
+        if reused is not None:
+            return reused
         data = created.get("data") or {}
         content = (data.get("attributes") or {}).get("certificateContent")
         if not content:
@@ -1109,6 +1130,54 @@ class Developer:
             encryption_algorithm=serialization.BestAvailableEncryption(P12_PASSWORD.encode()),
         )
         return blob, str(data.get("id") or "")
+
+    def create_certificate(self, request):
+        """Apple keeps one development certificate per team, so a 409 reuses the one on this PC."""
+        body = {
+            "data": {
+                "type": "certificates",
+                "attributes": {
+                    "certificateType": "DEVELOPMENT",
+                    "csrContent": request.public_bytes(serialization.Encoding.PEM).decode(),
+                },
+            },
+        }
+        try:
+            return self._call("/v1/certificates", "POST", body), None
+        except AppleError as error:
+            if "409" not in str(error):
+                raise
+            return None, self.held_certificate(error)
+
+    def held_certificate(self, error):
+        for entry in self._collection("/v1/certificates"):
+            attributes = entry.get("attributes") or {}
+            if str(attributes.get("certificateType") or "").upper() != "DEVELOPMENT":
+                continue
+            identifier = str(entry.get("id") or "")
+            if not identifier:
+                continue
+            content = attributes.get("certificateContent")
+            if not content:
+                try:
+                    detail = self._call("/v1/certificates/%s" % identifier, "GET")
+                except AppleError:
+                    continue
+                content = ((detail.get("data") or {}).get("attributes") or {}).get("certificateContent")
+            if not content:
+                continue
+            try:
+                der = base64.b64decode(content)
+            except Exception:
+                continue
+            blob = find_cached_p12(der)
+            if blob:
+                return blob, identifier
+        raise AppleError(
+            "%s Apple already has a development certificate for this team, and its private key is "
+            "not on this PC. Revoke it at developer.apple.com/account (Certificates, Identifiers & "
+            "Profiles, Certificates), then press Sign in again." % error
+        )
 
     def profile(self, bundle_resource_id, certificate_id, device_id, name):
         body = {
