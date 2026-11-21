@@ -207,6 +207,7 @@ def download_setup(destination, on_progress=None):
     request = urllib.request.Request(SETUP_DOWNLOAD_URL, headers={"User-Agent": "SuperStore-Setup"})
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
+    total = 0
     with urllib.request.urlopen(request, timeout=60) as response, open(destination, "wb") as handle:
         total = int(response.headers.get("Content-Length") or 0)
         done = 0
@@ -219,8 +220,10 @@ def download_setup(destination, on_progress=None):
             if on_progress is not None:
                 on_progress(done, total)
     size = destination.stat().st_size
+    if total and size != total:
+        raise RuntimeError("it stopped after %s of %s" % (human_size(size), human_size(total)))
     if size < 1024 * 1024:
-        raise RuntimeError("the download stopped after %s" % human_size(size))
+        raise RuntimeError("the download is only %s long" % human_size(size))
     with open(destination, "rb") as handle:
         if handle.read(2) != b"MZ":
             raise RuntimeError("the download is not a Windows executable")
@@ -1041,6 +1044,7 @@ class SetupApp:
         self.build_info = build_info()
         self.update_check_logged = False
         self.updating = False
+        self.staged_update = None
 
         self.build()
         close_splash()
@@ -1502,6 +1506,7 @@ class SetupApp:
         )
         self.sign_button.set_enabled(SIGNING_SUPPORT and not self.busy and not signed_in)
         self.check_button.set_enabled(SIGNING_SUPPORT and not self.busy)
+        self.update_button.set_enabled(not self.busy)
 
     def poll_devices(self):
         if DEVICE_SUPPORT and not self.polling and not self.busy:
@@ -1781,6 +1786,9 @@ class SetupApp:
         self.root.after(SETUP_CHECK_INTERVAL_MS, self.start_update_checks)
 
     def check_for_setup_update(self):
+        if self.updating:
+            return
+
         def work():
             try:
                 result = setup_update(self.build_info)
@@ -1802,6 +1810,7 @@ class SetupApp:
                                        fg=WARN)
             if not self.update_button.winfo_manager():
                 self.update_button.pack(side="right", padx=(px(6), 0))
+            self.update_button.set_enabled(not self.busy)
             self.log("A newer SuperStore-Setup.exe was published (%s). Press Get new setup." % when, "warn")
         else:
             self.update_note.configure(text="%s  ·  up to date with the published setup" % self.setup_line(),
@@ -1815,12 +1824,22 @@ class SetupApp:
 
     def open_setup_download(self):
         if self.updating:
+            self.log("The new setup is already on its way.", "info")
+            return
+        if self.busy:
+            self.log("Finish the download, sign-in or install first; the setup cannot restart in the middle of one.",
+                     "warn")
             return
         if not getattr(sys, "frozen", False):
             self.log("This copy runs from source, so it can only open the release page.", "info")
             webbrowser.open(SETUP_DOWNLOAD_URL)
             return
         target = Path(sys.executable)
+        if self.staged_update is not None and self.staged_update.exists():
+            self.updating = True
+            self.set_busy(True)
+            self.update_ready(self.staged_update, target)
+            return
         staged = target.with_name(target.stem + ".new.exe")
         try:
             probe = target.with_name("write-test.tmp")
@@ -1830,7 +1849,12 @@ class SetupApp:
             staged = workdir() / "SuperStore-Setup.new.exe"
             self.log("The setup's own folder cannot be written to, so the download goes to %s." % staged.parent,
                      "warn")
+        try:
+            staged.unlink()
+        except OSError:
+            pass
         self.updating = True
+        self.set_busy(True)
         self.update_note.configure(text="Downloading the new setup…", fg=WARN)
         self.log("Downloading the new setup…", "step")
 
@@ -1838,7 +1862,7 @@ class SetupApp:
             try:
                 download_setup(staged, on_progress=lambda done, total: self.post(self.update_progress, done, total))
             except Exception as error:
-                self.post(self.update_download_failed, error)
+                self.post(self.update_download_failed, error, staged)
                 return
             self.post(self.update_ready, staged, target)
 
@@ -1852,22 +1876,46 @@ class SetupApp:
         else:
             self.update_note.configure(text="Downloading the new setup… %s" % human_size(done), fg=WARN)
 
-    def update_download_failed(self, error):
+    def update_download_failed(self, error, staged=None):
         self.updating = False
+        self.set_busy(False)
+        if staged is not None:
+            try:
+                Path(staged).unlink()
+            except OSError:
+                pass
         message = str(error) or error.__class__.__name__
         self.update_note.configure(text="The new setup could not be downloaded: %s" % message, fg=ERR)
         self.log("The new setup could not be downloaded: %s" % message, "error")
 
     def update_ready(self, staged, target):
+        from tkinter import messagebox
+
+        confirmed = messagebox.askyesno(
+            "SuperStore Setup",
+            "Restart into the new setup now?\n\n"
+            "The setup closes, replaces itself with the download and opens again.\n"
+            "Anything typed into it is lost.",
+        )
+        if not confirmed:
+            self.staged_update = Path(staged)
+            self.updating = False
+            self.set_busy(False)
+            self.update_note.configure(text="The new setup is downloaded. Press Get new setup to restart into it.",
+                                       fg=WARN)
+            self.log("Restart postponed. The download stays beside the setup until you press Get new setup again.",
+                     "info")
+            return
         try:
             replace_setup(target, staged)
         except OSError as error:
-            self.updating = False
+            self.staged_update = Path(staged)
             self.update_note.configure(text="Starting the downloaded setup…", fg=WARN)
             self.log("Could not replace the running setup (%s). Starting the downloaded copy instead." % error,
                      "warn")
             self.launch_replacement(staged)
             return
+        self.staged_update = None
         self.update_note.configure(text="Restarting into the new setup…", fg=OK)
         self.log("The new setup is in place. Restarting…", "ok")
         self.launch_replacement(target)
@@ -1878,6 +1926,7 @@ class SetupApp:
             subprocess.Popen([str(path)], close_fds=True, creationflags=flags)
         except OSError as error:
             self.updating = False
+            self.set_busy(False)
             self.log("Could not start %s (%s). Open it from the folder instead." % (path, error), "error")
             self.open_folder()
             return
