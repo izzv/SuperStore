@@ -154,12 +154,6 @@
   @media (max-width: 900px) {
     .hero { padding-top: 56px; }
     .hero-grid { grid-template-columns: 1fr; gap: 8px; }
-    .phone-stage { padding: 36px 0 28px; }
-    .phone { width: min(268px, 66%); transform: rotate(-6deg); }
-  }
-
-  @media (max-width: 420px) {
-    .phone { width: min(228px, 62%); }
   }
 
   .hero h1 {
@@ -453,6 +447,18 @@
   footer p { font-size: 0.8rem; color: var(--dim); }
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--text); text-decoration: underline; }
+
+  /* ---------- narrow screens ----------
+     Last in the file on purpose: .phone and .phone-stage are declared above, so
+     these overrides have to come after them to win. */
+  @media (max-width: 900px) {
+    .phone-stage { padding: 36px 0 28px; }
+    .phone { width: min(268px, 66%); transform: rotate(-6deg); }
+  }
+
+  @media (max-width: 420px) {
+    .phone { width: min(228px, 60%); }
+  }
 </style>
 </head>
 <body>
