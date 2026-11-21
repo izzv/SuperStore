@@ -89,6 +89,33 @@ jobs:
             -derivedDataPath "$DERIVED_DATA" \
             $UNSIGNED_SETTINGS
 
+      # An unsigned .ipa is just Payload/<App>.app zipped up. It cannot be
+      # installed as-is: whoever downloads it signs it with their own Apple ID.
+      - name: Package unsigned IPA
+        run: |
+          set -o pipefail
+          APP=$(find "$DERIVED_DATA/Build/Products/Debug-iphoneos" -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then
+            echo "no .app was produced" >&2
+            exit 1
+          fi
+          echo "packaging $APP"
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          cp -R "$APP" build/ipa/Payload/
+          cd build/ipa
+          zip -qry "$GITHUB_WORKSPACE/build/SuperStore.ipa" Payload
+          cd "$GITHUB_WORKSPACE"
+          ls -lh build/SuperStore.ipa
+          unzip -l build/SuperStore.ipa | head -5
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: SuperStore-ipa
+          path: build/SuperStore.ipa
+          if-no-files-found: error
+          retention-days: 30
+
   test:
     name: Run tests on iOS Simulator
     if: ${{ vars.SUPERSTORE_TESTS_ENABLED == 'true' }}
