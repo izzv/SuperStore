@@ -134,9 +134,6 @@ final class SettingsViewController: UITableViewController
     @IBOutlet private var rotateLogsOnStartupSwitch: UISwitch!
 
     @IBOutlet private var disableResponseCachingSwitch: UISwitch!
-    @IBOutlet private var mastodonButton: UIButton!
-    @IBOutlet private var threadsButton: UIButton!
-    @IBOutlet private var twitterButton: UIButton!
     @IBOutlet private var githubButton: UIButton!
     @IBOutlet private var versionLabel: UILabel!
     @IBOutlet private var recreateDatabaseSwitch: UISwitch!
@@ -225,12 +222,12 @@ final class SettingsViewController: UITableViewController
             self.navigationController?.tabBarItem.scrollEdgeAppearance = appearance
         }
         #endif
-        for button in [self.mastodonButton!, self.threadsButton!, self.twitterButton!, self.githubButton!]
+        if let githubButton = self.githubButton
         {
-            let image = button.configuration?.background.image
-            button.configuration = nil
-            button.setImage(image, for: .normal)
-            button.imageView?.contentMode = .scaleAspectFit
+            let image = githubButton.configuration?.background.image
+            githubButton.configuration = nil
+            githubButton.setImage(image, for: .normal)
+            githubButton.imageView?.contentMode = .scaleAspectFit
         }
         configureReleaseChannelButton()
     }

@@ -1378,23 +1378,14 @@
                         <outlet property="accountEmailLabel" destination="0uP-Cd-tNX" id="14b-aL-yE3"/>
                         <outlet property="accountNameLabel" destination="CnN-M1-AYK" id="Ldc-Py-Bix"/>
                         <outlet property="accountTypeLabel" destination="434-MW-Den" id="mNB-QE-4Jg"/>
-                        <outlet property="altSignVerboseLoggingSwitch" destination="ns7-8G-sT9" id="a2K-b8-xWs"/>
                         <outlet property="backgroundRefreshSwitch" destination="DPu-zD-Als" id="eiG-Hv-Vko"/>
                         <outlet property="betaTrackLabel" destination="1B5-BJ-Rkb" id="wcZ-in-EOa"/>
                         <outlet property="betaTrackPopupButton" destination="kYQ-zz-vjQ" id="QXm-ud-70m"/>
                         <outlet property="betaUpdatesSwitch" destination="Blb-Dp-9QF" id="C4e-rj-ocb"/>
 
                         <outlet property="disableAppLimitSwitch" destination="1aa-og-ZXD" id="oVL-Md-yZ8"/>
-                        <outlet property="disableResponseCachingSwitch" destination="AAh-cu-qw8" id="aVT-Md-yZ8"/>
                         <outlet property="githubButton" destination="oqj-4S-I9l" id="sxB-LE-gA2"/>
-                        <outlet property="mastodonButton" destination="B8Q-e7-beR" id="Kbe-Og-rsg"/>
-                        <outlet property="minimuxerVerboseLoggingSwitch" destination="os8-7F-rSm" id="gxg-Gx-xwO"/>
-                        <outlet property="rotateLogsOnStartupSwitch" destination="rot-lg-switch" id="rot-lg-outlet-conn"/>
                         <outlet property="noIdleTimeoutSwitch" destination="iQA-wm-5ag" id="jHC-js-q0Y"/>
-                        <outlet property="recreateDatabaseSwitch" destination="uGv-Lb-Ita" id="BMU-cK-0ee"/>
-                        <outlet property="threadsButton" destination="AWk-yE-9LI" id="SOc-ei-4gK"/>
-                        <outlet property="twitterButton" destination="uYZ-Vu-RzK" id="anA-jh-w4z"/>
-                        <outlet property="verboseOperationsLoggingSwitch" destination="Q5X-Mo-KpE" id="aVL-Md-tZ8"/>
                         <outlet property="versionLabel" destination="5u7-mb-jJj" id="zvU-TQ-lO6"/>
                     </connections>
                 </tableViewController>
