@@ -6,6 +6,8 @@
 	<string>https://ani.sidestore.io</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>SuperStore</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -52,7 +54,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>SideStore General</string>
+			<string>SuperStore General</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>sidestore</string>
@@ -62,7 +64,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>SideStore Backup</string>
+			<string>SuperStore Backup</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>sidestore-$(PRODUCT_BUNDLE_IDENTIFIER)</string>
@@ -164,7 +166,7 @@
 		<string>_vnc._tcp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>SideStore can use local network access to discover Bonjour (mDNS) services on your network. This is not required for core functionality.</string>
+	<string>SuperStore can use local network access to discover Bonjour (mDNS) services on your network. This is not required for core functionality.</string>
 	<key>NSUserActivityTypes</key>
 	<array>
 		<string>RefreshAllIntent</string>
@@ -172,7 +174,7 @@
 	</array>
 	<key>OSLogPreferences</key>
 	<dict>
-		<key>com.SideStore.SideStore</key>
+		<key>com.superstore.SuperStore</key>
 		<dict>
 			<key>AltJIT</key>
 			<dict>
@@ -236,9 +238,9 @@
 		<string>processing</string>
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SideStore uses location updates to keep background operations active.</string>
+	<string>SuperStore uses location updates to keep background operations active.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>SideStore uses location updates to keep background operations active.</string>
+	<string>SuperStore uses location updates to keep background operations active.</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

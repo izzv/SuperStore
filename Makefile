@@ -177,7 +177,7 @@ COMMON_BUILD_SETTINGS = \
 	AD_HOC_CODE_SIGNING_ALLOWED=YES \
 	CODE_SIGNING_ALLOWED=NO \
 	DEVELOPMENT_TEAM=XYZ0123456 \
-	ORG_IDENTIFIER=com.SideStore
+	ORG_IDENTIFIER=com.superstore
 
 # Append MARKETING_VERSION if it’s not empty (coz otherwise the blank entry becomes override)
 ifneq ($(strip $(MARKETING_VERSION)),)
@@ -272,8 +272,8 @@ ipa:
 	@echo "fake-signing sidestore"
 	mkdir -p Payload/SideStore.app
 	cp -R SideStore.xcarchive/Products/Applications/SideStore.app/ Payload/SideStore.app/
-	rm -f     SideStore.ipa
-	zip -r SideStore.ipa Payload
+	rm -f     SuperStore.ipa
+	zip -r SuperStore.ipa Payload
 	rm -rf Payload*/
 
 # Global Variables
@@ -383,5 +383,5 @@ clean-sidebackup:
     #@rm -f AltStore/Resources/SideBackup.ipa
 
 clean: clean-sidebackup
-	@rm -rf SideStore.ipa
+	@rm -rf SuperStore.ipa
 	@rm -rf build/
