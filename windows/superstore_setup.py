@@ -511,6 +511,8 @@ def main(argv=None):
         say(result["message"])
         return 0 if result["ok"] else 1
 
+    login = None
+
     if args.sign_in or args.apple_id:
         import getpass
 
@@ -547,6 +549,12 @@ def main(argv=None):
             say("Run with --apple-id you@example.com to sign in first, then install again.")
             return 1
         signed = workdir() / "SuperStore-signed.ipa"
+        if login is not None:
+            try:
+                apple.add_extension_profiles(login, identity, target, on_status=say)
+            except apple.AppleError as error:
+                say("Could not prepare the app extensions: %s" % error)
+                return 1
         say("Signing %s for this iPhone..." % target)
         try:
             apple.sign(target, identity, signed)
@@ -1459,6 +1467,11 @@ class SetupApp:
         signed = workdir() / "SuperStore-signed.ipa"
 
         def work():
+            if self.login is not None:
+                apple.add_extension_profiles(
+                    self.login, identity, path, self.device.get("name") or "iPhone",
+                    on_status=lambda text: self.post(self.account_note, text),
+                )
             apple.sign(path, identity, signed)
             self.post(self.install_status.configure, "Signed. Sending it to the iPhone…", MUTED)
             self.post(self.log, "Signed copy ready (%s). Installing…" % human_size(signed.stat().st_size), "step")

@@ -10,6 +10,7 @@ installs do not need it again.
 from __future__ import annotations
 
 import base64
+import datetime
 import hashlib
 import hmac
 import json
@@ -23,7 +24,7 @@ import json
 import uuid
 import zlib
 from urllib.parse import urlencode
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import certifi
@@ -806,6 +807,14 @@ class Identity:
     p12: bytes
     profile: bytes
     issued: float
+    certificate_id: str = ""
+    device_id: str = ""
+    profiles: dict = field(default_factory=dict)
+
+    def profiles_by_bundle(self):
+        known = dict(self.profiles)
+        known.setdefault(self.bundle_id, self.profile)
+        return known
 
     def profile_plist(self):
         return read_profile(self.profile)
@@ -878,6 +887,12 @@ def load_identity_for(udid, apple_id=""):
                 p12=base64.b64decode(data["p12"]),
                 profile=base64.b64decode(data["profile"]),
                 issued=float(data["issued"]),
+                certificate_id=str(data.get("certificate_id") or ""),
+                device_id=str(data.get("device_id") or ""),
+                profiles={
+                    str(identifier): base64.b64decode(payload)
+                    for identifier, payload in (data.get("profiles") or {}).items()
+                },
             )
         except Exception:
             continue
@@ -900,6 +915,12 @@ def save_identity(identity):
         "p12": base64.b64encode(identity.p12).decode(),
         "profile": base64.b64encode(identity.profile).decode(),
         "issued": identity.issued,
+        "certificate_id": identity.certificate_id,
+        "device_id": identity.device_id,
+        "profiles": {
+            identifier: base64.b64encode(profile).decode()
+            for identifier, profile in identity.profiles.items()
+        },
     }), encoding="utf-8")
     return path
 
@@ -1272,6 +1293,9 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
         p12=p12,
         profile=profile,
         issued=time.time(),
+        certificate_id=certificate,
+        device_id=device,
+        profiles={bundle_id: profile},
     )
     if not identity.covers(udid):
         raise AppleError("The profile Apple returned does not list this iPhone.")
@@ -1280,23 +1304,160 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
 
 
 def sign(ipa_path, identity, output_path):
+    """Sign every bundle in the build with the profile Apple issued for that bundle."""
     import ipasign
+    import ipasign.archive
+    import ipasign.bundle
+    from ipasign.errors import BundleError
+    from ipasign.signer import Signer, sign_macho_file
+
+    profiles = identity.profiles_by_bundle()
+    key_path = _materialise(identity.p12, "p12")
+    signers = {}
+
+    def signer_for(identifier):
+        if identifier not in signers:
+            key = ipasign.Key(
+                key_path,
+                _materialise(profiles[identifier], "mobileprovision", identifier),
+                P12_PASSWORD,
+            )
+            signers[identifier] = Signer(
+                identity=key.identity,
+                entitlements=key.profile.entitlements,
+                entitlements_plist=key.profile.entitlements_plist,
+                team_id=key.team_id,
+                subject_cn=key.subject_cn,
+                signing_time=datetime.datetime.now(datetime.timezone.utc),
+            )
+        return signers[identifier]
 
     scratch = workdir() / "sign-tmp"
-    result = ipasign.Key(
-        _materialise(identity.p12, "p12"),
-        _materialise(identity.profile, "mobileprovision"),
-        P12_PASSWORD,
-    ).sign(str(ipa_path), str(output_path), tmp_folder=str(scratch))
-    shutil.rmtree(scratch, ignore_errors=True)
-    return result
+    unpacked = ipasign.archive.unpack(Path(ipa_path), scratch)
+    try:
+        app = unpacked.app
+        nested = ipasign.bundle.collect_nested_bundles(app)
+        apps = [app] + [bundle for bundle in nested if bundle.name.endswith((".app", ".appex"))]
+        for bundle in apps:
+            identifier = ipasign.bundle.bundle_details(bundle)[0]
+            data = profiles.get(identifier)
+            if data is None:
+                if bundle.name.endswith(".appex"):
+                    raise AppleError(
+                        "Apple has no profile for the app extension %s, so iOS would refuse this "
+                        "build. Sign in with the Apple ID again (step 2), then install." % identifier
+                    )
+                data = identity.profile
+            (bundle / "embedded.mobileprovision").write_bytes(data)
+
+        def owner(path):
+            for bundle in sorted(apps, key=lambda candidate: len(candidate.parts), reverse=True):
+                try:
+                    path.relative_to(bundle)
+                except ValueError:
+                    continue
+                return bundle
+            return app
+
+        def signer_for_bundle(bundle):
+            identifier = ipasign.bundle.bundle_details(bundle)[0]
+            if identifier in profiles:
+                return signer_for(identifier)
+            return signer_for_bundle(owner(bundle.parent))
+
+        for path in ipasign.bundle.collect_macho_files(app):
+            sign_macho_file(signer_for_bundle(owner(path)), path)
+
+        for bundle in nested:
+            try:
+                ipasign.bundle.sign_bundle_member(signer_for_bundle(bundle), bundle)
+            except BundleError:
+                continue
+        signed = ipasign.bundle.sign_bundle_member(signer_for_bundle(app), app)
+        ipasign.archive.pack(unpacked.root, Path(output_path))
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    return ipasign.SignResult(
+        output_path=str(output_path),
+        bundle_id=identity.bundle_id,
+        signed_count=signed,
+    )
 
 
-def _materialise(payload, suffix):
-    target = workdir() / "signing" / ("identity." + suffix)
+def _materialise(payload, suffix, stem="identity"):
+    target = workdir() / "signing" / (stem + "." + suffix)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(payload)
     return target
+
+
+def extension_identifiers(ipa_path):
+    """The app extensions inside an .ipa, each of which needs a profile of its own."""
+    import zipfile
+
+    identifiers = []
+    with zipfile.ZipFile(ipa_path) as archive:
+        for name in archive.namelist():
+            if not name.endswith(".appex/Info.plist"):
+                continue
+            try:
+                info = plistlib.loads(archive.read(name))
+            except Exception:
+                continue
+            identifier = str(info.get("CFBundleIdentifier") or "")
+            if identifier and identifier not in identifiers:
+                identifiers.append(identifier)
+    return identifiers
+
+
+def add_extension_profiles(login, identity, ipa_path, name="", on_status=None):
+    """Ask Apple for a profile per app extension, so iOS accepts the whole build."""
+
+    def say(message):
+        if on_status is not None:
+            on_status(message)
+
+    wanted = [
+        identifier
+        for identifier in extension_identifiers(ipa_path)
+        if identifier not in identity.profiles_by_bundle()
+    ]
+    if not wanted:
+        return identity
+    if not identity.certificate_id or not identity.device_id:
+        raise AppleError(
+            "Apple's certificate on this PC predates the app extensions, so they cannot be signed "
+            "for this iPhone yet. Sign in with the Apple ID again (step 2), then install."
+        )
+    developer = Developer(login, identity.team_id)
+    group_identifier = "group.%s" % identity.bundle_id
+    for identifier in wanted:
+        label = identifier.rsplit(".", 1)[-1][:50] or name or APP_ID
+        say("Preparing the app extension %s…" % identifier)
+        try:
+            resource = developer.bundle_id(identifier, label)
+            try:
+                handles = developer.app_group(group_identifier, label)
+                developer.enable_app_group(resource)
+                for handle in handles:
+                    for as_list in (False, True):
+                        try:
+                            developer.assign_app_group(resource, handle, as_list)
+                        except AppleError:
+                            continue
+            except AppleError:
+                pass
+            identity.profiles[identifier] = developer.profile(
+                resource, identity.certificate_id, identity.device_id, label
+            )
+        except AppleError as error:
+            raise AppleError(
+                "Apple would not issue a profile for the app extension %s (%s). SuperStore cannot "
+                "start while an extension ships without one, so nothing was installed."
+                % (identifier, error)
+            )
+    save_identity(identity)
+    return identity
 
 
 def signed_bundle_id(path):

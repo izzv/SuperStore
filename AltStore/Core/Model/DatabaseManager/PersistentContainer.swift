@@ -116,6 +116,16 @@ open class PersistentContainer: NSPersistentContainer, @unchecked Sendable {
                 }
             }
         }
+        let loadedURLs = Set(self.persistentStoreCoordinator.persistentStores.compactMap { $0.url })
+        self.persistentStoreDescriptions = self.persistentStoreDescriptions.filter { description in
+            guard let url = description.url else { return true }
+            return !loadedURLs.contains(url)
+        }
+        guard !self.persistentStoreDescriptions.isEmpty else {
+            self.configure(self.viewContext, parent: nil)
+            return
+        }
+
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             super.loadPersistentStores { [weak self] description, error in
                 guard let self = self else { return }

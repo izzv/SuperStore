@@ -261,6 +261,10 @@ public class DatabaseManager: @unchecked Sendable
                 }
                 else
                 {
+                    guard appExtension.provisioningProfile != nil else {
+                        debugLog("[DatabaseManager] Skipping app extension '\(originalBundleID)': it has no provisioning profile.")
+                        continue
+                    }
                     installedExtension = try InstalledExtension(resignedAppExtensionBundle: appExtension, originalBundleIdentifier: originalBundleID, context: context)
                 }
                 installedExtension.update(resignedAppExtensionBundle: appExtension)
