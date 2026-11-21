@@ -21,6 +21,7 @@ import gzip
 import json
 import uuid
 import zlib
+from urllib.parse import urlencode
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +45,8 @@ CLIENT_ID = "XABBG36SBA"
 TWO_FACTOR_MODES = ("trustedDeviceSecondaryAuth", "secondaryAuth")
 INCORRECT_CODE = -21669
 DEVELOPER = "https://developerservices2.apple.com/services/QH65B2"
+DEVELOPER_SERVICES = "https://developerservices2.apple.com/services"
+XCODE_API_VERSION = "16.2 (16C5031c)"
 ANISETTE_SERVERS = (
     "https://anisette.lillq.me",
     "https://new.ani.sidestore.io",
@@ -878,17 +881,92 @@ def save_identity(identity):
 
 
 class Developer:
-    """Apple's developer services, the same backend Xcode uses."""
+    """Apple's developer services, on the JSON:API surface Xcode uses now."""
 
-    def __init__(self, login):
+    def __init__(self, login, team_id=""):
         self.login = login
+        self.team_id = team_id
 
-    def _post(self, action, payload):
-        body = {
-            "clientId": CLIENT_ID,
-            "protocolVersion": "QH65B2",
-            "requestId": str(uuid.uuid4()).upper(),
+    def _headers(self):
+        headers = {
+            "Accept": "application/vnd.api+json",
+            "Content-Type": "application/vnd.api+json",
+            "User-Agent": "Xcode",
+            "X-Apple-App-Info": "com.apple.gs.xcode.auth",
+            "X-Xcode-Version": XCODE_API_VERSION,
+            "X-Apple-I-Identity-Id": self.login.dsid,
+            "X-Apple-GS-Token": self.login.app_token or self.login.token,
         }
+        headers.update(self.login.anisette.headers)
+        return headers
+
+    def _reason(self, action, response, parsed):
+        detail = ""
+        if isinstance(parsed, dict):
+            errors = parsed.get("errors") or []
+            if errors and isinstance(errors[0], dict):
+                detail = str(errors[0].get("detail") or errors[0].get("title") or "")
+            detail = detail or str(parsed.get("resultString") or parsed.get("userString") or "")
+        if not detail:
+            detail = response.text[:200].replace("\n", " ")
+        record_diagnostic(
+            "developer %s" % action,
+            self.login.apple_id,
+            {"ec": response.status_code, "em": detail[:200]},
+            self.login.anisette.server,
+        )
+        return AppleError(
+            "Apple's developer service answered HTTP %s for %s: %s"
+            % (response.status_code, action, detail[:160] or "no detail")
+        )
+
+    def _call(self, path, method="GET", body=None, query=None):
+        params = dict(query or {})
+        if self.team_id:
+            params.setdefault("teamId", self.team_id)
+        headers = self._headers()
+        if method in ("GET", "DELETE"):
+            headers["X-HTTP-Method-Override"] = method
+            payload = {"urlEncodedQueryParams": urlencode(params)}
+        else:
+            payload = dict(body or {})
+            data = dict(payload.get("data") or {})
+            attributes = dict(data.get("attributes") or {})
+            attributes.setdefault("teamId", self.team_id)
+            data["attributes"] = attributes
+            payload["data"] = data
+        response = http().post(DEVELOPER_SERVICES + path, data=json.dumps(payload), headers=headers, timeout=60)
+        try:
+            parsed = json.loads(response.content.decode("utf-8", "replace")) if response.content else {}
+        except Exception:
+            parsed = {}
+        if response.status_code >= 400:
+            raise self._reason(path, response, parsed)
+        if not isinstance(parsed, dict):
+            raise AppleError("Apple's developer service answered %s with something unexpected." % path)
+        return parsed
+
+    def _collection(self, path, query=None):
+        values = []
+        seen = set()
+        current_path = path
+        current_query = query
+        while True:
+            parsed = self._call(current_path, "GET", query=current_query)
+            data = parsed.get("data")
+            if not isinstance(data, list):
+                raise AppleError("Apple's developer service returned no list for %s." % path)
+            values.extend(entry for entry in data if isinstance(entry, dict))
+            nxt = (parsed.get("links") or {}).get("next")
+            if not isinstance(nxt, str) or not nxt or nxt in seen:
+                return values
+            seen.add(nxt)
+            base, _, rest = nxt.split("/services", 1)[-1].partition("?")
+            current_path = base
+            current_query = dict(pair.partition("=")[::2] for pair in rest.split("&") if pair)
+
+    def _legacy(self, action, payload):
+        body = {"clientId": CLIENT_ID, "protocolVersion": "QH65B2", "requestId": str(uuid.uuid4()).upper()}
         body.update(payload)
         headers = {
             "Content-Type": "text/x-xml-plist",
@@ -903,45 +981,13 @@ class Developer:
         headers.update(self.login.anisette.headers)
         url = "%s/%s?clientId=%s" % (DEVELOPER, action, CLIENT_ID)
         response = http().post(url, data=plistlib.dumps(body), headers=headers, timeout=60)
-        if response.status_code >= 400:
-            snippet = response.text[:300].replace("\n", " ")
-            record_diagnostic(
-                "developer %s" % action,
-                self.login.apple_id,
-                {"ec": response.status_code, "em": snippet},
-                self.login.anisette.server,
-            )
-            raise AppleError(
-                "Apple's developer service answered HTTP %s for %s: %s"
-                % (response.status_code, action, snippet[:160])
-            )
         try:
-            parsed = plistlib.loads(response.content)
+            parsed = plistlib.loads(response.content) if response.content else {}
         except Exception:
-            parsed = None
-        if not isinstance(parsed, dict):
-            try:
-                parsed = json.loads(response.content.decode("utf-8", "replace"))
-            except Exception:
-                parsed = None
-        if not isinstance(parsed, dict):
-            snippet = response.text[:300].replace("\n", " ")
-            record_diagnostic(
-                "developer %s" % action,
-                self.login.apple_id,
-                {
-                    "ec": response.status_code,
-                    "em": "not a plist",
-                    "content-type": response.headers.get("Content-Type"),
-                    "body": snippet,
-                },
-                self.login.anisette.server,
-            )
-            raise AppleError(
-                "Apple's developer service sent %s for %s: %s"
-                % (response.headers.get("Content-Type") or "an unknown document", action, snippet[:160])
-            )
-        code = parsed.get("resultCode")
+            parsed = {}
+        if response.status_code >= 400:
+            raise self._reason(action, response, parsed)
+        code = parsed.get("resultCode") if isinstance(parsed, dict) else None
         if code not in (None, 0):
             message = parsed.get("userString") or parsed.get("resultString") or "resultCode %s" % code
             record_diagnostic(
@@ -954,7 +1000,7 @@ class Developer:
         return parsed
 
     def teams(self):
-        teams = self._post("listTeams.action", {}).get("teams") or []
+        teams = self._legacy("listTeams.action", {}).get("teams") or []
         result = [{"id": str(team.get("teamId") or ""), "name": str(team.get("name") or "")} for team in teams]
         result = [team for team in result if team["id"]]
         if not result:
@@ -962,29 +1008,33 @@ class Developer:
         personal = [team for team in result if "personal" in team["name"].lower()]
         return personal + [team for team in result if team not in personal]
 
-    def register_device(self, team_id, udid, name):
+    def device(self, udid, name):
+        for entry in self._collection("/v1/devices"):
+            if str((entry.get("attributes") or {}).get("udid") or "").upper() == udid.upper():
+                return str(entry.get("id") or "")
         try:
-            self._post("addDevice.action", {"teamId": team_id, "deviceNumber": udid, "name": name})
+            created = self._call("/v1/devices", "POST", {
+                "data": {"type": "devices", "attributes": {"name": name, "platform": "IOS", "udid": udid}},
+            })
         except AppleError as error:
-            if "already" not in str(error).lower():
+            if "409" not in str(error):
                 raise
+            for entry in self._collection("/v1/devices"):
+                if str((entry.get("attributes") or {}).get("udid") or "").upper() == udid.upper():
+                    return str(entry.get("id") or "")
+            raise
+        return str((created.get("data") or {}).get("id") or "")
 
-    def app_ids(self, team_id):
-        return self._post("listAppIds.action", {"teamId": team_id}).get("appIds") or []
-
-    def app_id(self, team_id, bundle_id, app_name):
-        for entry in self.app_ids(team_id):
-            if str(entry.get("identifier") or "") == bundle_id:
-                return str(entry.get("appIdId") or "")
-        created = self._post("addAppId.action", {
-            "teamId": team_id,
-            "identifier": bundle_id,
-            "name": app_name[:50],
-            "appIdId": str(uuid.uuid4()).upper(),
+    def bundle_id(self, identifier, name):
+        for entry in self._collection("/v1/bundleIds", {"filter[identifier]": identifier}):
+            if str((entry.get("attributes") or {}).get("identifier") or "") == identifier:
+                return str(entry.get("id") or "")
+        created = self._call("/v1/bundleIds", "POST", {
+            "data": {"type": "bundleIds", "attributes": {"identifier": identifier, "name": name[:50], "platform": "IOS"}},
         })
-        return str((created.get("appId") or {}).get("appIdId") or "")
+        return str((created.get("data") or {}).get("id") or "")
 
-    def certificate(self, team_id, apple_id):
+    def certificate(self, apple_id):
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         request = (
             x509.CertificateSigningRequestBuilder()
@@ -994,49 +1044,56 @@ class Developer:
             ]))
             .sign(key, hashes.SHA256())
         )
-        answer = self._post("submitDevelopmentCSR.action", {
-            "teamId": team_id,
-            "csrContent": base64.b64encode(request.public_bytes(serialization.Encoding.DER)).decode(),
+        created = self._call("/v1/certificates", "POST", {
+            "data": {
+                "type": "certificates",
+                "attributes": {
+                    "certificateType": "DEVELOPMENT",
+                    "csrContent": request.public_bytes(serialization.Encoding.PEM).decode(),
+                },
+            },
         })
-        issued = answer.get("certRequest") or {}
-        payload = issued.get("certRequestDerEncoded") or issued.get("certificate")
-        if payload is None and issued.get("certRequestId"):
-            downloaded = self._post("downloadDevelopmentCert.action", {
-                "teamId": team_id,
-                "certRequestId": str(issued["certRequestId"]),
-            })
-            issued = downloaded.get("certRequest") or issued
-            payload = issued.get("certRequestDerEncoded") or issued.get("certificate")
-        if not payload:
+        data = created.get("data") or {}
+        content = (data.get("attributes") or {}).get("certificateContent")
+        if not content:
             raise AppleError("Apple issued no certificate for this Apple ID.")
-        if isinstance(payload, str):
-            payload = base64.b64decode(payload)
-        certificate = x509.load_der_x509_certificate(bytes(payload))
-        key_pem = key.private_bytes(
-            serialization.Encoding.PEM,
-            serialization.PrivateFormat.TraditionalOpenSSL,
-            serialization.NoEncryption(),
-        )
+        certificate = x509.load_der_x509_certificate(base64.b64decode(content))
         blob = pkcs12.serialize_key_and_certificates(
             name=b"iPhone Developer",
-            key=serialization.load_pem_private_key(key_pem, password=None),
+            key=key,
             cert=certificate,
             cas=None,
             encryption_algorithm=serialization.BestAvailableEncryption(P12_PASSWORD.encode()),
         )
-        return blob, str(issued.get("certRequestId") or "")
+        return blob, str(data.get("id") or "")
 
-    def profile(self, team_id, app_id_id, udid):
-        answer = self._post("downloadTeamProvisioningProfile.action", {
-            "teamId": team_id,
-            "appIdId": app_id_id,
-            "deviceIds": [udid],
-        })
-        profile = answer.get("provisioningProfile") or {}
-        payload = profile.get("encodedProfile")
-        if not payload:
+    def profile(self, bundle_resource_id, certificate_id, device_id, name):
+        body = {
+            "data": {
+                "type": "profiles",
+                "attributes": {"name": name[:50], "profileType": "IOS_APP_DEVELOPMENT"},
+                "relationships": {
+                    "bundleId": {"data": {"type": "bundleIds", "id": bundle_resource_id}},
+                    "certificates": {"data": [{"type": "certificates", "id": certificate_id}]},
+                    "devices": {"data": [{"type": "devices", "id": device_id}]},
+                },
+            },
+        }
+        try:
+            created = self._call("/v1/profiles", "POST", body)
+        except AppleError as error:
+            if "409" not in str(error):
+                raise
+            for entry in self._collection("/v1/bundleIds/%s/profiles" % bundle_resource_id):
+                profile_id = str(entry.get("id") or "")
+                if profile_id:
+                    self._call("/v1/profiles/%s" % profile_id, "DELETE")
+            created = self._call("/v1/profiles", "POST", body)
+        data = created.get("data") or {}
+        content = (data.get("attributes") or {}).get("profileContent")
+        if not content:
             raise AppleError("Apple returned no provisioning profile for this phone.")
-        return bytes(payload)
+        return base64.b64decode(content)
 
 
 APP_ID = "SuperStore On Device"
@@ -1054,16 +1111,21 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
     login.app_tokens()
     say("Looking up your developer team…")
     team = developer.teams()[0]
+    developer.team_id = team["id"]
     say("Registering this iPhone with %s…" % (team["name"] or team["id"]))
-    developer.register_device(team["id"], udid, device_name or "iPhone")
+    device = developer.device(udid, device_name or "iPhone")
+    if not device:
+        raise AppleError("Apple did not return a device record for this iPhone.")
     say("Preparing the app identifier…")
-    app_id = developer.app_id(team["id"], bundle_id, app_name)
-    if not app_id:
+    resource = developer.bundle_id(bundle_id, app_name)
+    if not resource:
         raise AppleError("Apple did not return an app identifier for %s." % bundle_id)
     say("Requesting a development certificate…")
-    p12, _cert_id = developer.certificate(team["id"], login.apple_id)
+    p12, certificate = developer.certificate(login.apple_id)
+    if not certificate:
+        raise AppleError("Apple did not return a certificate identifier.")
     say("Fetching the provisioning profile…")
-    profile = developer.profile(team["id"], app_id, udid)
+    profile = developer.profile(resource, certificate, device, bundle_id.rsplit(".", 1)[-1])
     identity = Identity(
         apple_id=login.apple_id,
         team_id=team["id"],
