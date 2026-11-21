@@ -74,6 +74,14 @@ For signing, provisioning and running on a device, see [CONTRIBUTING.md](./CONTR
 | [minimuxer](https://github.com/jkcoxson/minimuxer) | Lockdown muxer that runs inside the iOS sandbox |
 | [EM Proxy](https://github.com/jkcoxson/em_proxy) | The loopback tunnel that makes on-device installation possible |
 
+## Activity
+
+<p align="center">
+  <a href="https://github.com/izzv/SuperStore/pulse">
+    <img src="https://repobeats.axiom.co/api/embed/izzv/SuperStore.svg" alt="Repository activity: contributions, issues, pull requests and pushes over the past month, plus the top contributors" width="100%">
+  </a>
+</p>
+
 ## Contributing
 
 Build instructions, code signing setup and project conventions are in [CONTRIBUTING.md](./CONTRIBUTING.md).
