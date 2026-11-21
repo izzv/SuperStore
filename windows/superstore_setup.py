@@ -88,6 +88,11 @@ def workdir():
     return directory
 
 
+def bundled_file(name):
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return base / name
+
+
 def human_size(size):
     size = float(size)
     for unit in ("B", "KB", "MB", "GB"):
@@ -718,6 +723,12 @@ class SetupApp:
         enable_dpi_awareness()
         self.root = tk.Tk()
         self.root.title("SuperStore Setup")
+        icon = bundled_file("SuperStore.ico")
+        if icon.exists():
+            try:
+                self.root.iconbitmap(default=str(icon))
+            except tk.TclError:
+                pass
         self.root.configure(bg=BG)
         SCALE = self.root.winfo_fpixels("1i") / 96.0
         self.scale = SCALE

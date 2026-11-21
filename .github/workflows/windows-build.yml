@@ -15,6 +15,8 @@ jobs:
   build:
     name: Build SuperStore-Setup.exe
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -36,7 +38,7 @@ jobs:
 
       - name: Build the executable
         run: |
-          pyinstaller --onefile --console --name SuperStore-Setup --collect-all pymobiledevice3 --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
+          pyinstaller --onefile --console --name SuperStore-Setup --icon windows/SuperStore.ico --add-data "windows/SuperStore.ico;." --collect-all pymobiledevice3 --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
           dir build
 
       - name: Upload
@@ -45,3 +47,18 @@ jobs:
           name: SuperStore-Setup-exe
           path: build/SuperStore-Setup.exe
           if-no-files-found: error
+
+      - name: Publish the setup as a release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-setup
+          name: SuperStore Setup for Windows
+          body: |
+            The Windows helper that pairs an iPhone over USB, writes its pairing
+            file and installs SuperStore.
+
+            This release holds a single asset that is replaced by every build, so
+            the link below always downloads the newest one.
+          files: build/SuperStore-Setup.exe
+          fail_on_unmatched_files: true
+          make_latest: false

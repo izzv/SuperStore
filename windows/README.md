@@ -68,6 +68,13 @@ is installed.
 ## Build
 
 `.github/workflows/windows-build.yml` builds `SuperStore-Setup.exe` with
-PyInstaller on `windows-latest`, bundling `pymobiledevice3` for the device work.
-Publishing it as `downloads/SuperStore-Setup.exe` on the `website` branch drives
-the Windows download on the site.
+PyInstaller on `windows-latest`, bundling `pymobiledevice3` for the device work
+and stamping `windows/SuperStore.ico` into the binary and the window.
+
+The build publishes the exe as the only asset of the `windows-setup` release, so
+repeated builds replace it instead of piling up copies on the `website` branch.
+The download page links straight at
+`https://github.com/izzv/SuperStore/releases/download/windows-setup/SuperStore-Setup.exe`,
+which keeps the same URL for every build. `SuperStore.ico` is generated from
+`branding/superstore-icon-1024.png` with Pillow at the sizes Windows asks for
+(16 to 256 px).
