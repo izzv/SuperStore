@@ -36,9 +36,13 @@ jobs:
           python windows/superstore_setup.py --cli
           python windows/superstore_setup.py --devices
 
+      - name: Stamp the build
+        run: |
+          python -c "import datetime,json,pathlib; pathlib.Path('windows/build-info.json').write_text(json.dumps({'commit': '${{ github.sha }}', 'built_at': datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')}), encoding='utf-8')"
+
       - name: Build the executable
         run: |
-          pyinstaller --onefile --windowed --name SuperStore-Setup --icon "${{ github.workspace }}/windows/SuperStore.ico" --splash "${{ github.workspace }}/windows/splash.png" --add-data "${{ github.workspace }}/windows/splash.png;." --add-data "${{ github.workspace }}/windows/SuperStore.ico;." --add-data "${{ github.workspace }}/windows/apple-root-ca.pem;." --paths "${{ github.workspace }}/windows" --collect-all pymobiledevice3 --collect-all ipasign --collect-data certifi --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
+          pyinstaller --onefile --windowed --name SuperStore-Setup --icon "${{ github.workspace }}/windows/SuperStore.ico" --splash "${{ github.workspace }}/windows/splash.png" --add-data "${{ github.workspace }}/windows/splash.png;." --add-data "${{ github.workspace }}/windows/SuperStore.ico;." --add-data "${{ github.workspace }}/windows/apple-root-ca.pem;." --add-data "${{ github.workspace }}/windows/build-info.json;." --paths "${{ github.workspace }}/windows" --collect-all pymobiledevice3 --collect-all ipasign --collect-data certifi --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
           dir build
 
       - name: Upload

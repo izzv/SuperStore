@@ -9,6 +9,7 @@ PC.
 import argparse
 import asyncio
 import ctypes
+import datetime
 import hashlib
 import json
 import logging
@@ -23,6 +24,7 @@ import traceback
 import tkinter as tk
 import tkinter.font as tkfont
 import urllib.request
+import webbrowser
 import zipfile
 from pathlib import Path
 
@@ -39,6 +41,9 @@ except Exception:
 SITE = "https://izzv.github.io/SuperStore"
 VERSIONS_URL = SITE + "/downloads/versions.json"
 DEVELOPMENT_ZIP = "https://nightly.link/izzv/SuperStore/workflows/verify.yml/develop/SuperStore-ipa.zip"
+SETUP_RELEASE_URL = "https://api.github.com/repos/izzv/SuperStore/releases/tags/windows-setup"
+SETUP_DOWNLOAD_URL = "https://github.com/izzv/SuperStore/releases/download/windows-setup/SuperStore-Setup.exe"
+SETUP_CHECK_INTERVAL_MS = 30 * 60 * 1000
 CHANNELS = (
     {"id": "stable", "label": "Stable", "summary": "the published release"},
     {"id": "development", "label": "Development", "summary": "the newest build of develop"},
@@ -153,6 +158,46 @@ def latest_release():
         if entry.get("latest"):
             return entry
     return versions[0] if versions else None
+
+
+def build_info():
+    try:
+        values = json.loads(bundled_file("build-info.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return values if isinstance(values, dict) else {}
+
+
+def parse_stamp(value):
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def published_setup():
+    request = urllib.request.Request(
+        SETUP_RELEASE_URL,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "SuperStore-Setup"},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        release = json.load(response)
+    for asset in release.get("assets") or []:
+        if asset.get("name") == "SuperStore-Setup.exe":
+            return asset
+    return None
+
+
+def setup_update(build):
+    """How the running setup compares with the .exe published for download."""
+    published = parse_stamp((published_setup() or {}).get("updated_at"))
+    built = parse_stamp(build.get("built_at"))
+    if built is None or published is None:
+        return {"newer": None, "published": published, "built": built}
+    return {"newer": published > built, "published": published, "built": built}
 
 
 def sha256_of(path):
@@ -934,6 +979,8 @@ class SetupApp:
         self.polling = False
         self.last_serial = None
         self.settings = load_settings()
+        self.build_info = build_info()
+        self.update_check_logged = False
 
         self.build()
         close_splash()
@@ -949,6 +996,7 @@ class SetupApp:
         self.root.after(120, self.drain)
         self.root.after(300, self.poll_devices)
         self.root.after(600, self.resolve_stable)
+        self.root.after(1500, self.start_update_checks)
 
     def run(self):
         self.root.mainloop()
@@ -1071,8 +1119,15 @@ class SetupApp:
 
         footer = tk.Frame(self.root, bg=BG)
         footer.pack(fill="x", padx=pad, pady=(px(10), px(16)))
-        tk.Label(footer, text="Pairing file: %s" % (workdir() / PAIRING_FILENAME), bg=BG, fg=MUTED,
-                 font=(UI_FONT, 8)).pack(side="left")
+        footer_text = tk.Frame(footer, bg=BG)
+        footer_text.pack(side="left", fill="x", expand=True)
+        tk.Label(footer_text, text="Pairing file: %s" % (workdir() / PAIRING_FILENAME), bg=BG, fg=MUTED,
+                 font=(UI_FONT, 8), anchor="w").pack(fill="x")
+        self.update_note = tk.Label(footer_text, text=self.setup_line(), bg=BG, fg=MUTED,
+                                    font=(UI_FONT, 8), anchor="w")
+        self.update_note.pack(fill="x")
+        self.update_button = Button(footer, "Get new setup", self.open_setup_download, kind="secondary",
+                                    width=132, height=26)
         Button(footer, "Open folder", self.open_folder, kind="secondary", width=110, height=26).pack(side="right")
 
     def build_account(self, parent):
@@ -1654,6 +1709,52 @@ class SetupApp:
         if "verification" in message.lower():
             self.log("iOS refused the signature. Check that the profile Apple issued lists this "
                      "iPhone, then sign in again to renew it.", "info")
+
+    def setup_line(self):
+        built = parse_stamp(self.build_info.get("built_at"))
+        if built is None:
+            return "Setup build: development copy, so the update check is off"
+        return "Setup build %s UTC" % built.strftime("%d %b %Y %H:%M")
+
+    def start_update_checks(self):
+        self.check_for_setup_update()
+        self.root.after(SETUP_CHECK_INTERVAL_MS, self.start_update_checks)
+
+    def check_for_setup_update(self):
+        def work():
+            try:
+                result = setup_update(self.build_info)
+            except Exception as error:
+                self.post(self.update_check_failed, error)
+                return
+            self.post(self.update_checked, result)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def update_checked(self, result):
+        published = result.get("published")
+        if result.get("newer") is None:
+            self.update_note.configure(text=self.setup_line(), fg=MUTED)
+            return
+        when = published.astimezone().strftime("%d %b %Y %H:%M")
+        if result.get("newer"):
+            self.update_note.configure(text="%s  ·  a newer setup was published %s" % (self.setup_line(), when),
+                                       fg=WARN)
+            if not self.update_button.winfo_manager():
+                self.update_button.pack(side="right", padx=(px(6), 0))
+            self.log("A newer SuperStore-Setup.exe was published (%s). Press Get new setup." % when, "warn")
+        else:
+            self.update_note.configure(text="%s  ·  up to date with the published setup" % self.setup_line(),
+                                       fg=MUTED)
+
+    def update_check_failed(self, error):
+        self.update_note.configure(text="%s  ·  could not check for a newer setup" % self.setup_line(), fg=MUTED)
+        if not self.update_check_logged:
+            self.update_check_logged = True
+            self.log("Could not check for a newer setup: %s" % (str(error) or error.__class__.__name__), "info")
+
+    def open_setup_download(self):
+        webbrowser.open(SETUP_DOWNLOAD_URL)
 
     def open_folder(self):
         try:
