@@ -94,6 +94,15 @@ def attempts_file():
     return folder / "attempts.json"
 
 
+def rejects_credentials(status):
+    message = str(status.get("em") or "").lower()
+    if any(word in message for word in BLOCKING_WORDS):
+        return False
+    if status.get("ec") in CREDENTIAL_CODES:
+        return True
+    return any(word in message for word in CREDENTIAL_WORDS)
+
+
 def recent_attempts(apple_id):
     try:
         data = json.loads(attempts_file().read_text(encoding="utf-8"))
@@ -150,6 +159,25 @@ SRP_G = 2
 SRP_WIDTH = 256
 MAX_ATTEMPTS = 5
 ATTEMPT_WINDOW = 24 * 3600
+CREDENTIAL_CODES = {-5000, -20970}
+CREDENTIAL_WORDS = (
+    "entered incorrectly",
+    "incorrect",
+    "wrong password",
+    "password you entered",
+    "invalid password",
+    "does not match",
+)
+BLOCKING_WORDS = (
+    "locked",
+    "disabled",
+    "too many",
+    "security reasons",
+    "try again later",
+    "temporarily",
+    "could not be completed",
+    "not available",
+)
 
 
 def _int_bytes(value):
@@ -333,8 +361,10 @@ class AppleLogin:
                 pass
             raise TwoFactorRequired(status.get("em") or "Apple sent a code to your trusted devices.")
         if status.get("ec"):
-            count = record_attempt(self.apple_id)
             message = status.get("em") or "Apple refused the sign-in."
+            if not rejects_credentials(status):
+                raise AppleError(message)
+            count = record_attempt(self.apple_id)
             hint = ""
             if count >= 2:
                 hint = (
@@ -343,8 +373,7 @@ class AppleLogin:
                 )
             raise AppleError(message + hint)
         if not self._srp.verify(answer.get("M2")):
-            record_attempt(self.apple_id)
-            raise AppleError("Apple's sign-in proof did not match; the password was not accepted.")
+            raise AppleError("Apple's sign-in proof did not match, so the session was discarded.")
         clear_attempts(self.apple_id)
         return self._session(answer)
 
