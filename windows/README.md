@@ -43,7 +43,8 @@ certificate and a provisioning profile for the connected iPhone, and signs the
 `.ipa` on this PC with them.
 
 - The password is sent to Apple and nowhere else; it is never written to disk.
-- Two-factor accounts get the usual code prompt in the window. Once the code
+- Two-factor accounts get the usual code prompt in the window, pushed to the trusted
+  devices or texted to the trusted phone number, whichever the account has. Once the code
   arrives, type it in the code field and press Sign in again.
 - Repeated wrong passwords are what lock an Apple ID, so the helper counts
   failures: after the second it warns you, and after five in one day it stops

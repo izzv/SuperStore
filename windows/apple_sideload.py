@@ -33,6 +33,11 @@ from cryptography.x509.oid import NameOID
 GSA = "https://gsa.apple.com/grandslam/GsService2"
 GSA_VALIDATE = "https://gsa.apple.com/grandslam/GsService2/validate"
 TRUSTED_DEVICE = "https://gsa.apple.com/auth/verify/trusteddevice"
+SMS_PUT = "https://gsa.apple.com/auth/verify/phone/put?mode=sms"
+SMS_VALIDATE = "https://gsa.apple.com/auth/verify/phone/securitycode?referrer=/auth/verify/phone/put"
+XCODE_VERSION = "14.2 (14C18)"
+TWO_FACTOR_MODES = ("trustedDeviceSecondaryAuth", "secondaryAuth")
+INCORRECT_CODE = -21669
 DEVELOPER = "https://developerservices2.apple.com/services/QH65B2/ios"
 ANISETTE_SERVERS = (
     "https://ani.jkcoxson.com",
@@ -288,6 +293,10 @@ class AppleLogin:
         self._srp = None
         self._proof = None
         self._code = None
+        self._password = ""
+        self._identity_token = ""
+        self._mode = ""
+        self._code_submitted = False
 
     def _headers(self):
         headers = {
@@ -324,13 +333,31 @@ class AppleLogin:
             raise AppleError("Apple did not answer with a sign-in plist.")
         return parsed.get("Response", parsed)
 
-    def begin(self, password):
-        if len(recent_attempts(self.apple_id)) >= MAX_ATTEMPTS:
+    def _two_factor_headers(self, extra=None):
+        headers = self._headers()
+        headers.update(
+            {
+                "Content-Type": "application/x-plist",
+                "Accept": "application/x-buddyml",
+                "X-Apple-App-Info": "com.apple.gs.xcode.auth",
+                "X-Xcode-Version": XCODE_VERSION,
+            }
+        )
+        if self._identity_token:
+            headers["X-Apple-Identity-Token"] = self._identity_token
+        headers.update(extra or {})
+        return headers
+
+    def begin(self, password, counted=True, retry=False):
+        if not retry:
+            self._code_submitted = False
+        if not retry and len(recent_attempts(self.apple_id)) >= MAX_ATTEMPTS:
             raise AppleError(
                 "%d failed sign-ins for this Apple ID in the last day. Apple locks accounts after "
                 "repeated failures, so sign in at appleid.apple.com first or wait before trying again."
                 % MAX_ATTEMPTS
             )
+        self._password = password
         self.anisette = self.anisette or fetch_anisette()
         self._srp = GrandSlamSrp()
         start = self._gsa({"A2k": self._srp.public_key(), "ps": ["s2k", "s2k_fo"], "u": self.apple_id, "o": "init"})
@@ -349,20 +376,13 @@ class AppleLogin:
             server_public,
         )
         answer = self._gsa({"M1": self._proof, "c": self._code, "u": self.apple_id, "o": "complete"})
-        return self._accept(answer)
+        return self._accept(answer, counted=counted)
 
-    def _accept(self, answer):
+    def _accept(self, answer, counted=True):
         status = answer.get("Status") or {}
-        about = "%s %s" % (status.get("au") or "", status.get("em") or "")
-        if status.get("au") or "trusteddevice" in about.lower() or "secondaryauth" in about.lower():
-            try:
-                http().get(TRUSTED_DEVICE, headers=self._headers(), timeout=30)
-            except Exception:
-                pass
-            raise TwoFactorRequired(status.get("em") or "Apple sent a code to your trusted devices.")
         if status.get("ec"):
             message = status.get("em") or "Apple refused the sign-in."
-            if not rejects_credentials(status):
+            if not counted or not rejects_credentials(status):
                 raise AppleError(message)
             count = record_attempt(self.apple_id)
             hint = ""
@@ -374,30 +394,96 @@ class AppleLogin:
             raise AppleError(message + hint)
         if not self._srp.verify(answer.get("M2")):
             raise AppleError("Apple's sign-in proof did not match, so the session was discarded.")
+        payload = {}
+        sealed = answer.get("spd")
+        if isinstance(sealed, bytes) and sealed:
+            try:
+                payload = self._decrypt(sealed)
+            except Exception as error:
+                raise AppleError("Could not read the session Apple returned (%s)." % error)
+        mode = str(payload.get("url") or status.get("au") or "")
+        pending = str(payload.get("status-code") or "") == "409" or mode in TWO_FACTOR_MODES
+        if pending:
+            adsid = str(payload.get("adsid") or "")
+            idms = str(payload.get("GsIdmsToken") or "")
+            if adsid and idms:
+                self._identity_token = base64.b64encode(("%s:%s" % (adsid, idms)).encode()).decode()
+            self._mode = mode or "trustedDeviceSecondaryAuth"
+            if self._code_submitted:
+                raise AppleError(
+                    "Apple accepted the code but asked for one again. Sign out at appleid.apple.com, "
+                    "or wait for the pending code to expire, then start the sign-in over."
+                )
+            self._request_code()
+            raise TwoFactorRequired(
+                "Apple texted a code to your trusted phone number. Enter it, then press Sign in."
+                if self._mode == "secondaryAuth"
+                else "Apple sent a code to your trusted devices. Enter it, then press Sign in."
+            )
         clear_attempts(self.apple_id)
-        return self._session(answer)
+        self._code_submitted = False
+        self._password = ""
+        return self._session(answer, payload)
+
+    def _request_code(self):
+        try:
+            if self._mode == "secondaryAuth":
+                body = plistlib.dumps({"serverInfo": {"phoneNumber.id": "1"}})
+                response = http().post(SMS_PUT, data=body, headers=self._two_factor_headers(), timeout=45)
+                if response.status_code >= 400:
+                    raise AppleError(
+                        "Apple would not send a text message (HTTP %s). Add a trusted device to the "
+                        "Apple ID so the code is pushed there instead." % response.status_code
+                    )
+            else:
+                http().get(TRUSTED_DEVICE, headers=self._two_factor_headers(), timeout=30)
+        except AppleError:
+            raise
+        except Exception:
+            pass
 
     def two_factor(self, code):
         code = "".join(character for character in str(code) if character.isdigit())
         if len(code) < 6:
             raise AppleError("Enter the six-digit code Apple showed on your devices.")
-        response = http().get(GSA_VALIDATE, headers=dict(self._headers(), **{"security-code": code}), timeout=45)
-        if response.status_code >= 400:
-            raise AppleError("Apple rejected the code (HTTP %s)." % response.status_code)
-        answer = self._gsa({"M1": self._proof, "c": self._code, "u": self.apple_id, "o": "complete"})
-        return self._accept(answer)
+        if not self._password:
+            raise AppleError("Enter the Apple ID password again before submitting the code.")
+        self._submit_code(code)
+        self._code_submitted = True
+        return self.begin(self._password, counted=False, retry=True)
 
-    def _session(self, answer):
-        dsid = str(answer.get("dsid") or "")
-        idms = ""
-        payload = answer.get("spd")
-        if isinstance(payload, bytes) and payload:
-            try:
-                decoded = self._decrypt(payload)
-                dsid = str(decoded.get("adsid") or dsid)
-                idms = str(decoded.get("GsIdmsToken") or "")
-            except Exception as error:
-                raise AppleError("Could not read the session Apple returned (%s)." % error)
+    def _submit_code(self, code):
+        if self._mode == "secondaryAuth":
+            body = plistlib.dumps(
+                {"securityCode.code": code, "serverInfo": {"mode": "sms", "phoneNumber.id": "1"}}
+            )
+            response = http().post(SMS_VALIDATE, data=body, headers=self._two_factor_headers(), timeout=45)
+        else:
+            response = http().get(
+                GSA_VALIDATE, headers=self._two_factor_headers({"security-code": code}), timeout=45
+            )
+        if response.status_code >= 400:
+            raise AppleError(
+                "Apple rejected the code (HTTP %s). A fresh code may be needed." % response.status_code
+            )
+        try:
+            parsed = plistlib.loads(response.content)
+        except Exception:
+            parsed = None
+        body = parsed or {}
+        status = body.get("Status") or (body.get("Response") or {}).get("Status") or {}
+        if status.get("ec"):
+            if status.get("ec") == INCORRECT_CODE:
+                raise AppleError(
+                    "Apple did not accept that code. Codes expire after a few minutes, so request a "
+                    "fresh one and enter only the six digits."
+                )
+            raise AppleError(status.get("em") or "Apple refused the code.")
+
+    def _session(self, answer, payload=None):
+        decoded = payload or {}
+        dsid = str(decoded.get("adsid") or answer.get("dsid") or "")
+        idms = str(decoded.get("GsIdmsToken") or "")
         if not dsid:
             raise AppleError("Apple signed in but returned no account identifier.")
         self.dsid = dsid

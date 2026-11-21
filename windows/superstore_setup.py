@@ -991,8 +991,8 @@ class SetupApp:
                         raise apple.AppleError("Enter the Apple ID password in step 2.")
                     try:
                         self.login.begin(password)
-                    except apple.TwoFactorRequired:
-                        self.post(self.ask_for_code)
+                    except apple.TwoFactorRequired as need:
+                        self.post(self.ask_for_code, str(need))
                         return "code"
             return apple.provision(self.login, serial, name, BUNDLE_ID,
                                    on_status=lambda text: self.post(self.account_note, text))
@@ -1002,12 +1002,13 @@ class SetupApp:
     def account_note(self, text):
         self.account_status.configure(text=text, fg=MUTED)
 
-    def ask_for_code(self):
+    def ask_for_code(self, message=None):
         self.account_password.delete(0, "end")
         self.code_row.pack(after=self.password_row, fill="x", pady=(px(6), 0))
         self.account_code.focus_set()
         self.account_status.configure(
-            text="Apple sent a code to your trusted devices. Enter it, then press Sign in.", fg=WARN)
+            text=message or "Apple sent a code to your trusted devices. Enter it, then press Sign in.",
+            fg=WARN)
         self.log("Two-factor authentication: enter the code Apple showed, then press Sign in again.", "info")
 
     def signed_in(self, identity):
