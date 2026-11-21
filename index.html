@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperStore — sideload iOS apps without a computer</title>
+<meta name="description" content="SuperStore is an alternative app store for seamless sideloading. No jailbreak, and no computer after the first install — just a Wi-Fi connection.">
+<meta name="theme-color" content="#0a0812">
+<meta property="og:title" content="SuperStore">
+<meta property="og:description" content="An alternative app store for seamless sideloading. No jailbreak, no computer after setup.">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/icon.png">
+<style>
+  :root {
+    --bg: #0a0812;
+    --bg-soft: #120e1d;
+    --panel: #171226;
+    --panel-line: #261d3d;
+    --text: #ece9f5;
+    --muted: #a79fc0;
+    --accent: #8b5cf6;
+    --accent-2: #22d3ee;
+    --radius: 18px;
+    --max: 1120px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  .wrap { width: 100%; max-width: var(--max); margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- header ---------- */
+
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(14px);
+    background: rgba(10, 8, 18, 0.72);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .site-header .wrap {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 68px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+  }
+
+  .brand img { width: 30px; height: 30px; border-radius: 8px; }
+
+  .nav {
+    display: flex;
+    gap: 22px;
+    margin-left: auto;
+    font-size: 0.94rem;
+  }
+
+  .nav a {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .nav a:hover { color: var(--text); }
+
+  @media (max-width: 700px) {
+    .nav { display: none; }
+  }
+
+  /* ---------- buttons ---------- */
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 13px 22px;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    font-weight: 600;
+    font-size: 0.98rem;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  .btn-primary {
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+    color: #0b0714;
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.32);
+  }
+
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 14px 34px rgba(34, 211, 238, 0.3); }
+
+  .btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--text);
+  }
+
+  .btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }
+
+  .btn.is-disabled {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.14);
+    color: var(--muted);
+    box-shadow: none;
+    transform: none;
+  }
+
+  /* ---------- hero ---------- */
+
+  .hero { position: relative; overflow: hidden; padding: 88px 0 64px; }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: -40% 20% auto -10%;
+    height: 620px;
+    background: radial-gradient(closest-side, rgba(139, 92, 246, 0.35), transparent 70%);
+    filter: blur(20px);
+    pointer-events: none;
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -30% 40%;
+    height: 520px;
+    background: radial-gradient(closest-side, rgba(34, 211, 238, 0.2), transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero .wrap {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 48px;
+    align-items: center;
+  }
+
+  @media (max-width: 880px) {
+    .hero .wrap { grid-template-columns: 1fr; }
+    .hero { padding-top: 56px; }
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 13px;
+    border-radius: 100px;
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    background: rgba(139, 92, 246, 0.12);
+    color: #cbb8ff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(2.6rem, 6vw, 4.2rem);
+    line-height: 1.04;
+    letter-spacing: -0.035em;
+    margin: 20px 0 16px;
+  }
+
+  .hero p.lede {
+    font-size: 1.14rem;
+    color: var(--muted);
+    max-width: 34em;
+    margin: 0 0 30px;
+  }
+
+  .hero p.lede strong { color: var(--text); }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  .fineprint { margin-top: 18px; font-size: 0.86rem; color: var(--muted); }
+
+  /* ---------- phone ---------- */
+
+  .phone {
+    width: 260px;
+    aspect-ratio: 9 / 19;
+    margin: 0 auto;
+    border-radius: 38px;
+    padding: 12px;
+    background: linear-gradient(160deg, #2a2140, #120e1d);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.55);
+  }
+
+  .phone-screen {
+    height: 100%;
+    border-radius: 28px;
+    background: radial-gradient(circle at 30% 0%, #241a3d, #0d0a16 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 22px;
+    text-align: center;
+  }
+
+  .phone-screen img { width: 88px; height: 88px; border-radius: 20px; box-shadow: 0 12px 30px rgba(139, 92, 246, 0.35); }
+
+  .phone-screen .app-name { font-weight: 700; letter-spacing: -0.01em; }
+
+  .phone-screen .app-sub { font-size: 0.8rem; color: var(--muted); }
+
+  .phone-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; width: 100%; }
+
+  .phone-grid span {
+    aspect-ratio: 1;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* ---------- sections ---------- */
+
+  section { padding: 72px 0; }
+
+  .section-head { max-width: 44em; margin-bottom: 38px; }
+
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #9f8de0;
+  }
+
+  h2 {
+    font-size: clamp(1.7rem, 3.2vw, 2.4rem);
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    margin: 10px 0 12px;
+  }
+
+  .section-head p { color: var(--muted); margin: 0; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+
+  @media (max-width: 880px) { .cards { grid-template-columns: 1fr; } }
+
+  .card {
+    background: linear-gradient(180deg, var(--panel), var(--bg-soft));
+    border: 1px solid var(--panel-line);
+    border-radius: var(--radius);
+    padding: 26px;
+  }
+
+  .card h3 { margin: 0 0 8px; font-size: 1.1rem; letter-spacing: -0.01em; }
+
+  .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+  .card .icon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    margin-bottom: 16px;
+    background: rgba(139, 92, 246, 0.16);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    font-size: 1.05rem;
+  }
+
+  /* ---------- steps ---------- */
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: step; }
+
+  @media (max-width: 880px) { .steps { grid-template-columns: 1fr; } }
+
+  .step {
+    position: relative;
+    padding: 26px 26px 26px 30px;
+    border-radius: var(--radius);
+    border: 1px solid var(--panel-line);
+    background: var(--bg-soft);
+  }
+
+  .step::before {
+    counter-increment: step;
+    content: counter(step);
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin-bottom: 14px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #0b0714;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2));
+  }
+
+  .step h3 { margin: 0 0 6px; font-size: 1.02rem; }
+
+  .step p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+
+  /* ---------- download ---------- */
+
+  .download-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 34px;
+    border-radius: 24px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    background:
+      radial-gradient(120% 140% at 0% 0%, rgba(139, 92, 246, 0.22), transparent 60%),
+      linear-gradient(180deg, #171226, #100c1b);
+  }
+
+  .download-card h2 { margin: 0 0 6px; }
+
+  .download-card p { margin: 0; color: var(--muted); font-size: 0.95rem; max-width: 40em; }
+
+  .download-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .chip {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--muted);
+  }
+
+  /* ---------- faq ---------- */
+
+  .faq-list { display: grid; gap: 12px; }
+
+  details {
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    background: var(--bg-soft);
+    padding: 18px 22px;
+  }
+
+  details[open] { border-color: rgba(139, 92, 246, 0.4); }
+
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker { display: none; }
+
+  summary::after { content: "+"; float: right; color: var(--muted); font-weight: 400; }
+
+  details[open] summary::after { content: "–"; }
+
+  details p { margin: 12px 0 0; color: var(--muted); font-size: 0.95rem; }
+
+  /* ---------- footer ---------- */
+
+  footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 34px 0 46px;
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text); }
+
+  .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="assets/icon.png" alt="">
+      SuperStore
+    </a>
+    <nav class="nav">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-ghost" href="https://github.com/izzv/SuperStore" style="padding:9px 16px;font-size:0.88rem;">GitHub</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <span class="badge">Early development build</span>
+        <h1>SuperStore</h1>
+        <p class="lede">
+          An alternative app store for seamless sideloading. No jailbreak needed, and
+          <strong>no computer</strong> after the first install — just a Wi-Fi connection.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" id="ipa-link" href="downloads/SuperStore.ipa" download>
+            Download IPA
+          </a>
+          <a class="btn btn-ghost" href="#install">How it works</a>
+        </div>
+        <p class="fineprint" id="ipa-note">
+          Builds are unsigned — you sign them with your own Apple ID.
+        </p>
+      </div>
+
+      <div class="phone" aria-hidden="true">
+        <div class="phone-screen">
+          <img src="assets/icon.png" alt="">
+          <span class="app-name">SuperStore</span>
+          <span class="app-sub">Sideload without a computer</span>
+          <div class="phone-grid">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Features</span>
+        <h2>Install any .ipa</h2>
+        <p>
+          SuperStore signs apps with your personal development certificate and installs
+          them over a loopback tunnel, so anything you already sideload works here too.
+        </p>
+      </div>
+
+      <div class="cards">
+        <article class="card">
+          <div class="icon">⬇</div>
+          <h3>Any .ipa, any source</h3>
+          <p>Drop in apps from your own sources, or from the store listings already built in.</p>
+        </article>
+        <article class="card">
+          <div class="icon">✓</div>
+          <h3>On-device signing</h3>
+          <p>Your own certificate does the work, and apps are re-signed before the 7-day window expires.</p>
+        </article>
+        <article class="card">
+          <div class="icon">↻</div>
+          <h3>Anisette failover</h3>
+          <p>If one Anisette server is down, the next one is tried — and sign-in errors are explained in plain language.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Setup</span>
+        <h2>Three steps, one time</h2>
+        <p>You need a computer for the very first install. After that, SuperStore refreshes itself.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <h3>Get the IPA</h3>
+          <p>Download it below, or grab the unsigned build from the latest Actions run.</p>
+        </div>
+        <div class="step">
+          <h3>Sign and install it</h3>
+          <p>Use your existing sideloading tool with your Apple ID, so the app is signed to your device.</p>
+        </div>
+        <div class="step">
+          <h3>Turn on LocalDevVPN</h3>
+          <p>SuperStore needs that tunnel connected to install and refresh apps on-device.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="wrap">
+      <div class="download-card">
+        <div>
+          <span class="eyebrow">Download</span>
+          <h2>SuperStore for iOS</h2>
+          <p>
+            A single unsigned <code>.ipa</code>. Signed builds are tied to the Apple ID
+            that made them, so everyone signs their own copy.
+          </p>
+          <div class="download-meta">
+            <span class="chip">iOS 14+</span>
+            <span class="chip">arm64</span>
+            <span class="chip">AGPL-3.0</span>
+          </div>
+        </div>
+        <div>
+          <a class="btn btn-primary" id="ipa-link-2" href="downloads/SuperStore.ipa" download>Download .ipa</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">FAQ</span>
+        <h2>Questions</h2>
+      </div>
+
+      <div class="faq-list">
+        <details>
+          <summary>Is SuperStore free?</summary>
+          <p>Yes. It is open source under the AGPL-3.0, and there is nothing to pay for beyond your own Apple ID.</p>
+        </details>
+        <details>
+          <summary>Do I need a computer?</summary>
+          <p>Only for the first install. After that the app signs and refreshes itself over Wi-Fi.</p>
+        </details>
+        <details>
+          <summary>How is this different from SideStore?</summary>
+          <p>
+            SuperStore is a fork. It adds Anisette server failover, turns Apple's cryptic
+            sign-in codes into explanations you can act on, and carries its own branding.
+            Everything else — sources, refresh, backups — comes from SideStore.
+          </p>
+        </details>
+        <details>
+          <summary>Can I install it today?</summary>
+          <p>
+            There is no signed release yet. You can build it from source, or use the
+            unsigned build produced by CI and sign it yourself.
+          </p>
+        </details>
+        <details>
+          <summary>Is this affiliated with SideStore or AltStore?</summary>
+          <p>No. It is an independent fork, built on their AGPL-3.0 work, with the original notices kept.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© <span id="year">2026</span> SuperStore · AGPL-3.0 · a fork of SideStore, which is a fork of AltStore</span>
+    <div class="footer-links">
+      <a href="https://github.com/izzv/SuperStore">GitHub</a>
+      <a href="https://github.com/izzv/SuperStore/blob/develop/LICENSE">License</a>
+      <a href="https://github.com/izzv/SuperStore/actions/workflows/verify.yml">Builds</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Until an IPA is committed to downloads/, point people at the CI artifact
+  // instead of leaving a dead link.
+  (function () {
+    var links = [document.getElementById('ipa-link'), document.getElementById('ipa-link-2')];
+    var note = document.getElementById('ipa-note');
+    var target = 'downloads/SuperStore.ipa';
+
+    fetch(target, { method: 'HEAD' }).then(function (response) {
+      if (!response.ok) { throw new Error('missing'); }
+    }).catch(function () {
+      links.forEach(function (link) {
+        link.classList.remove('btn-primary');
+        link.classList.add('is-disabled');
+        link.removeAttribute('download');
+        link.href = 'https://github.com/izzv/SuperStore/actions/workflows/verify.yml';
+        link.textContent = 'No build published yet';
+      });
+      if (note) {
+        note.textContent = 'The IPA is not on this site yet. Build it from source, or take the unsigned build from the latest successful CI run.';
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>
