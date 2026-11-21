@@ -541,6 +541,7 @@
           <p class="fineprint" id="ipa-note">
             Unsigned build &middot; you sign it with your own Apple ID.
           </p>
+          <p class="fineprint" id="release-line" hidden></p>
         </div>
 
         <div class="phone-stage" aria-hidden="true">
@@ -686,6 +687,8 @@
             so everyone signs their own copy.
           </p>
           <div class="meta-row">
+            <span id="meta-version" hidden></span>
+            <span id="meta-updated" hidden></span>
             <span>iOS 15+</span>
             <span>arm64</span>
             <span>AGPL-3.0</span>
@@ -728,8 +731,13 @@
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
 
-  // Until an IPA is committed to downloads/, point people at the CI artifact
-  // instead of leaving a dead link.
+  function niceDate(iso) {
+    if (!iso) { return ''; }
+    var parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T00:00:00' : iso);
+    if (isNaN(parsed.getTime())) { return iso; }
+    return parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   (function () {
     var links = [document.getElementById('ipa-link'), document.getElementById('ipa-link-2')];
     var note = document.getElementById('ipa-note');
@@ -750,8 +758,6 @@
     });
   })();
 
-  // The version archive is a plain JSON file next to the builds, so publishing a
-  // release is: drop the .ipa in downloads/ and add a row to versions.json.
   (function () {
     var section = document.getElementById('versions');
     var list = document.getElementById('version-list');
@@ -780,7 +786,7 @@
 
         var date = document.createElement('span');
         date.className = 'd';
-        date.textContent = entry.date;
+        date.textContent = niceDate(entry.date);
         row.appendChild(date);
 
         var size = document.createElement('span');
@@ -796,6 +802,27 @@
 
         list.appendChild(row);
       });
+
+      var newest = versions.filter(function (entry) { return entry.latest; })[0] || versions[0];
+      var stamp = niceDate(newest.date);
+
+      var versionMeta = document.getElementById('meta-version');
+      if (versionMeta) {
+        versionMeta.textContent = newest.version;
+        versionMeta.hidden = false;
+      }
+
+      var updatedMeta = document.getElementById('meta-updated');
+      if (updatedMeta) {
+        updatedMeta.textContent = 'Updated ' + stamp;
+        updatedMeta.hidden = false;
+      }
+
+      var releaseLine = document.getElementById('release-line');
+      if (releaseLine) {
+        releaseLine.textContent = 'Latest release ' + newest.version + ' \u00b7 updated ' + stamp;
+        releaseLine.hidden = false;
+      }
 
       section.hidden = false;
     }).catch(function () { /* leave the section hidden */ });

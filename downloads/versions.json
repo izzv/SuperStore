@@ -1,10 +1,10 @@
 [
   {
-    "version": "0.7.0",
+    "version": "v0.1",
     "date": "2026-11-21",
     "config": "Release",
     "size": "25.3 MB",
-    "file": "downloads/SuperStore-0.7.0.ipa",
+    "file": "downloads/SuperStore-v0.1.ipa",
     "latest": true
   }
 ]
