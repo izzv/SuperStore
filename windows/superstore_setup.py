@@ -22,10 +22,16 @@ import time
 import tkinter as tk
 import tkinter.font as tkfont
 import urllib.request
+import zipfile
 from pathlib import Path
 
 SITE = "https://izzv.github.io/SuperStore"
 VERSIONS_URL = SITE + "/downloads/versions.json"
+DEVELOPMENT_ZIP = "https://nightly.link/izzv/SuperStore/workflows/verify.yml/develop/SuperStore-ipa.zip"
+CHANNELS = (
+    {"id": "stable", "label": "Stable", "summary": "the published release"},
+    {"id": "development", "label": "Development", "summary": "the newest build of develop"},
+)
 BUNDLE_ID = "com.superstore.SuperStore"
 PAIRING_FILENAME = "pairingFile.plist"
 PAIRING_PATTERNS = ("pairingFile.plist", "*.mobiledevicepairing")
@@ -112,17 +118,53 @@ def sha256_of(path):
     return digest.hexdigest()
 
 
-def download_ipa(destination=None, progress=None, announce=True):
+def describe_build(channel="stable"):
+    if channel == "development":
+        return {
+            "channel": "development",
+            "label": "Development",
+            "version": "",
+            "build": "",
+            "date": "",
+            "size": "",
+            "url": DEVELOPMENT_ZIP,
+            "name": "SuperStore-development.ipa",
+            "archive": True,
+        }
+
     release = latest_release()
     if not release:
         raise RuntimeError("No published build could be found.")
+    return {
+        "channel": "stable",
+        "label": "Stable",
+        "version": str(release.get("version") or ""),
+        "build": "",
+        "date": str(release.get("date") or ""),
+        "size": str(release.get("size") or ""),
+        "url": SITE + "/" + release["file"],
+        "name": Path(release["file"]).name,
+        "archive": False,
+    }
 
-    url = SITE + "/" + release["file"]
-    destination = Path(destination) if destination else workdir() / ("SuperStore-%s.ipa" % release["version"])
-    destination.parent.mkdir(parents=True, exist_ok=True)
 
-    if announce:
-        say("Downloading %s from %s" % (release["version"], url))
+def ipa_identity(path):
+    try:
+        with zipfile.ZipFile(path) as ipa:
+            for name in ipa.namelist():
+                if name.count("/") == 2 and name.endswith(".app/Info.plist"):
+                    info = plistlib.loads(ipa.read(name))
+                    return {
+                        "version": str(info.get("CFBundleShortVersionString") or ""),
+                        "build": str(info.get("CFBundleVersion") or ""),
+                        "bundle_id": str(info.get("CFBundleIdentifier") or ""),
+                    }
+    except Exception:
+        pass
+    return {"version": "", "build": "", "bundle_id": ""}
+
+
+def _stream(url, destination, progress=None, announce=False):
     with urllib.request.urlopen(url, timeout=120) as response, open(destination, "wb") as handle:
         total = int(response.headers.get("Content-Length") or 0)
         done = 0
@@ -139,10 +181,39 @@ def download_ipa(destination=None, progress=None, announce=True):
                 sys.stdout.flush()
     if announce:
         say()
+
+
+def download_build(channel="stable", destination=None, progress=None, announce=True):
+    build = describe_build(channel)
+    destination = Path(destination) if destination else workdir() / build["name"]
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    if announce:
+        say("Downloading the %s build from %s" % (build["label"].lower(), build["url"]))
+
+    if build["archive"]:
+        archive_path = destination.with_suffix(".zip")
+        _stream(build["url"], archive_path, progress, announce)
+        with zipfile.ZipFile(archive_path) as archive:
+            entry = next((name for name in archive.namelist() if name.lower().endswith(".ipa")), None)
+            if entry is None:
+                raise RuntimeError("The development archive did not contain an .ipa.")
+            destination.write_bytes(archive.read(entry))
+        archive_path.unlink(missing_ok=True)
+    else:
+        _stream(build["url"], destination, progress, announce)
+
+    identity = ipa_identity(destination)
+    for key in ("version", "build", "bundle_id"):
+        build[key] = identity.get(key, "")
+
+    if announce:
         say("Saved to %s" % destination)
+        if build["version"]:
+            say("Version %s (build %s)" % (build["version"], build["build"]))
         say("SHA-256 %s" % sha256_of(destination))
 
-    return destination, release
+    return destination, build
 
 
 def existing_pairing_file():
@@ -299,16 +370,20 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Pair an iPhone and install SuperStore from a Windows PC.")
     parser.add_argument("--cli", action="store_true", help="never open the window")
     parser.add_argument("--devices", action="store_true", help="list iPhones connected over USB")
-    parser.add_argument("--download", action="store_true", help="download the newest published IPA")
+    parser.add_argument("--download", action="store_true", help="download a build")
     parser.add_argument("--out", help="where to save the IPA")
+    parser.add_argument("--channel", choices=[channel["id"] for channel in CHANNELS], default="stable",
+                        help="which build to download (default: stable)")
     parser.add_argument("--pair", action="store_true", help="pair over USB and write the pairing file")
     parser.add_argument("--send-pairing", action="store_true", help="copy the pairing file into SuperStore")
-    parser.add_argument("--install", metavar="IPA", help="install that .ipa on the connected iPhone")
+    parser.add_argument("--install", nargs="?", const="", metavar="IPA",
+                        help="install that .ipa, or download the chosen channel and install it")
     parser.add_argument("--pairing", metavar="FILE", help="stage an existing pairing file")
     parser.add_argument("--find-pairing", action="store_true", help="look for pairing files already on this PC")
     args = parser.parse_args(argv)
 
-    wanted = (args.devices, args.download, args.pair, args.send_pairing, args.install, args.pairing, args.find_pairing)
+    wanted = (args.devices, args.download, args.pair, args.send_pairing, args.install is not None,
+              args.pairing, args.find_pairing)
     if not any(wanted):
         if args.cli:
             report_environment()
@@ -321,12 +396,16 @@ def main(argv=None):
 
     if args.download:
         try:
-            ipa, release = download_ipa(args.out)
+            ipa, build = download_build(args.channel, args.out)
         except Exception as error:
             say("Download failed: %s" % error)
             return 1
         say("")
-        say("Release %s, published %s." % (release.get("version"), release.get("date")))
+        say("%s build %s" % (build["label"], build["version"] or "of unknown version"))
+        if build["date"]:
+            say("Published %s." % build["date"])
+        say("")
+        say("Install it on the phone with: --install %s" % ipa)
         say("")
 
     if args.find_pairing:
@@ -385,10 +464,17 @@ def main(argv=None):
         say("Copied %s into SuperStore's Documents folder." % pairing)
         say("")
 
-    if args.install:
-        say("Installing %s..." % args.install)
+    if args.install is not None:
+        target = args.install
+        if not target:
+            try:
+                target, _build = download_build(args.channel)
+            except Exception as error:
+                say("Download failed: %s" % error)
+                return 1
+        say("Installing %s..." % target)
         try:
-            install_ipa(serial, args.install, progress=lambda pct: sys.stdout.write("\r  %3d%%" % pct))
+            install_ipa(serial, target, progress=lambda pct: sys.stdout.write("\r  %3d%%" % pct))
         except Exception as error:
             say()
             say("Install failed: %s" % error)
@@ -556,6 +642,76 @@ class ProgressBar(tk.Canvas):
         self.draw()
 
 
+class Chip(tk.Canvas):
+    def __init__(self, master, text, command, width=124, height=30, bg=CARD):
+        super().__init__(master, width=px(width), height=px(height), bg=bg, highlightthickness=0, bd=0, cursor="hand2")
+        self.label = text
+        self.command = command
+        self.active = False
+        self.hovered = False
+        self.box_width = px(width)
+        self.box_height = px(height)
+        self.font = (UI_FONT, 9, "bold")
+        self.bind("<Enter>", self._enter)
+        self.bind("<Leave>", self._leave)
+        self.bind("<Button-1>", self._click)
+        self.draw()
+
+    def draw(self):
+        self.delete("all")
+        if self.active:
+            fill, outline, foreground = ACCENT, ACCENT, "#ffffff"
+        elif self.hovered:
+            fill, outline, foreground = "#232936", "#333b4d", "#e4e8f0"
+        else:
+            fill, outline, foreground = "#171a22", "#2a3140", "#c7cedb"
+        round_rect(self, 1, 1, self.box_width - 1, self.box_height - 1, self.box_height / 2,
+                   fill=fill, outline=outline, width=1)
+        self.create_text(self.box_width / 2, self.box_height / 2 + 1, text=self.label, fill=foreground,
+                         font=self.font)
+
+    def set_active(self, active):
+        self.active = active
+        self.draw()
+
+    def _enter(self, _event):
+        self.hovered = True
+        self.draw()
+
+    def _leave(self, _event):
+        self.hovered = False
+        self.draw()
+
+    def _click(self, _event):
+        if self.command is not None:
+            self.command()
+
+
+class Segmented(tk.Frame):
+    def __init__(self, master, options, command, bg=CARD):
+        super().__init__(master, bg=bg)
+        self.command = command
+        self.chips = {}
+        self.value = options[0][0]
+        for index, (value, label) in enumerate(options):
+            chip = Chip(self, label, lambda option=value: self.select(option), bg=bg)
+            chip.pack(side="left", padx=(0 if index == 0 else px(6), 0))
+            self.chips[value] = chip
+        self.refresh()
+
+    def select(self, value):
+        if self.value == value:
+            return
+        self.value = value
+        self.refresh()
+        if self.command is not None:
+            self.command(value)
+
+    def refresh(self):
+        for value, chip in self.chips.items():
+            chip.set_active(value == self.value)
+
+
 class SetupApp:
     def __init__(self):
         global SCALE
@@ -565,7 +721,7 @@ class SetupApp:
         self.root.configure(bg=BG)
         SCALE = self.root.winfo_fpixels("1i") / 96.0
         self.scale = SCALE
-        self.root.geometry("%dx%d" % (px(1020), px(740)))
+        self.root.geometry("%dx%d" % (px(1020), px(772)))
         self.root.minsize(px(900), px(660))
         dark_title_bar(self.root)
 
@@ -574,6 +730,9 @@ class SetupApp:
         self.pairing_path = existing_pairing_file()
         self.ipa_path = None
         self.release = None
+        self.channel = "stable"
+        self.stable_note = ""
+        self.pending_install = False
         self.busy = False
         self.polling = False
         self.last_serial = None
@@ -587,6 +746,7 @@ class SetupApp:
         self.refresh_buttons()
         self.root.after(120, self.drain)
         self.root.after(300, self.poll_devices)
+        self.root.after(600, self.resolve_stable)
 
     def run(self):
         self.root.mainloop()
@@ -618,11 +778,14 @@ class SetupApp:
         log_card = self.card(body)
         log_card.grid(row=1, column=1, sticky="nsew")
 
-        download_step = self.step(steps, "1", "Get the latest build",
-                                  "Reads the published version list and downloads the .ipa.")
+        download_step = self.step(steps, "1", "Choose your build",
+                                  "Stable is the published release; Development follows develop.",
+                                  before=self.build_channels)
         self.download_button = Button(download_step["actions"], "Download .ipa", self.on_download)
         self.download_button.pack(side="left")
         self.download_status = download_step["status"]
+        self.download_progress = ProgressBar(download_step["frame"].inner, width=360)
+        self.download_progress.pack(fill="x", pady=(px(8), 0))
 
         pair_step = self.step(steps, "2", "Pair your iPhone",
                               "Unlock the phone and tap Trust when the prompt appears.")
@@ -696,11 +859,11 @@ class SetupApp:
     def card(self, parent):
         frame = tk.Frame(parent, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
         inner = tk.Frame(frame, bg=CARD)
-        inner.pack(fill="both", expand=True, padx=px(16), pady=px(12))
+        inner.pack(fill="both", expand=True, padx=px(16), pady=px(10))
         frame.inner = inner
         return frame
 
-    def step(self, parent, index, title, subtitle):
+    def step(self, parent, index, title, subtitle, before=None):
         card = self.card(parent)
         card.pack(fill="x", pady=(0, px(10)))
         inner = card.inner
@@ -712,6 +875,8 @@ class SetupApp:
         titles.pack(side="left", fill="x", expand=True)
         tk.Label(titles, text=title, bg=CARD, fg=TEXT, font=(UI_FONT, 11, "bold"), anchor="w").pack(fill="x")
         tk.Label(titles, text=subtitle, bg=CARD, fg=MUTED, font=(UI_FONT, 8), anchor="w").pack(fill="x")
+        if before is not None:
+            before(inner)
         actions = tk.Frame(inner, bg=CARD)
         actions.pack(fill="x", pady=(px(10), 0))
         status = tk.Label(inner, text="", bg=CARD, fg=MUTED, font=(UI_FONT, 8), anchor="w", justify="left",
@@ -816,33 +981,88 @@ class SetupApp:
             self.status_pill.set("Waiting for iPhone", WARN)
         self.refresh_buttons()
 
+    def build_channels(self, parent):
+        row = tk.Frame(parent, bg=CARD)
+        row.pack(fill="x", pady=(px(10), 0))
+        options = tuple((channel["id"], channel["label"]) for channel in CHANNELS)
+        self.channel_picker = Segmented(row, options, self.on_channel)
+        self.channel_picker.pack(side="left")
+        self.channel_note = tk.Label(row, text="checking the published release…", bg=CARD, fg=MUTED,
+                                     font=(UI_FONT, 8), anchor="w")
+        self.channel_note.pack(side="left", padx=(px(10), 0))
+
+    def on_channel(self, value):
+        if self.busy:
+            return
+        self.channel = value
+        self.download_status.configure(text="", fg=MUTED)
+        self.download_progress.set(0.0)
+        if value == "development":
+            self.channel_note.configure(text="newest successful build of develop")
+            self.log("Development builds come from the newest green build of develop.", "info")
+        else:
+            self.channel_note.configure(text=self.stable_note or "published release")
+
+    def resolve_stable(self):
+        self.spawn(lambda: describe_build("stable"), self.stable_described, self.stable_unavailable)
+
+    def stable_described(self, build):
+        summary = next(channel["summary"] for channel in CHANNELS if channel["id"] == "stable")
+        parts = [build["version"], build["date"], build["size"]]
+        self.stable_note = "  ·  ".join(part for part in parts if part) or summary
+        if self.channel == "stable":
+            self.channel_note.configure(text=self.stable_note)
+
+    def stable_unavailable(self, _error):
+        self.channel_note.configure(text="could not read the release list")
+
     def on_download(self):
         if self.busy:
             return
         self.set_busy(True)
-        self.download_status.configure(text="Downloading…", fg=MUTED)
-        self.log("Downloading the newest published build…", "step")
+        self.download_progress.set(0.0)
+        label = next(channel["label"] for channel in CHANNELS if channel["id"] == self.channel)
+        self.download_status.configure(text="Downloading the %s build…" % label.lower(), fg=MUTED)
+        self.log("Downloading the %s build…" % label.lower(), "step")
 
         def work():
             def progress(done, total):
                 if total:
-                    self.post(self.progress.set, done / total)
-            return download_ipa(announce=False, progress=progress)
+                    self.post(self.download_progress.set, done / total)
+            return download_build(self.channel, announce=False, progress=progress)
 
         self.spawn(work, self.downloaded, self.download_failed)
 
     def downloaded(self, payload):
-        path, release = payload
+        path, build = payload
         self.ipa_path = path
-        self.release = release
-        self.progress.set(1.0)
-        self.download_status.configure(text="%s · %s" % (release.get("version"), path.name), fg=OK)
-        self.log("%s downloaded (%s)." % (release.get("version"), human_size(path.stat().st_size)), "ok")
+        self.release = build
+        self.download_progress.set(1.0)
+
+        version = build["version"] or ""
+        if version and not version.lower().startswith("v"):
+            version = "v" + version
+        detail = "  ·  ".join(part for part in (
+            version,
+            ("build " + build["build"]) if build["build"] else "",
+            path.name,
+        ) if part)
+
+        self.download_status.configure(text=detail, fg=OK)
+        self.log("%s build downloaded: %s." % (build["label"], detail), "ok")
+        if self.channel == "development" and build["version"]:
+            self.channel_note.configure(text="develop %s (%s)" % (version, build["build"] or "?"))
+        if build.get("bundle_id") and build["bundle_id"] != BUNDLE_ID:
+            self.log("That .ipa is %s, not %s." % (build["bundle_id"], BUNDLE_ID), "error")
         self.set_busy(False)
+        if self.pending_install:
+            self.pending_install = False
+            self.on_install()
 
     def download_failed(self, error):
+        self.pending_install = False
         self.download_status.configure(text="Download failed.", fg=ERR)
-        self.progress.set(0.0)
+        self.download_progress.set(0.0)
 
     def on_pair(self):
         if self.busy or not self.device:
@@ -912,8 +1132,10 @@ class SetupApp:
         if self.busy or not self.device:
             return
         if not self.ipa_path:
-            self.on_choose()
-        if not self.ipa_path:
+            label = next(channel["label"] for channel in CHANNELS if channel["id"] == self.channel)
+            self.pending_install = True
+            self.log("No build downloaded yet. Fetching the %s build first…" % label.lower(), "step")
+            self.on_download()
             return
         self.set_busy(True)
         self.progress.set(0.0)

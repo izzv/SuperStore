@@ -7,18 +7,36 @@ pairing file into the app and installs the build on the phone.
 SuperStore-Setup.exe                     # the window
 SuperStore-Setup.exe --cli               # same information, in the console
 SuperStore-Setup.exe --devices           # iPhones connected over USB
-SuperStore-Setup.exe --download          # fetch the newest published IPA
+SuperStore-Setup.exe --download          # fetch the stable build
+SuperStore-Setup.exe --download --channel development
 SuperStore-Setup.exe --pair              # pair, write pairingFile.plist, copy it into the app
 SuperStore-Setup.exe --send-pairing      # copy an existing pairing file into the app
-SuperStore-Setup.exe --install C:\path\to\SuperStore.ipa
+SuperStore-Setup.exe --install           # download the chosen channel, then install it
+SuperStore-Setup.exe --install C:\path\to\signed.ipa
 SuperStore-Setup.exe --find-pairing
 SuperStore-Setup.exe --pairing C:\path\to\pairingFile.plist
 ```
 
+## Channels
+
+Step 1 asks which build to install instead of asking for a file, and both
+channels end up as an ordinary `.ipa` in `%LOCALAPPDATA%\SuperStore\`.
+
+- **Stable** - whatever `downloads/versions.json` lists as `latest` on the site,
+  so it follows the same release the download page shows.
+- **Development** - the newest successful build of `develop`, fetched from the
+  `SuperStore-ipa` artifact of the `verify` workflow through nightly.link. The
+  archive is unpacked and the real version is read out of the bundle's
+  `Info.plist`.
+
+"Choose file" on step 3 still takes a signed `.ipa` if you already have one,
+and "Install .ipa" downloads the selected channel first when nothing is on disk
+yet.
+
 ## What it does
 
-- Reads `downloads/versions.json` from the site, so it always takes the newest
-  published release rather than a hard-coded link, and saves the IPA to
+- Offers the stable release and the newest `develop` build, reads the version
+  list from the site rather than using a hard-coded link, and saves the IPA to
   `%LOCALAPPDATA%\SuperStore\`.
 - Lists iPhones connected over USB through Apple's Mobile Device Service, which
   ships with iTunes or the Apple Devices app and is the only supported way to
