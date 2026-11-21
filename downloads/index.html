@@ -222,6 +222,23 @@
     </div>
   </section>
 
+  <section id="anisette">
+    <div class="list">
+      <div class="row">
+        <span class="v">Anisette Server</span>
+        <span class="tag">Windows · Linux · macOS</span>
+        <span class="s">Host your own machine identity and print its public address</span>
+        <a class="btn" href="anisette-server.py" download>Download .py</a>
+      </div>
+    </div>
+    <p class="note">
+      Needs Python 3, nothing else. Run <code>python anisette-server.py</code> on the machine that
+      will host it; it prints this PC's address, your network's address and the public address to
+      paste into SuperStore's anisette field. The public one only works from outside if you forward
+      the port (TCP 6969 by default).
+    </p>
+  </section>
+
   <p class="note">
     Builds are unsigned on purpose: a signed app only installs for the Apple ID that
     signed it, so every user signs their own copy. When a new version is published it
