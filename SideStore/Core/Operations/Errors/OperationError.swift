@@ -57,7 +57,7 @@ public enum OperationError: LocalizedError, CustomNSError, Sendable, Equatable {
         case .noInstalledApps:
             return "There are no active sideloaded apps to refresh."
         case .noSources:
-            return "There are no SideStore sources."
+            return "There are no SuperStore sources."
         case .notAuthenticated:
             return "You are not signed in."
         case .timedOut:
@@ -96,7 +96,7 @@ public enum OperationError: LocalizedError, CustomNSError, Sendable, Equatable {
         case .missingAppBundle(let reason):
             return "The app bundle could not be found: \(reason)"
         case .missingAppGroup(let name):
-            return "SideStore's shared app group “\(name)” could not be accessed."
+            return "SuperStore's shared app group “\(name)” could not be accessed."
         case .missingInfoPlist(let reason):
             return "The app's Info.plist could not be found: \(reason)"
         case .missingProvisioningProfile(let reason):
@@ -106,15 +106,15 @@ public enum OperationError: LocalizedError, CustomNSError, Sendable, Equatable {
         case .noConnection(let reason):
             return "Network Connection Error:\n\(reason)\n\nPlease connect to Wi-Fi before attempting further operations."
         case .noDevice(let reason):
-            return "SideStore is unable to reach the device endpoint:\n\(reason)\n\nPlease check your Connection Configuration in Settings."
+            return "SuperStore is unable to reach the device endpoint:\n\(reason)\n\nPlease check your Connection Configuration in Settings."
         case .noVPN(let reason):
             return "VPN Connection Error:\n\(reason)\n\nPlease make sure LocalDevVPN is connected and running properly."
         case .notReachable(let reason):
             return reason.isEmpty ? "Device is not reachable at the specified IP or Endpoint." : reason
         case .openAppFailed(let name):
-            return "SideStore was denied permission to launch \(name)."
+            return "SuperStore was denied permission to launch \(name)."
         case .pairingNotComplete(let reason):
-            return "Pairing Required: \(reason)\n\nWithout a valid pairing file, SideStore operations cannot connect to your device. Please pair your device or import a valid pairing file."
+            return "Pairing Required: \(reason)\n\nWithout a valid pairing file, SuperStore operations cannot connect to your device. Please pair your device or import a valid pairing file."
         case .pledgeInactive(let appName):
             return "Your pledge is no longer active. Please renew it to continue using \(appName) normally."
         case .SideJITIssue(let error):
@@ -151,7 +151,7 @@ public enum OperationError: LocalizedError, CustomNSError, Sendable, Equatable {
                 + "This is usually a temporary outage on Apple's side, or an Anisette server that is down.\n\n"
                 + "Wait a moment and retry, or pick a different server in Settings -> Anisette Servers."
         case .unknownUDID(let reason):
-            return "SideStore could not determine this device's UDID: \(reason)\n\nPlease replace your pairing using iloader or idevice_pair."
+            return "SuperStore could not determine this device's UDID: \(reason)\n\nPlease replace your pairing using iloader or idevice_pair."
         }
     }
 

@@ -153,7 +153,7 @@ final class AppViewController: UIViewController
             }
             catch
             {
-                debugLog("[SideStore] Failed to load app icons. \(error)")
+                debugLog("[SuperStore] Failed to load app icons. \(error)")
                 for imageView in [self.bannerView.iconImageView, self.backgroundAppIconImageView, self.navigationBarAppIconImageView]
                 {
                     imageView?.isIndicatingActivity = false

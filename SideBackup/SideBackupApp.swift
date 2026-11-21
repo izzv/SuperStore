@@ -137,7 +137,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         Task { @MainActor in
             let logger = try? ConsoleLog.getConsoleLog()
             if let logger = logger {
-                debugLog(logger, "[SideBackup]: Attempting to open target SideStore app '\(targetSideStoreBundleID)' via LSApplicationWorkspace with return URL: \(responseURL.absoluteString)")
+                debugLog(logger, "[SideBackup]: Attempting to open target SuperStore app '\(targetSuperStoreBundleID)' via LSApplicationWorkspace with return URL: \(responseURL.absoluteString)")
             }
             
             let success = await withCheckedContinuation { continuation in

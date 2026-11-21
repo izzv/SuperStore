@@ -31,16 +31,16 @@ final class ResignAltStoreViewController: UIViewController
         
         let isFreeTeam = self.isFreeTeam
         let reason = self.mismatchReason ?? (isFreeTeam ? .freeAccountLimitRevoked : .revoked)
-        debugLog("[ResignAltStoreViewController] Displaying Resign SideStore Now screen (mismatchReason: \(reason)).")
+        debugLog("[ResignAltStoreViewController] Displaying Resign SuperStore Now screen (mismatchReason: \(reason)).")
         let reasonText: String
         
         switch reason {
             case .expired:
-                reasonText = NSLocalizedString("The signing certificate used to install SideStore has expired.", comment: "")
+                reasonText = NSLocalizedString("The signing certificate used to install SuperStore has expired.", comment: "")
             case .revoked:
-                reasonText = NSLocalizedString("The signing certificate used to install SideStore was revoked on the Apple Developer portal.", comment: "")
+                reasonText = NSLocalizedString("The signing certificate used to install SuperStore was revoked on the Apple Developer portal.", comment: "")
             case .freeAccountLimitRevoked:
-                reasonText = NSLocalizedString("Free developer accounts are limited to 1 active signing certificate. Since the private key for the active certificate was not found on this device, SideStore will create a new certificate. This will automatically revoke the active certificate, which may disable installations on other devices or made by Xcode.", comment: "")
+                reasonText = NSLocalizedString("Free developer accounts are limited to 1 active signing certificate. Since the private key for the active certificate was not found on this device, SuperStore will create a new certificate. This will automatically revoke the active certificate, which may disable installations on other devices or made by Xcode.", comment: "")
             case .differentAccount:
                 reasonText = NSLocalizedString("The logged-in Apple ID account has changed.", comment: "")
             case .differentTeam:
@@ -48,11 +48,11 @@ final class ResignAltStoreViewController: UIViewController
             case .privateKeyLost:
                 reasonText = NSLocalizedString("The private key for the active signing certificate is missing from this device's keychain.", comment: "")
             case .externalSigner:
-                reasonText = NSLocalizedString("SideStore was installed by a different signing tool (like Xcode or AltStore).", comment: "")
+                reasonText = NSLocalizedString("SuperStore was installed by a different signing tool (like Xcode or AltStore).", comment: "")
             case .missingProfile:
-                reasonText = NSLocalizedString("The provisioning profile for SideStore is missing or invalid.", comment: "")
+                reasonText = NSLocalizedString("The provisioning profile for SuperStore is missing or invalid.", comment: "")
             case .missingCertificate:
-                reasonText = NSLocalizedString("The signing certificate could not be extracted from SideStore's binary.", comment: "")
+                reasonText = NSLocalizedString("The signing certificate could not be extracted from SuperStore's binary.", comment: "")
         }
         
         let isRevocationExpected = (reason == .privateKeyLost || reason == .freeAccountLimitRevoked)
@@ -63,8 +63,8 @@ final class ResignAltStoreViewController: UIViewController
         self.reinstallButton.fontSize = 15
         
         let header = NSLocalizedString("Signing certificate mismatch detected.", comment: "")
-        let paragraph1 = NSLocalizedString("To ensure you can continue using SideStore, \nthe app must be reinstalled now using the new certificate. Otherwise, you will be unable to refresh or open SideStore once the old certificate expires.", comment: "")
-        let paragraph2 = NSLocalizedString("This reinstallation registers the new signature with the OS and will terminate SideStore. You can reopen SideStore immediately once reinstallation is completed.", comment: "")
+        let paragraph1 = NSLocalizedString("To ensure you can continue using SuperStore, \nthe app must be reinstalled now using the new certificate. Otherwise, you will be unable to refresh or open SuperStore once the old certificate expires.", comment: "")
+        let paragraph2 = NSLocalizedString("This reinstallation registers the new signature with the OS and will terminate SuperStore. You can reopen SuperStore immediately once reinstallation is completed.", comment: "")
         
         let fullText = "\(header)\n\n\(paragraph1)\n\n\(paragraph2)"
         let attributedString = NSMutableAttributedString(string: fullText)
@@ -145,7 +145,7 @@ private extension ResignAltStoreViewController
                         sender.isIndicatingActivity = false
                         
                         if error is CancellationError || (error.domain == NSCocoaErrorDomain && error.code == NSUserCancelledError) {
-                            debugLog("[ResignAltStoreViewController] Operation cancelled. Auto-dismissing Resign SideStore Now screen.")
+                            debugLog("[ResignAltStoreViewController] Operation cancelled. Auto-dismissing Resign SuperStore Now screen.")
                             self.context?.error = OperationError.cancelled
                             self.completionHandler?(.failure(OperationError.cancelled))
                             self.dismiss(animated: true, completion: nil)
@@ -153,7 +153,7 @@ private extension ResignAltStoreViewController
                         }
                         
                         let displayError = SignInFailure.normalized(error) as NSError
-                        let alertController = UIAlertController(title: NSLocalizedString("Failed to Resign SideStore", comment: ""), message: displayError.localizedFailureReason ?? displayError.localizedDescription, preferredStyle: .alert)
+                        let alertController = UIAlertController(title: NSLocalizedString("Failed to Resign SuperStore", comment: ""), message: displayError.localizedFailureReason ?? displayError.localizedDescription, preferredStyle: .alert)
                         alertController.addAction(UIAlertAction(title: NSLocalizedString("Try Again", comment: ""), style: .default, handler: { (action) in
                             refresh()
                         }))

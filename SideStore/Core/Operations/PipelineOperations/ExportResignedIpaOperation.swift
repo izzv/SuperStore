@@ -49,7 +49,7 @@ final class ExportResignedIpaOperation: BasePipelineOperation<InstallAppOperatio
         }
 
         let utis = resignedAppBundle.infoPlist[Bundle.Info.exportedUTIs] as? [[String: Any]]
-        let isSideBackup = utis?.first?["UTTypeDescription"] as? String == "SideStore Backup App"
+        let isSideBackup = utis?.first?["UTTypeDescription"] as? String == "SuperStore Backup App"
         let destPath = isSideBackup ? resignedAppBundle.name + "-sidebackup" : resignedAppBundle.name
         let destinationURL = resignedAppsURL.appendingPathComponent(destPath + ".ipa")
         self.setProgress(60)

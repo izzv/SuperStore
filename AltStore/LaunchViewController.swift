@@ -95,8 +95,8 @@ final class LaunchViewController: UIViewController {
 
     @MainActor
     func displayError(_ msg: String) {
-        debugLog("[SideStore] \(msg)")
-        let alert = UIAlertController(title: "Error launching SideStore", message: msg, preferredStyle: .alert)
+        debugLog("[SuperStore] \(msg)")
+        let alert = UIAlertController(title: "Error launching SuperStore", message: msg, preferredStyle: .alert)
         self.present(alert, animated: true)
     }
     
@@ -154,7 +154,7 @@ final class LaunchViewController: UIViewController {
         }
 
         let nsError = error as NSError
-        let title = nsError.userInfo[NSLocalizedFailureErrorKey] as? String ?? NSLocalizedString("Unable to Launch SideStore", comment: "")
+        let title = nsError.userInfo[NSLocalizedFailureErrorKey] as? String ?? NSLocalizedString("Unable to Launch SuperStore", comment: "")
         let desc = ([nsError.debugDescription] + nsError.underlyingErrors.map { ($0 as NSError).debugDescription }).joined(separator: "\n\n")
         return (title: title, message: desc, extraActions: [])
     }
@@ -239,7 +239,7 @@ final class LaunchViewController: UIViewController {
     func updateKnownSources() {
         AppManager.shared.updateKnownSources { result in
             switch result {
-            case .failure(let error): debugLog("[SideStore] Failed to update known sources: \(error)")
+            case .failure(let error): debugLog("[SuperStore] Failed to update known sources: \(error)")
             case .success((_, let blockedSources)):
                 DatabaseManager.shared.persistentContainer.performBackgroundTask { context in
                     let blockedSourceIDs = Set(blockedSources.lazy.map { $0.identifier })

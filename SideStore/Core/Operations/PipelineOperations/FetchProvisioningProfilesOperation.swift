@@ -322,7 +322,7 @@ private extension FetchProvisioningProfilesOperation{
         }
         
         if targetAppBundle.isAltStoreApp {
-            verboseLog("[FetchProvisioningProfiles] Application groups before modifying for SideStore: \(applicationGroups)")
+            verboseLog("[FetchProvisioningProfiles] Application groups before modifying for SuperStore: \(applicationGroups)")
             
             // Remove app groups that contain AltStore since they can be problematic (cause SideStore to expire early)
             for (index, group) in applicationGroups.enumerated() {
@@ -380,7 +380,7 @@ private extension FetchProvisioningProfilesOperation{
                     group = existing
                 } else {
                     // Not all characters are allowed in group names, so we replace periods with spaces (like Apple does).
-                    let name = "SideStore " + groupIdentifier.replacingOccurrences(of: ".", with: " ")
+                    let name = "SuperStore " + groupIdentifier.replacingOccurrences(of: ".", with: " ")
                     do {
                         group = try await TaskChainCoalescer.shared.coalesce(key: "add_app_group_\(adjustedGroupIdentifier)") {
                             // skip add if already added into shared by other tasks

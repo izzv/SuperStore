@@ -72,7 +72,7 @@ private func resolveDiscoveredRemotePairingPort() async -> UInt16? {
             res.interfaces.contains { $0.name == "lo0" || $0.name.hasPrefix("lo") }
         }
     ) {
-        debugLog("[SideStore] Discovered RemotePairing port via Bonjour: \(resolved.port)")
+        debugLog("[SuperStore] Discovered RemotePairing port via Bonjour: \(resolved.port)")
         UserDefaults.standard.lastDiscoveredRemotePairingPort = Int(resolved.port)
         return resolved.port
     }
@@ -140,7 +140,7 @@ private func withRemotePairingRetry<T>(_ operation: () async throws -> T) async 
         }
 
         if let newPort = await resolveDiscoveredRemotePairingPortThrottled(), newPort != remotePairingPortCache {
-            debugLog("[SideStore] Operation failed with retriable error (\(error)), updating RemotePairing port from \(remotePairingPortCache) -> \(newPort) and retrying...")
+            debugLog("[SuperStore] Operation failed with retriable error (\(error)), updating RemotePairing port from \(remotePairingPortCache) -> \(newPort) and retrying...")
             remotePairingPortCache = newPort
             minimuxer.set(MinimuxerParams(remotePairingPort: newPort))
             return try await operation()
@@ -158,9 +158,9 @@ public var minimuxerStatusPublisher: AnyPublisher<Result<Bool, Error>, Never> {
 }
 
 func bindConnectionConfig() async {
-    defer { debugLog("[SideStore] bindTunnelConfig() completed") }
+    defer { debugLog("[SuperStore] bindTunnelConfig() completed") }
 
-    debugLog("[SideStore] bindTunnelConfig() invoked")
+    debugLog("[SuperStore] bindTunnelConfig() invoked")
     let config = ConnectionConfig.shared
     let configBinding = ConnectionConfigBinding(
         setTunnelIfaceIp: { value in Task { @MainActor in config.tunnelIfaceIp = value } },
@@ -237,11 +237,11 @@ extension MinimuxerError {
 }
 
 func reinitializePairingData(pairingFile: String) async throws {
-    defer { debugLog("[SideStore] reinitializePairingData(pairingFile) completed") }
+    defer { debugLog("[SuperStore] reinitializePairingData(pairingFile) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] reinitializePairingData(pairingFile) is no-op on simulator")
+    debugLog("[SuperStore] reinitializePairingData(pairingFile) is no-op on simulator")
     #else
-    debugLog("[SideStore] reinitializePairingData(pairingFile) invoked")
+    debugLog("[SuperStore] reinitializePairingData(pairingFile) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.reinitializePairingData(pairingFile: pairingFile)
     }
@@ -249,14 +249,14 @@ func reinitializePairingData(pairingFile: String) async throws {
 }
 
 func minimuxerStart(_ pairingFile: String, preferred: PairingProtocol? = nil) async throws {
-    defer { debugLog("[SideStore] minimuxerStart(pairingFile) completed") }
+    defer { debugLog("[SuperStore] minimuxerStart(pairingFile) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] minimuxerStart(pairingFile) is no-op on simulator")
+    debugLog("[SuperStore] minimuxerStart(pairingFile) is no-op on simulator")
     await bindConnectionConfig()
     await minimuxer.network.start()
     #else
     await bindConnectionConfig()
-    debugLog("[SideStore] minimuxerStart(pairingFile) invoked")
+    debugLog("[SuperStore] minimuxerStart(pairingFile) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.start(pairingFile: pairingFile, mountPath: ddiMountPath, preferred: preferred)
     }
@@ -264,21 +264,21 @@ func minimuxerStart(_ pairingFile: String, preferred: PairingProtocol? = nil) as
 }
 
 func minimuxerStop() async throws {
-    defer { debugLog("[SideStore] minimuxerStop() completed") }
+    defer { debugLog("[SuperStore] minimuxerStop() completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] minimuxerStop() is no-op on simulator")
+    debugLog("[SuperStore] minimuxerStop() is no-op on simulator")
     #else
-    debugLog("[SideStore] minimuxerStop() invoked")
+    debugLog("[SuperStore] minimuxerStop() invoked")
     try await minimuxer.core.stop()
     #endif
 }
 
 func installProvisioningProfiles(_ profileData: Data) async throws {
-    defer { debugLog("[SideStore] installProvisioningProfiles(profileData) completed") }
+    defer { debugLog("[SuperStore] installProvisioningProfiles(profileData) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] installProvisioningProfiles(profileData) is no-op on simulator")
+    debugLog("[SuperStore] installProvisioningProfiles(profileData) is no-op on simulator")
     #else
-    debugLog("[SideStore] installProvisioningProfiles(profileData) invoked")
+    debugLog("[SuperStore] installProvisioningProfiles(profileData) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.installProvisioningProfile(profile: profileData)
     }
@@ -286,11 +286,11 @@ func installProvisioningProfiles(_ profileData: Data) async throws {
 }
 
 func removeProvisioningProfile(_ id: String) async throws {
-    defer { debugLog("[SideStore] removeProvisioningProfile(id) completed") }
+    defer { debugLog("[SuperStore] removeProvisioningProfile(id) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] removeProvisioningProfile(id) is no-op on simulator")
+    debugLog("[SuperStore] removeProvisioningProfile(id) is no-op on simulator")
     #else
-    debugLog("[SideStore] removeProvisioningProfile(id) invoked")
+    debugLog("[SuperStore] removeProvisioningProfile(id) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.removeProvisioningProfile(id: id)
     }
@@ -298,11 +298,11 @@ func removeProvisioningProfile(_ id: String) async throws {
 }
 
 func removeApp(_ bundleId: String) async throws {
-    defer { debugLog("[SideStore] removeApp(bundleId) completed") }
+    defer { debugLog("[SuperStore] removeApp(bundleId) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] removeApp(bundleId) is no-op on simulator")
+    debugLog("[SuperStore] removeApp(bundleId) is no-op on simulator")
     #else
-    debugLog("[SideStore] removeApp(bundleId) invoked")
+    debugLog("[SuperStore] removeApp(bundleId) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.removeApp(bundleId: bundleId)
     }
@@ -310,11 +310,11 @@ func removeApp(_ bundleId: String) async throws {
 }
 
 func sendIpaAfc(_ bundleId: String, _ rawBytes: Data) async throws {
-    defer { debugLog("[SideStore] sendIpaAfc(bundleId, rawBytes) completed") }
+    defer { debugLog("[SuperStore] sendIpaAfc(bundleId, rawBytes) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] sendIpaAfc(bundleId, rawBytes) is no-op on simulator")
+    debugLog("[SuperStore] sendIpaAfc(bundleId, rawBytes) is no-op on simulator")
     #else
-    debugLog("[SideStore] sendIpaAfc(bundleId, rawBytes) invoked")
+    debugLog("[SuperStore] sendIpaAfc(bundleId, rawBytes) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.sendIpaAfc(bundleId: bundleId, ipaBytes: rawBytes)
     }
@@ -322,11 +322,11 @@ func sendIpaAfc(_ bundleId: String, _ rawBytes: Data) async throws {
 }
 
 func sendAppBundleAfc(_ bundleId: String, at appURL: URL) async throws {
-    defer { debugLog("[SideStore] sendAppBundleAfc(bundleId, appURL) completed") }
+    defer { debugLog("[SuperStore] sendAppBundleAfc(bundleId, appURL) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] sendAppBundleAfc(bundleId, appURL) is no-op on simulator")
+    debugLog("[SuperStore] sendAppBundleAfc(bundleId, appURL) is no-op on simulator")
     #else
-    debugLog("[SideStore] sendAppBundleAfc(bundleId, appURL) invoked")
+    debugLog("[SuperStore] sendAppBundleAfc(bundleId, appURL) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.sendAppBundleAfc(bundleId: bundleId, appURL: appURL)
     }
@@ -334,11 +334,11 @@ func sendAppBundleAfc(_ bundleId: String, at appURL: URL) async throws {
 }
 
 func installIPA(_ bundleId: String) async throws {
-    defer { debugLog("[SideStore] installIPA(bundleId) completed") }
+    defer { debugLog("[SuperStore] installIPA(bundleId) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] installIPA(bundleId) is no-op on simulator")
+    debugLog("[SuperStore] installIPA(bundleId) is no-op on simulator")
     #else
-    debugLog("[SideStore] installIPA(bundleId) invoked")
+    debugLog("[SuperStore] installIPA(bundleId) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.installIpa(bundleId: bundleId)
     }
@@ -346,11 +346,11 @@ func installIPA(_ bundleId: String) async throws {
 }
 
 func installAppBundle(_ bundleId: String, appName: String) async throws {
-    defer { debugLog("[SideStore] installAppBundle(bundleId, appName) completed") }
+    defer { debugLog("[SuperStore] installAppBundle(bundleId, appName) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] installAppBundle(bundleId, appName) is no-op on simulator")
+    debugLog("[SuperStore] installAppBundle(bundleId, appName) is no-op on simulator")
     #else
-    debugLog("[SideStore] installAppBundle(bundleId, appName) invoked")
+    debugLog("[SuperStore] installAppBundle(bundleId, appName) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.installAppBundle(bundleId: bundleId, appName: appName)
     }
@@ -359,17 +359,17 @@ func installAppBundle(_ bundleId: String, appName: String) async throws {
 
 @discardableResult
 func fetchUDID(forceLive: Bool = false) async throws -> String {
-    defer { debugLog("[SideStore] fetchUDID() completed") }
+    defer { debugLog("[SuperStore] fetchUDID() completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] fetchUDID() is no-op on simulator")
+    debugLog("[SuperStore] fetchUDID() is no-op on simulator")
     return "00008030-001234567890ABCD"
     
     #else
     if !forceLive, let cachedUDID = Keychain.shared.deviceUDID, !cachedUDID.isEmpty {
-        debugLog("[SideStore] fetchUDID() returning cached UDID from Keychain: \(cachedUDID)")
+        debugLog("[SuperStore] fetchUDID() returning cached UDID from Keychain: \(cachedUDID)")
         return cachedUDID
     }
-    debugLog("[SideStore] fetchUDID() invoked (forceLive: \(forceLive))")
+    debugLog("[SuperStore] fetchUDID() invoked (forceLive: \(forceLive))")
     return try await withRemotePairingRetry {
         let udid = try await minimuxer.core.fetchUDID()
         guard !udid.isEmpty else {
@@ -388,11 +388,11 @@ func safeFetchUDID(forceLive: Bool = false) async throws -> String {
 }
 
 func debugApp(_ appId: String) async throws {
-    defer { debugLog("[SideStore] debugApp(appId) completed") }
+    defer { debugLog("[SuperStore] debugApp(appId) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] debugApp(appId) is no-op on simulator")
+    debugLog("[SuperStore] debugApp(appId) is no-op on simulator")
     #else
-    debugLog("[SideStore] debugApp(appId) invoked")
+    debugLog("[SuperStore] debugApp(appId) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.debugApp(appId: appId)
     }
@@ -405,11 +405,11 @@ func safeDebugApp(_ appId: String) async throws {
 }
 
 func attachDebugger(_ pid: UInt32) async throws {
-    defer { debugLog("[SideStore] attachDebugger(pid) completed") }
+    defer { debugLog("[SuperStore] attachDebugger(pid) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] attachDebugger(pid) is no-op on simulator")
+    debugLog("[SuperStore] attachDebugger(pid) is no-op on simulator")
     #else
-    debugLog("[SideStore] attachDebugger(pid) invoked")
+    debugLog("[SuperStore] attachDebugger(pid) invoked")
     try await withRemotePairingRetry {
         try await minimuxer.core.attachDebugger(pid: pid)
     }
@@ -422,12 +422,12 @@ func safeAttachDebugger(_ pid: UInt32) async throws {
 }
 
 func dumpProfiles(_ docsPath: String, mode: ProfileDumpMode = .zip) async throws -> String {
-    defer { debugLog("[SideStore] dumpProfiles(docsPath) completed") }
+    defer { debugLog("[SuperStore] dumpProfiles(docsPath) completed") }
     #if targetEnvironment(simulator)
-    debugLog("[SideStore] dumpProfiles(docsPath) is no-op on simulator")
+    debugLog("[SuperStore] dumpProfiles(docsPath) is no-op on simulator")
     return ""
     #else
-    debugLog("[SideStore] dumpProfiles(docsPath) invoked")
+    debugLog("[SuperStore] dumpProfiles(docsPath) invoked")
     return try await withRemotePairingRetry {
         try await minimuxer.core.dumpProfiles(docsPath: docsPath, mode: mode)
     }
@@ -440,8 +440,8 @@ func safeDumpProfiles(_ docsPath: String, mode: ProfileDumpMode = .zip) async th
 }
 
 func minimuxerSetLogging(_ enabled: Bool) {
-    defer { debugLog("[SideStore] minimuxerSetLogging(enabled) completed") }
-    debugLog("[SideStore] minimuxerSetLogging(enabled) invoked")
+    defer { debugLog("[SuperStore] minimuxerSetLogging(enabled) completed") }
+    debugLog("[SuperStore] minimuxerSetLogging(enabled) invoked")
     #if !targetEnvironment(simulator)
     minimuxer.core.setLogging(enabled)
     #endif
@@ -456,8 +456,8 @@ public func minimuxerGetDeviceProbeTimeout() -> Int {
 }
 
 public func minimuxerSetDeviceProbeTimeout(_ timeoutMs: Int) {
-    defer { debugLog("[SideStore] minimuxerSetDeviceProbeTimeout(\(timeoutMs)) completed") }
-    debugLog("[SideStore] minimuxerSetDeviceProbeTimeout(\(timeoutMs)) invoked")
+    defer { debugLog("[SuperStore] minimuxerSetDeviceProbeTimeout(\(timeoutMs)) completed") }
+    debugLog("[SuperStore] minimuxerSetDeviceProbeTimeout(\(timeoutMs)) invoked")
     deviceProbeTimeoutCache = timeoutMs
     UserDefaults.standard.deviceProbeTimeoutOverride = (timeoutMs == AppConstants.Minimuxer.defaultTCPProbeTimeoutMs) ? 0 : timeoutMs
     #if !targetEnvironment(simulator)
@@ -473,12 +473,12 @@ extension Result {
 }
 
 func minimuxerSwitchPairingProtocol(to proto: PairingProtocol) async throws {
-    defer { debugLog("[SideStore] minimuxerSwitchPairingProtocol(.\(proto)) completed") }
-    debugLog("[SideStore] minimuxerSwitchPairingProtocol(.\(proto)) invoked")
+    defer { debugLog("[SuperStore] minimuxerSwitchPairingProtocol(.\(proto)) completed") }
+    debugLog("[SuperStore] minimuxerSwitchPairingProtocol(.\(proto)) invoked")
     PairingFileManager.shared.persistedActiveProtocol = proto
     #if !targetEnvironment(simulator)
     try await withRemotePairingRetry {
-        debugLog("[SideStore] switchPairingProtocol(to: \(proto.rawValue)) entered")
+        debugLog("[SuperStore] switchPairingProtocol(to: \(proto.rawValue)) entered")
         guard let pf = PairingFileManager.shared.fetchPairingFile(for: proto) else {
             throw MinimuxerError.pairingNotLoaded("Missing pairing file for \(proto.rawValue)")
         }

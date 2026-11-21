@@ -17,7 +17,7 @@ public enum AppConstants {
     ]
 
     public enum Database {
-        public static let name           = "SideStore"
+        public static let name           = "SuperStore"
         public static let legacyName     = "AltStore"
         public static let fileName       = "\(name).sqlite"
         public static let legacyFileName = "\(legacyName).sqlite"
@@ -63,7 +63,7 @@ public enum AppConstants {
 
     public enum Anisette {
         public static let hiddenBaseDirectoryName     = ".anisette"
-        public static let appSupportSubdirectory      = "SideStore"
+        public static let appSupportSubdirectory      = "SuperStore"
         public static let defaultDeviceSerialNumber   = "0"
         public static let defaultODAMetadataURL       = URL(string: "https://zzz.haus/oda.json")!
         public static var defaultODAMetadataURLString: String { defaultODAMetadataURL.absoluteString }

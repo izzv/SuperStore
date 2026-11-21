@@ -98,7 +98,7 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
     {
         let (installedApp, isDifferentSideStore, bundleID, isSelfReinstall, isSideBackup) = try await backgroundContext.perform {
             let utis = resignedAppBundle.infoPlist[Bundle.Info.exportedUTIs] as? [[String: Any]]
-            let isSideBackup = utis?.first?["UTTypeDescription"] as? String == "SideStore Backup App"
+            let isSideBackup = utis?.first?["UTTypeDescription"] as? String == "SuperStore Backup App"
             
             if isSideBackup {
                 let installedApp = try self.context.installedApp.flatMap { app in
@@ -125,10 +125,10 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             let isDifferentSideStore = Self.isDifferentSideStoreContainer(installedApp, resignedAppBundle)
             if isDifferentSideStore {
                 self.debugLog("""
-                [WARN] Skipped inserting/updating into InstalledApp table for SideStore:
+                [WARN] Skipped inserting/updating into InstalledApp table for SuperStore:
                     - Resigned Bundle ID: '\(resignedAppBundle.bundleIdentifier)'
                     - Active Container Bundle ID: '\(installedApp.resignedBundleIdentifier)'
-                    Reason: A different bundle ID installs SideStore as a new app container which initializes its own database upon launch.
+                    Reason: A different bundle ID installs SuperStore as a new app container which initializes its own database upon launch.
                             Hence we do not perist current change to prevent corruption of current sidestore's database entry.
                     
                 """)

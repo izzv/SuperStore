@@ -167,7 +167,7 @@ final class FetchSourceOperation: BaseStandaloneOperation<StandaloneOperationCon
             let pathDescription = codingPath.map { $0.intValue?.description ?? $0.stringValue }.joined(separator: " > ")
             let detailedMessage = "Decoding failed: \(debugDescription) at path: \(pathDescription)"
             
-            throw NSError(domain: "io.sidestore.SideStore.DecodingError", code: 0, userInfo: [
+            throw NSError(domain: "io.sidestore.SuperStore.DecodingError", code: 0, userInfo: [
                 NSLocalizedDescriptionKey: detailedMessage,
                 NSDebugDescriptionErrorKey: detailedMessage
             ])

@@ -79,7 +79,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate
             }
             catch
             {
-                debugLog("[SideStore] Failed to purge logged errors before \(midnightOneMonthAgo). \(error)")
+                debugLog("[SuperStore] Failed to purge logged errors before \(midnightOneMonthAgo). \(error)")
             }
         }
         
