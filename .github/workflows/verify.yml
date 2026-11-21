@@ -37,6 +37,9 @@ concurrency:
 env:
   XC_PROJECT: AltStore.xcodeproj
   XC_SCHEME: SideStore
+  # Release, not Debug: a Debug build carries the placeholder DEVELOPMENT_TEAM
+  # in its bundle id ($(BASE_BUNDLE_ID).$(DEVELOPMENT_TEAM)) and is not shippable.
+  XC_CONFIG: Release
   DERIVED_DATA: build/derived-data
   RESULT_BUNDLE: build/verify.xcresult
   # Mirrors COMMON_BUILD_SETTINGS in the Makefile
@@ -84,7 +87,7 @@ jobs:
           xcodebuild build \
             -project "$XC_PROJECT" \
             -scheme "$XC_SCHEME" \
-            -config Debug \
+            -config "$XC_CONFIG" \
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$DERIVED_DATA" \
             $UNSIGNED_SETTINGS
@@ -96,7 +99,7 @@ jobs:
           set -o pipefail
           # Take the app the scheme actually built, not whichever bundle happens
           # to sit next to it (extensions and helpers land in the same folder).
-          PRODUCTS="$DERIVED_DATA/Build/Products/Debug-iphoneos"
+          PRODUCTS="$DERIVED_DATA/Build/Products/$XC_CONFIG-iphoneos"
           APP="$PRODUCTS/SideStore.app"
           if [ ! -d "$APP" ]; then
             APP=$(du -sk "$PRODUCTS"/*.app 2>/dev/null | sort -rn | head -1 | cut -f2-)
@@ -120,6 +123,17 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           ls -lh build/SuperStore.ipa
           unzip -l build/SuperStore.ipa | head -5
+
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+          echo "$VERSION" > build/version.txt
+          echo "configuration: $XC_CONFIG"
+          echo "version: $VERSION"
+          echo "bundle id: $BUNDLE_ID"
+          if [ "$BUNDLE_ID" != "com.superstore.SuperStore" ]; then
+            echo "unexpected bundle id for a release build: $BUNDLE_ID" >&2
+            exit 1
+          fi
 
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
