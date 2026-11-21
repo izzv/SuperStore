@@ -108,6 +108,26 @@ def workdir():
     return directory
 
 
+SETTINGS_FILENAME = "setup-settings.json"
+
+
+def load_settings():
+    try:
+        values = json.loads((workdir() / SETTINGS_FILENAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return values if isinstance(values, dict) else {}
+
+
+def save_settings(values):
+    try:
+        (workdir() / SETTINGS_FILENAME).write_text(json.dumps(values, indent=2), encoding="utf-8")
+        return True
+    except (OSError, ValueError, TypeError) as error:
+        say("Could not save the setup settings: %s" % error)
+        return False
+
+
 def bundled_file(name):
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
     return base / name
@@ -766,18 +786,46 @@ class ProgressBar(tk.Canvas):
         self.bar_width = px(width)
         self.bar_height = px(height)
         self.value = 0.0
+        self.pulsing = False
+        self.pulse_offset = 0.0
+        self.pulse_job = None
         self.draw()
 
     def draw(self):
         self.delete("all")
         round_rect(self, 0, 0, self.bar_width, self.bar_height, self.bar_height / 2, fill="#252b38", outline="")
-        if self.value > 0:
+        if self.pulsing:
+            span = self.bar_width * 0.3
+            left = self.pulse_offset * (self.bar_width + span) - span
+            round_rect(self, left, 0, left + span, self.bar_height, self.bar_height / 2, fill=ACCENT, outline="")
+            self.pulse_offset = (self.pulse_offset + 0.018) % 1.0
+            self.pulse_job = self.after(30, self.draw)
+        elif self.value > 0:
             span = max(self.bar_height, self.bar_width * self.value)
             round_rect(self, 0, 0, span, self.bar_height, self.bar_height / 2, fill=ACCENT, outline="")
 
     def set(self, value):
+        self.stop_pulse()
         self.value = max(0.0, min(1.0, value))
         self.draw()
+
+    def start_pulse(self):
+        if self.pulsing:
+            return
+        self.pulsing = True
+        self.value = 0.0
+        self.draw()
+
+    def stop_pulse(self):
+        if self.pulse_job is not None:
+            try:
+                self.after_cancel(self.pulse_job)
+            except Exception:
+                pass
+            self.pulse_job = None
+        if self.pulsing:
+            self.pulsing = False
+            self.draw()
 
 
 class Chip(tk.Canvas):
@@ -885,6 +933,7 @@ class SetupApp:
         self.force_sign_in = False
         self.polling = False
         self.last_serial = None
+        self.settings = load_settings()
 
         self.build()
         close_splash()
@@ -982,6 +1031,8 @@ class SetupApp:
         for line in (
             "Signing in asks Apple for a certificate for this phone.",
             "Pairing writes pairingFile.plist and copies it into the app.",
+            "After installing, if iOS asks you to trust the developer, allow it under Settings "
+            "→ General → VPN & Device Management.",
         ):
             tk.Label(notes.inner, text="·  " + line, bg=CARD, fg=MUTED, font=(UI_FONT, 8), anchor="w",
                      justify="left", wraplength=px(470)).pack(fill="x", pady=(px(5), 0))
@@ -1004,6 +1055,7 @@ class SetupApp:
         log_head.pack(fill="x")
         tk.Label(log_head, text="Activity", bg=CARD, fg=TEXT, font=(UI_FONT, 11, "bold")).pack(side="left")
         Button(log_head, "Clear", self.clear_log, kind="secondary", width=68, height=24).pack(side="right")
+        Button(log_head, "Copy", self.copy_log, kind="secondary", width=62, height=24).pack(side="right", padx=(0, px(6)))
         self.log_text = tk.Text(log_inner, bg="#0e1016", fg="#c7cedb", bd=0, relief="flat", wrap="word",
                                 highlightthickness=1, highlightbackground=BORDER, padx=px(10), pady=px(8),
                                 font=(MONO_FONT, 9), spacing1=1, spacing3=2, height=9)
@@ -1029,8 +1081,11 @@ class SetupApp:
         self.code_row, self.account_code = self.field(parent, "Code", 10)
         self.code_row.pack_forget()
         self.password_row = password_row
+        remembered_email = str(self.settings.get("apple_id") or "")
+        if remembered_email:
+            self.account_email.insert(0, remembered_email)
         self.anisette_row, self.anisette_entry = self.field(parent, "Anisette", 28)
-        self.anisette_entry.insert(0, apple.PREFERRED_ANISETTE)
+        self.anisette_entry.insert(0, str(self.settings.get("anisette") or apple.PREFERRED_ANISETTE))
         host_row = tk.Frame(parent, bg=CARD)
         host_row.pack(fill="x", pady=(px(6), 0))
         self.host_button = Button(host_row, "Host one here", self.on_host_anisette,
@@ -1202,6 +1257,10 @@ class SetupApp:
             text="Signed in as %s  ·  certificate good for %d more days" % (identity.apple_id, int(identity.days_left())),
             fg=OK)
         self.log("Apple issued a certificate for this iPhone. Installs are signed on this PC now.", "ok")
+        self.settings["apple_id"] = identity.apple_id
+        self.settings["anisette"] = apple.PREFERRED_ANISETTE
+        if not save_settings(self.settings):
+            self.log("Signed in, but the next launch will not remember the Apple ID.", "warn")
         self.set_busy(False)
 
     def sign_in_failed(self, error):
@@ -1268,6 +1327,14 @@ class SetupApp:
             except Exception:
                 pass
         self.root.after(80, self.drain)
+
+    def copy_log(self):
+        text = self.log_text.get("1.0", "end-1c").strip()
+        if not text:
+            return
+        self.root.clipboard_clear()
+        self.root.clipboard_append(text)
+        self.log("Activity copied to the clipboard.", "info")
 
     def log(self, message, tag="info"):
         self.post(self.append_log, message, tag)
@@ -1442,6 +1509,7 @@ class SetupApp:
         self.pending_install = False
         self.download_status.configure(text="Download failed.", fg=ERR)
         self.download_progress.set(0.0)
+        self.log("The download failed: %s" % (str(error) or "no reason given"), "error")
 
     def on_pair(self):
         if self.busy or not self.device:
@@ -1462,8 +1530,9 @@ class SetupApp:
         self.log("Copying the pairing file into SuperStore…", "step")
         self.push_pairing()
 
-    def pair_failed(self, _error):
+    def pair_failed(self, error):
         self.pair_status.configure(text="Pairing did not finish.", fg=ERR)
+        self.log("Pairing did not finish: %s" % (str(error) or "no reason given"), "error")
 
     def push_pairing(self):
         if not self.device or not self.pairing_path:
@@ -1552,7 +1621,14 @@ class SetupApp:
                     on_status=lambda text: self.post(self.account_note, text),
                     on_warning=lambda text: self.post(self.account_warning, text),
                 )
-            apple.sign(path, identity, signed)
+            self.post(self.progress.start_pulse)
+            try:
+                apple.sign(
+                    path, identity, signed,
+                    on_status=lambda text: self.post(self.install_status.configure, text, MUTED),
+                )
+            finally:
+                self.post(self.progress.stop_pulse)
             self.post(self.install_status.configure, "Signed. Sending it to the iPhone…", MUTED)
             self.post(self.log, "Signed copy ready (%s). Installing…" % human_size(signed.stat().st_size), "step")
             install_ipa(serial, signed, progress=lambda pct: self.post(self.progress.set, pct / 100.0))
@@ -1562,7 +1638,8 @@ class SetupApp:
     def installed(self, _result):
         self.progress.set(1.0)
         self.install_status.configure(text="Installed.", fg=OK)
-        self.log("Installed. Sign in on the phone to finish setting up SuperStore.", "ok")
+        self.log("Installed. Open SuperStore on the iPhone; if iOS asks you to trust the developer, "
+                 "allow it under Settings → General → VPN & Device Management.", "ok")
         if self.pairing_path:
             self.log("Copying the pairing file into the app…", "step")
             self.push_pairing()
@@ -1571,7 +1648,9 @@ class SetupApp:
 
     def install_failed(self, error):
         message = str(error)
+        self.progress.stop_pulse()
         self.install_status.configure(text="The phone refused the build.", fg=ERR)
+        self.log(message or "The phone refused the build without saying why.", "error")
         if "verification" in message.lower():
             self.log("iOS refused the signature. Check that the profile Apple issued lists this "
                      "iPhone, then sign in again to renew it.", "info")

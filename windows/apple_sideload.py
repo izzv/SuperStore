@@ -1303,8 +1303,13 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
     return identity
 
 
-def sign(ipa_path, identity, output_path):
+def sign(ipa_path, identity, output_path, on_status=None):
     """Sign each bundle in the build with the profile Apple issued for that bundle."""
+
+    def say(message):
+        if on_status is not None:
+            on_status(message)
+
     import ipasign
     import ipasign.archive
     import ipasign.bundle
@@ -1324,6 +1329,7 @@ def sign(ipa_path, identity, output_path):
     )
 
     scratch = workdir() / "sign-tmp"
+    say("Unpacking %s…" % Path(ipa_path).name)
     unpacked = ipasign.archive.unpack(Path(ipa_path), scratch)
     try:
         app = unpacked.app
@@ -1332,6 +1338,8 @@ def sign(ipa_path, identity, output_path):
             for bundle in ipasign.bundle.collect_nested_bundles(app)
             if bundle.name.endswith(".appex")
         ]
+        if extensions:
+            say("Signing %d app extension%s…" % (len(extensions), "" if len(extensions) == 1 else "s"))
         for extension in extensions:
             identifier = ipasign.bundle.bundle_details(extension)[0]
             profile = profiles.get(identifier)
@@ -1351,6 +1359,7 @@ def sign(ipa_path, identity, output_path):
             return any(root in resolved.parents or resolved == root for root in extension_paths)
 
         (app / "embedded.mobileprovision").write_bytes(identity.profile)
+        say("Signing the app's binaries…")
         for path in ipasign.bundle.collect_macho_files(app):
             if not inside_extension(path):
                 sign_macho_file(app_signer, path)
@@ -1362,6 +1371,7 @@ def sign(ipa_path, identity, output_path):
             except BundleError:
                 continue
         signed = ipasign.bundle.sign_bundle_member(app_signer, app)
+        say("Repacking the signed build…")
         ipasign.archive.pack(unpacked.root, Path(output_path))
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
