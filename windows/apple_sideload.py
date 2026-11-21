@@ -17,7 +17,9 @@ import os
 import plistlib
 import secrets
 import time
+import gzip
 import uuid
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,6 +60,10 @@ class AppleError(Exception):
 
 class TwoFactorRequired(AppleError):
     """Raised when Apple wants the six-digit code from a trusted device."""
+
+
+class ThrottleHold(AppleError):
+    """Raised while Apple's own wait between attempts is still running."""
 
 
 def workdir():
@@ -418,12 +424,12 @@ class AppleLogin:
         headers.update(extra or {})
         return headers
 
-    def begin(self, password, counted=True, retry=False):
+    def begin(self, password, counted=True, retry=False, force=False):
         if not retry:
             self._code_submitted = False
-            wait = throttle_wait(self.apple_id)
+            wait = 0 if force else throttle_wait(self.apple_id)
             if wait:
-                raise AppleError(
+                raise ThrottleHold(
                     "Apple asked to wait after the last refusal. Try again in %d minutes, or sign in "
                     "at appleid.apple.com meanwhile." % max(1, int(wait // 60))
                 )
@@ -476,13 +482,7 @@ class AppleLogin:
             raise AppleError(message + hint)
         if not self._srp.verify(answer.get("M2")):
             raise AppleError("Apple's sign-in proof did not match, so the session was discarded.")
-        payload = {}
-        sealed = answer.get("spd")
-        if isinstance(sealed, bytes) and sealed:
-            try:
-                payload = self._decrypt(sealed)
-            except Exception as error:
-                raise AppleError("Could not read the session Apple returned (%s)." % error)
+        payload = self._open_payload(answer.get("spd"))
         mode = str(payload.get("url") or status.get("au") or "")
         pending = str(payload.get("status-code") or "") == "409" or mode in TWO_FACTOR_MODES
         if pending:
@@ -572,13 +572,118 @@ class AppleLogin:
         self.token = base64.b64encode(("%s:%s" % (dsid, idms)).encode()).decode()
         return {"dsid": dsid, "identity": self.token, "server": self.anisette.server}
 
-    def _decrypt(self, payload):
+    def _decrypt(self, payload, iv=None):
         key = self._srp.key
         aes_key = hmac.new(key, b"extra data key:", hashlib.sha256).digest()
-        iv = hmac.new(key, b"extra data iv:", hashlib.sha256).digest()[:16]
+        iv = iv or hmac.new(key, b"extra data iv:", hashlib.sha256).digest()[:16]
         decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).decryptor()
-        plain = decryptor.update(payload) + decryptor.finalize()
-        return plistlib.loads(plain[: -plain[-1]])
+        return decryptor.update(payload) + decryptor.finalize()
+
+    def _unpack(self, body):
+        if body[:2] == b"\x1f\x8b":
+            try:
+                return gzip.decompress(body)
+            except Exception:
+                pass
+        if body[:1] == b"\x78":
+            try:
+                return zlib.decompress(body)
+            except Exception:
+                pass
+        return body
+
+    def _open_payload(self, sealed):
+        if isinstance(sealed, dict):
+            return sealed
+        if not isinstance(sealed, bytes) or not sealed:
+            return {}
+        if sealed[:6] == b"bplist" or sealed.lstrip()[:1] == b"<":
+            try:
+                return plistlib.loads(sealed)
+            except Exception:
+                pass
+        tries = [(self._decrypt(sealed), None)]
+        if len(sealed) > 32 and len(sealed) % 16 == 0:
+            tries.append((self._decrypt(sealed[16:], sealed[:16]), "iv-prefixed"))
+        pad = 0
+        body = b""
+        for raw, _label in tries:
+            pad = raw[-1] if raw else 0
+            for candidate in (self._unpack(raw[: -pad] if 0 < pad <= 16 else raw), self._unpack(raw)):
+                try:
+                    return plistlib.loads(candidate)
+                except Exception:
+                    body = candidate
+        record_diagnostic(
+            "session payload",
+            self.apple_id,
+            {
+                "ec": 0,
+                "em": "unreadable session payload",
+                "ciphertext bytes": len(sealed),
+                "pad byte": pad,
+                "plaintext head": body[:12].hex(),
+            },
+            self.anisette.server,
+        )
+        raise AppleError(
+            "Could not read the session Apple returned (%s bytes, starts %s)."
+            % (len(sealed), body[:4].hex() or "empty")
+        )
+
+
+def clear_throttle(apple_id):
+    try:
+        data = json.loads(cooldown_file().read_text(encoding="utf-8"))
+    except Exception:
+        return
+    if data.pop(apple_id.lower(), None) is not None:
+        try:
+            cooldown_file().write_text(json.dumps(data), encoding="utf-8")
+        except Exception:
+            pass
+
+
+def check_apple_id(apple_id, anisette=None):
+    """Starts a sign-in and stops there, so a real attempt is only spent when Apple is listening."""
+    apple_id = apple_id.strip()
+    anisette = anisette or fetch_anisette()
+    login = AppleLogin(apple_id, anisette)
+    start = login._gsa(
+        {"A2k": GrandSlamSrp().public_key(), "ps": ["s2k", "s2k_fo"], "u": login.apple_id, "o": "init"}
+    )
+    status = start.get("Status") or {}
+    if start.get("s") and start.get("B"):
+        clear_throttle(apple_id)
+        return {
+            "ok": True,
+            "throttled": False,
+            "ec": 0,
+            "em": "",
+            "server": anisette.server,
+            "message": "Apple is answering for %s: no wait needed, the sign-in can start (%s)."
+            % (apple_id, anisette.server),
+        }
+    reason = explain(status)
+    if is_throttle(status):
+        note_throttle(apple_id)
+        return {
+            "ok": False,
+            "throttled": True,
+            "ec": status.get("ec"),
+            "em": status.get("em"),
+            "server": anisette.server,
+            "message": "Apple is still refusing sign-ins for %s, so a password would be wasted: %s"
+            % (apple_id, reason),
+        }
+    return {
+        "ok": False,
+        "throttled": False,
+        "ec": status.get("ec"),
+        "em": status.get("em"),
+        "server": anisette.server,
+        "message": "Apple will not accept %s: %s" % (apple_id, reason),
+    }
 
 
 @dataclass

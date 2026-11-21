@@ -62,6 +62,10 @@ certificate and a provisioning profile for the connected iPhone, and signs the
 - A "try again later" refusal is Apple throttling the ID, not a password
   problem; the helper then waits 20 minutes before allowing another attempt,
   because retrying straight away is what escalates to a locked account.
+- The `Check Apple` button (or `--check-apple-id you@example.com`) asks Apple to
+  start a sign-in and stops there: no password, no attempt spent. It says whether
+  Apple is answering or throttling right now.
+- While a wait is running, `Try anyway` (or `--force`) spends an attempt now.
 
 ## What it does
 

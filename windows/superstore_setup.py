@@ -407,12 +407,16 @@ def main(argv=None):
                         help="install that .ipa, or download the chosen channel and install it")
     parser.add_argument("--apple-id", metavar="EMAIL", help="Apple ID to sign the build with")
     parser.add_argument("--sign-in", action="store_true", help="sign in and cache a certificate for this iPhone")
+    parser.add_argument("--check-apple-id", metavar="EMAIL",
+                        help="ask Apple whether it will accept this Apple ID right now, without a password")
+    parser.add_argument("--force", action="store_true", help="sign in even if Apple asked to wait")
     parser.add_argument("--pairing", metavar="FILE", help="stage an existing pairing file")
     parser.add_argument("--find-pairing", action="store_true", help="look for pairing files already on this PC")
     args = parser.parse_args(argv)
 
     wanted = (args.devices, args.download, args.pair, args.send_pairing, args.install is not None,
-              args.pairing, args.find_pairing, args.sign_in, bool(args.apple_id))
+              args.pairing, args.find_pairing, args.sign_in, bool(args.apple_id),
+              bool(args.check_apple_id))
     if not any(wanted):
         if args.cli:
             report_environment()
@@ -493,13 +497,21 @@ def main(argv=None):
         say("Copied %s into SuperStore's Documents folder." % pairing)
         say("")
 
+    if args.check_apple_id:
+        if not SIGNING_SUPPORT:
+            say("Signing support is unavailable in this build.")
+            return 1
+        result = apple.check_apple_id(args.check_apple_id)
+        say(result["message"])
+        return 0 if result["ok"] else 1
+
     if args.sign_in or args.apple_id:
         import getpass
 
         email = (args.apple_id or input("Apple ID: ")).strip()
         login = apple.AppleLogin(email)
         try:
-            login.begin(getpass.getpass("Password: "))
+            login.begin(getpass.getpass("Password: "), force=args.force)
         except apple.TwoFactorRequired:
             login.two_factor(input("Two-factor code: ").strip())
         except apple.AppleError as error:
@@ -806,6 +818,7 @@ class SetupApp:
         self.stable_note = ""
         self.pending_install = False
         self.busy = False
+        self.force_sign_in = False
         self.polling = False
         self.last_serial = None
 
@@ -870,6 +883,11 @@ class SetupApp:
                                  before=self.build_account)
         self.sign_button = Button(account_step["actions"], "Sign in", self.on_sign_in)
         self.sign_button.pack(side="left")
+        self.check_button = Button(account_step["actions"], "Check Apple", self.on_check_apple,
+                                   kind="secondary", width=130)
+        self.check_button.pack(side="left", padx=(px(8), 0))
+        self.force_button = Button(account_step["actions"], "Try anyway", self.on_force,
+                                   kind="secondary", width=120)
         self.account_status = account_step["status"]
 
         pair_step = self.step(steps, "3", "Pair your iPhone",
@@ -958,6 +976,36 @@ class SetupApp:
         entry.pack(side="left", ipady=px(4), padx=(px(4), 0))
         return row, entry
 
+    def on_check_apple(self):
+        if self.busy or not SIGNING_SUPPORT:
+            return
+        email = self.account_email.get().strip()
+        if "@" not in email:
+            self.account_status.configure(
+                text="Enter the Apple ID you use for Xcode or the App Store, then check again.", fg=ERR)
+            return
+        self.set_busy(True)
+        self.account_status.configure(text="Asking Apple whether it will talk to this PC…", fg=MUTED)
+
+        def work():
+            return apple.check_apple_id(email)
+
+        def done(result):
+            self.set_busy(False)
+            self.account_status.configure(text=result["message"], fg=OK if result["ok"] else WARN)
+            self.log(result["message"], "ok" if result["ok"] else "info")
+            if result["ok"]:
+                self.force_button.pack_forget()
+
+        self.spawn(work, done, self.sign_in_failed)
+
+    def on_force(self):
+        if self.busy:
+            return
+        self.force_sign_in = True
+        self.force_button.pack_forget()
+        self.on_sign_in()
+
     def on_sign_in(self):
         if self.busy or not SIGNING_SUPPORT:
             return
@@ -990,7 +1038,7 @@ class SetupApp:
                     if not password:
                         raise apple.AppleError("Enter the Apple ID password in step 2.")
                     try:
-                        self.login.begin(password)
+                        self.login.begin(password, force=self.force_sign_in)
                     except apple.TwoFactorRequired as need:
                         self.post(self.ask_for_code, str(need))
                         return "code"
@@ -1029,6 +1077,8 @@ class SetupApp:
         message = str(error) or "Apple refused the sign-in."
         self.account_status.configure(text=message, fg=ERR)
         self.log(message, "error")
+        if isinstance(error, apple.ThrottleHold) and not self.busy:
+            self.force_button.pack(side="left", padx=(px(8), 0))
 
     def restore_identity(self):
         if not SIGNING_SUPPORT or self.identity is not None or not self.device:
@@ -1131,6 +1181,7 @@ class SetupApp:
         self.install_button.set_enabled(ready)
         self.choose_button.set_enabled(not self.busy)
         self.sign_button.set_enabled(SIGNING_SUPPORT and not self.busy and self.identity is None)
+        self.check_button.set_enabled(SIGNING_SUPPORT and not self.busy)
 
     def poll_devices(self):
         if DEVICE_SUPPORT and not self.polling and not self.busy:
