@@ -720,33 +720,6 @@ private extension SettingsViewController
             }
         }
     }
-    func openMastodon(username: String)
-    {
-        let components = username.split(separator: "@")
-        guard components.count == 2 else { return }
-        let server = String(components[1])
-        let username = "@" + String(components[0])
-        guard let serverURL = URL(string: "https://" + server) else { return }
-        let mastodonURL = serverURL.appendingPathComponent(username)
-        UIApplication.shared.open(mastodonURL, options: [:])
-    }
-    func openThreads(username: String)
-    {
-        let safariURL = URL(string: "https://www.threads.net/@" + username)!
-        UIApplication.shared.open(safariURL, options: [:])
-    }
-    @IBAction func followAltStoreMastodon()
-    {
-        self.openMastodon(username: "@sidestoreio@fosstodon.org")
-    }
-    @IBAction func followAltStoreThreads()
-    {
-        self.openThreads(username: "sidestore.io")
-    }
-    @IBAction func followAltStoreTwitter()
-    {
-        self.openTwitter(username: "sidestoreio")
-    }
     @IBAction func followAltStoreGitHub()
     {
         UIApplication.shared.open(AppConstants.URLs.sideStoreGitHub, options: [:])
@@ -1031,9 +1004,6 @@ extension SettingsViewController
                 let alertController = UIAlertController(title: "Send Feedback", message: "Choose a method to send feedback:", preferredStyle: .actionSheet)
                 alertController.addAction(UIAlertAction(title: "GitHub", style: .default) { _ in
                     self.openWebURL(AppConstants.URLs.sideStoreIssues, preferredTintColor: .altPrimary)
-                })
-                alertController.addAction(UIAlertAction(title: "Discord", style: .default) { _ in
-                    self.openWebURL(AppConstants.URLs.sideStoreDiscord, preferredTintColor: .altPrimary)
                 })
                 #if !os(tvOS)
                 if let supportEmail = AppConstants.Brand.supportEmail {

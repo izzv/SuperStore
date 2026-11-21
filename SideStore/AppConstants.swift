@@ -142,7 +142,6 @@ public enum AppConstants {
         public static let sideStoreWebsite          = URL(string: "https://izzv.github.io/SuperStore/")!
         public static let sideStoreGitHub           = URL(string: "https://github.com/izzv/SuperStore")!
         public static let sideStoreIssues           = URL(string: "https://github.com/izzv/SuperStore/issues")!
-        public static let sideStoreDiscord          = URL(string: "https://discord.gg/sidestore-949183273383395328")!
     }
 
     public enum Minimuxer {
