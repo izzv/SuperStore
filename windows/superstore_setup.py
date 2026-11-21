@@ -1012,6 +1012,7 @@ class SetupApp:
 
     def signed_in(self, identity):
         if identity == "code":
+            self.set_busy(False)
             return
         self.identity = identity
         self.code_row.pack_forget()
