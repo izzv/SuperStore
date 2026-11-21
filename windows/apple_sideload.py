@@ -18,6 +18,7 @@ import plistlib
 import secrets
 import time
 import gzip
+import json
 import uuid
 import zlib
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.serialization import pkcs12
 from cryptography.x509.oid import NameOID
 
@@ -38,6 +40,7 @@ TRUSTED_DEVICE = "https://gsa.apple.com/auth/verify/trusteddevice"
 SMS_PUT = "https://gsa.apple.com/auth/verify/phone/put?mode=sms"
 SMS_VALIDATE = "https://gsa.apple.com/auth/verify/phone/securitycode?referrer=/auth/verify/phone/put"
 XCODE_VERSION = "14.2 (14C18)"
+CLIENT_ID = "XABBG36SBA"
 TWO_FACTOR_MODES = ("trustedDeviceSecondaryAuth", "secondaryAuth")
 INCORRECT_CODE = -21669
 DEVELOPER = "https://developerservices2.apple.com/services/QH65B2/ios"
@@ -371,6 +374,8 @@ class AppleLogin:
         self._code = None
         self._password = ""
         self._identity_token = ""
+        self.payload = {}
+        self.app_token = ""
         self._mode = ""
         self._code_submitted = False
 
@@ -506,6 +511,7 @@ class AppleLogin:
         clear_attempts(self.apple_id)
         self._code_submitted = False
         self._password = ""
+        self.payload = payload
         return self._session(answer, payload)
 
     def _request_code(self):
@@ -562,6 +568,46 @@ class AppleLogin:
                     "fresh one and enter only the six digits."
                 )
             raise AppleError(status.get("em") or "Apple refused the code.")
+
+    def app_tokens(self, app="com.apple.gs.xcode.auth"):
+        """Exchanges the Apple ID session for the Xcode token the developer service wants."""
+        if self.app_token:
+            return self.app_token
+        payload = self.payload or {}
+        session_key = payload.get("sk")
+        cookie = payload.get("c")
+        idms = payload.get("GsIdmsToken")
+        adsid = payload.get("adsid") or self.dsid
+        if not isinstance(session_key, bytes) or not session_key:
+            raise AppleError("Apple did not hand back the session key the developer service needs.")
+        checksum = hmac.new(session_key, b"apptokens" + str(adsid).encode() + app.encode(), hashlib.sha256).digest()
+        answer = self._gsa(
+            {
+                "u": adsid,
+                "app": [app],
+                "c": cookie,
+                "t": idms,
+                "checksum": checksum,
+                "o": "apptokens",
+            }
+        )
+        status = answer.get("Status") or {}
+        if status.get("ec"):
+            record_diagnostic("apptokens", self.apple_id, status, self.anisette.server)
+            raise AppleError(explain(status))
+        sealed = answer.get("et")
+        if not isinstance(sealed, bytes) or len(sealed) < 35:
+            raise AppleError("Apple returned no developer token.")
+        if sealed[:3] != b"XYZ":
+            raise AppleError("Apple returned a developer token in an unknown format.")
+        plain = AESGCM(session_key).decrypt(sealed[3:19], sealed[19:], b"XYZ")
+        tokens = self._plist_from(plain)
+        entry = (tokens.get("t") or {}).get(app) or {}
+        token = entry.get("token") if isinstance(entry, dict) else None
+        if not token:
+            raise AppleError("Apple's developer token did not contain a usable value.")
+        self.app_token = str(token)
+        return self.app_token
 
     def _session(self, answer, payload=None):
         decoded = payload or {}
@@ -839,32 +885,71 @@ class Developer:
 
     def _post(self, action, payload):
         body = {
-            "clientId": "XABBG36SBA",
+            "clientId": CLIENT_ID,
             "protocolVersion": "QH65B2",
             "requestId": str(uuid.uuid4()).upper(),
-            "userLocale": ["en_US"],
-            "DTDK_Platform": "ios",
         }
         body.update(payload)
         headers = {
             "Content-Type": "text/x-xml-plist",
-            "Accept": "*/*",
-            "User-Agent": self.login.anisette.user_agent,
-            "X-Mme-Client-Info": self.login.anisette.client_info,
-            "X-Apple-DS-ID": self.login.dsid,
-            "X-Apple-Identity-Token": self.login.token,
+            "Accept": "text/x-xml-plist",
+            "Accept-Language": "en-us",
+            "User-Agent": "Xcode",
+            "X-Apple-App-Info": "com.apple.gs.xcode.auth",
+            "X-Xcode-Version": XCODE_VERSION,
+            "X-Apple-I-Identity-Id": self.login.dsid,
+            "X-Apple-GS-Token": self.login.app_token or self.login.token,
         }
         headers.update(self.login.anisette.headers)
-        response = http().post("%s/%s" % (DEVELOPER, action), data=plistlib.dumps(body), headers=headers, timeout=60)
+        url = "%s/%s?clientId=%s" % (DEVELOPER, action, CLIENT_ID)
+        response = http().post(url, data=plistlib.dumps(body), headers=headers, timeout=60)
         if response.status_code >= 400:
-            raise AppleError("Apple's developer service answered HTTP %s for %s." % (response.status_code, action))
+            snippet = response.text[:300].replace("\n", " ")
+            record_diagnostic(
+                "developer %s" % action,
+                self.login.apple_id,
+                {"ec": response.status_code, "em": snippet},
+                self.login.anisette.server,
+            )
+            raise AppleError(
+                "Apple's developer service answered HTTP %s for %s: %s"
+                % (response.status_code, action, snippet[:160])
+            )
         try:
             parsed = plistlib.loads(response.content)
         except Exception:
-            raise AppleError("Apple's developer service sent an unexpected answer for %s." % action)
+            parsed = None
+        if not isinstance(parsed, dict):
+            try:
+                parsed = json.loads(response.content.decode("utf-8", "replace"))
+            except Exception:
+                parsed = None
+        if not isinstance(parsed, dict):
+            snippet = response.text[:300].replace("\n", " ")
+            record_diagnostic(
+                "developer %s" % action,
+                self.login.apple_id,
+                {
+                    "ec": response.status_code,
+                    "em": "not a plist",
+                    "content-type": response.headers.get("Content-Type"),
+                    "body": snippet,
+                },
+                self.login.anisette.server,
+            )
+            raise AppleError(
+                "Apple's developer service sent %s for %s: %s"
+                % (response.headers.get("Content-Type") or "an unknown document", action, snippet[:160])
+            )
         code = parsed.get("resultCode")
         if code not in (None, 0):
             message = parsed.get("userString") or parsed.get("resultString") or "resultCode %s" % code
+            record_diagnostic(
+                "developer %s" % action,
+                self.login.apple_id,
+                {"ec": code, "em": message},
+                self.login.anisette.server,
+            )
             raise AppleError("%s (while calling %s)" % (message, action))
         return parsed
 
@@ -965,6 +1050,8 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
             on_status(message)
 
     developer = Developer(login)
+    say("Asking Apple for an Xcode session…")
+    login.app_tokens()
     say("Looking up your developer team…")
     team = developer.teams()[0]
     say("Registering this iPhone with %s…" % (team["name"] or team["id"]))
