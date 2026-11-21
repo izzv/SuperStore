@@ -35,7 +35,6 @@ public enum AppConstants {
     }
     public enum Sources {
         public static let fetchTimeout: TimeInterval  = 3.0
-        public static let defaultSourcesURL           = URL(string: "https://sidestore.io/default-sources")!
         public static let sideStoreCommunitySourceURL = URL(string: "https://izzv.github.io/SuperStore/source.json")!
         public static let sideStoreFallbackIconURL    = URL(string: "https://izzv.github.io/SuperStore/assets/icon.png")!
         public static let sideStoreWebsite            = URL(string: "https://izzv.github.io/SuperStore")!
@@ -137,8 +136,8 @@ public enum AppConstants {
         public static let appleAuthDevices          = Constants.URLs.appleAuthDevices
         public static let appleAccount              = URL(string: "https://account.apple.com")!
 
-        public static let pairingDocumentation      = URL(string: "https://docs.sidestore.io/docs/advanced/pairing-file")!
-        public static let errorCodesDocumentation   = URL(string: "https://docs.sidestore.io/docs/troubleshooting/error-codes")!
+        public static let pairingDocumentation      = URL(string: "https://izzv.github.io/SuperStore/downloads/")!
+        public static let errorCodesDocumentation   = URL(string: "https://izzv.github.io/SuperStore/")!
         public static let sideStoreWebsite          = URL(string: "https://izzv.github.io/SuperStore/")!
         public static let sideStoreGitHub           = URL(string: "https://github.com/izzv/SuperStore")!
         public static let sideStoreIssues           = URL(string: "https://github.com/izzv/SuperStore/issues")!

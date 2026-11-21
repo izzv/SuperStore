@@ -16,7 +16,7 @@ class AddSourceTextFieldCell: UICollectionViewCell
     {
         self.textField = UITextField(frame: frame)
         self.textField.translatesAutoresizingMaskIntoConstraints = false
-        self.textField.placeholder = "apps.sidestore.io"
+        self.textField.placeholder = "izzv.github.io/SuperStore/source.json"
         self.textField.textContentType = .URL
 
         self.textField.returnKeyType = .done

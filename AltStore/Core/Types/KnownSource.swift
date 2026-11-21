@@ -12,6 +12,13 @@ public struct KnownSource: Decodable
     public var identifier: String
     public var sourceURL: URL?
     public var bundleIDs: [String]?
+
+    public init(identifier: String, sourceURL: URL?, bundleIDs: [String]? = nil)
+    {
+        self.identifier = identifier
+        self.sourceURL = sourceURL
+        self.bundleIDs = bundleIDs
+    }
 }
 
 private extension KnownSource

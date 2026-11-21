@@ -12,7 +12,7 @@ import SideSign
 public final class MaintenanceManager {
     public static let shared = MaintenanceManager()
 
-    public static let currentMaintenanceCounter = 8
+    public static let currentMaintenanceCounter = 9
 
     public static let maintenanceCounterFileName = ".maintenance_counter"
 
@@ -75,6 +75,8 @@ public final class MaintenanceManager {
                 SideSignConfigManager.shared.resetToDefaults()
             case 7:
                 await migratePairingFiles()
+            case 9:
+                await removeSideStoreBranding()
             default:
                 break
             }
@@ -173,6 +175,42 @@ private extension MaintenanceManager {
         } catch {
             try? fileManager.removeItem(at: stagingDirectory)
             debugLog("[MaintenanceManager] Failed to import SideStore database: \(error)")
+        }
+    }
+
+    func removeSideStoreBranding() async {
+        let context = DatabaseManager.shared.viewContext
+        await context.perform {
+            let sourceRequest: NSFetchRequest<Source> = Source.fetchRequest()
+            let sources = (try? context.fetch(sourceRequest)) ?? []
+            let brandedSources = sources.filter { source in
+                guard let host = source.sourceURL.host?.lowercased() else { return false }
+                return host == "sidestore.io" || host.hasSuffix(".sidestore.io")
+            }
+            let sourceIDs = Set(brandedSources.map { $0.objectID })
+
+            let newsRequest: NSFetchRequest<NewsItem> = NewsItem.fetchRequest()
+            let newsItems = (try? context.fetch(newsRequest)) ?? []
+            let brandedNews = newsItems.filter { item in
+                if let source = item.source, sourceIDs.contains(source.objectID) { return true }
+                let text = item.title + " " + item.caption
+                return text.localizedCaseInsensitiveContains("sidestore")
+            }
+            guard !brandedSources.isEmpty || !brandedNews.isEmpty else { return }
+
+            for item in brandedNews {
+                context.delete(item)
+            }
+            for source in brandedSources {
+                context.delete(source)
+            }
+
+            do {
+                try context.save()
+                debugLog("[MaintenanceManager] Removed \(brandedSources.count) SideStore source(s) and \(brandedNews.count) news item(s).")
+            } catch {
+                debugLog("[MaintenanceManager] Failed to remove SideStore branding from the database: \(error)")
+            }
         }
     }
 
