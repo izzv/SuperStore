@@ -135,6 +135,8 @@
     border-radius: 999px;
   }
 
+  .tag-win { background: var(--lav); color: #1e1b4b; }
+
   .d { color: var(--dim); }
   .s { color: var(--muted); margin-left: auto; white-space: nowrap; }
 
@@ -206,6 +208,17 @@
   <section>
     <div class="list" id="list">
       <a class="row fallback" href="SuperStore.ipa" download>Download the latest build</a>
+    </div>
+  </section>
+
+  <section id="windows" hidden>
+    <div class="list">
+      <div class="row">
+        <span class="v">SuperStore Setup</span>
+        <span class="tag tag-win">Windows</span>
+        <span class="s">Gets the IPA and stages your pairing file</span>
+        <a class="btn" href="SuperStore-Setup.exe" download>Download .exe</a>
+      </div>
     </div>
   </section>
 
@@ -299,6 +312,15 @@
         updatedMeta.hidden = false;
       }
     }).catch(function () { /* keep the single fallback link */ });
+  })();
+
+  (function () {
+    var section = document.getElementById('windows');
+    if (!section) { return; }
+
+    fetch('SuperStore-Setup.exe', { method: 'HEAD' }).then(function (response) {
+      if (response.ok) { section.hidden = false; }
+    }).catch(function () { /* the Windows build is not published yet */ });
   })();
 </script>
 
