@@ -153,6 +153,10 @@ private extension SourcesViewController
         fetchRequest.returnsObjectsAsFaults = false
         fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \Source.name, ascending: true),
                                         NSSortDescriptor(keyPath: \Source.identifier, ascending: true)]
+        if let hiddenSourceIdentifiers = UserDefaults.standard.hiddenSourceIdentifiers, !hiddenSourceIdentifiers.isEmpty
+        {
+            fetchRequest.predicate = NSPredicate(format: "NOT (%K IN %@)", #keyPath(Source.identifier), hiddenSourceIdentifiers)
+        }
         let fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: DatabaseManager.shared.viewContext, sectionNameKeyPath: nil, cacheName: nil)
         fetchedResultsController.delegate = self
         let dataSource = FetchedResultsCollectionViewPrefetchingDataSource<Source, UIImage>(fetchedResultsController: fetchedResultsController)

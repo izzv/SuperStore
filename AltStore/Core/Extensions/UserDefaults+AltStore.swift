@@ -385,6 +385,10 @@ public extension UserDefaults
         get { self.stringArray(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
+    @objc var hiddenSourceIdentifiers: [String]? {
+        get { self.stringArray(forKey: #function) }
+        set { self.set(newValue, forKey: #function) }
+    }
     @objc var defaultSourceIDs: [String]? {
         get { self.stringArray(forKey: "defaultSourceIDs") }
         set { self.set(newValue, forKey: "defaultSourceIDs") }

@@ -144,11 +144,14 @@ private extension BrowseViewController
     {
         let fetchRequest = StoreApp.fetchRequest() as NSFetchRequest<StoreApp>
         fetchRequest.returnsObjectsAsFaults = false
-        let predicate = StoreApp.visibleAppsPredicate
+        var predicates = [StoreApp.visibleAppsPredicate]
+        if let hiddenSourceIdentifiers = UserDefaults.standard.hiddenSourceIdentifiers, !hiddenSourceIdentifiers.isEmpty
+        {
+            predicates.append(NSPredicate(format: "NOT (%K IN %@)", #keyPath(StoreApp.sourceIdentifier), hiddenSourceIdentifiers))
+        }
         if let source = self.source
         {
-            let filterPredicate = NSPredicate(format: "%K == %@", #keyPath(StoreApp._source), source)
-            fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [filterPredicate, predicate])
+            predicates.append(NSPredicate(format: "%K == %@", #keyPath(StoreApp._source), source))
         }
         else if let category = self.category
         {
@@ -156,12 +159,9 @@ private extension BrowseViewController
             case .other: StoreApp.otherCategoryPredicate
             default: NSPredicate(format: "%K == %@", #keyPath(StoreApp._category), category.rawValue)
             }
-            fetchRequest.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, predicate])
+            predicates.append(categoryPredicate)
         }
-        else
-        {
-            fetchRequest.predicate = predicate
-        }
+        fetchRequest.predicate = predicates.count == 1 ? predicates[0] : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
         var sortDescriptors = [NSSortDescriptor(keyPath: \StoreApp.name, ascending: true),
                                NSSortDescriptor(keyPath: \StoreApp.bundleIdentifier, ascending: true),
                                NSSortDescriptor(keyPath: \StoreApp.sourceIdentifier, ascending: true)]

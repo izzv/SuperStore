@@ -90,6 +90,10 @@ public extension NewsItem
         {
             fetchRequest.predicate = NSPredicate(format: "%K == %@", #keyPath(NewsItem.source), source)
         }
+        else if let hiddenSourceIdentifiers = UserDefaults.standard.hiddenSourceIdentifiers, !hiddenSourceIdentifiers.isEmpty
+        {
+            fetchRequest.predicate = NSPredicate(format: "NOT (%K IN %@)", #keyPath(NewsItem.sourceIdentifier), hiddenSourceIdentifiers)
+        }
         return fetchRequest
     }
 }

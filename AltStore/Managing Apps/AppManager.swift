@@ -244,7 +244,8 @@ final class AppManager: ObservableObject, @unchecked Sendable
             let managedObjectContext = DatabaseManager.shared.persistentContainer.newBackgroundContext()
             var sourceData = [(objectID: NSManagedObjectID, sourceURL: URL)]()
             managedObjectContext.performAndWait {
-                let sources = Source.all(in: managedObjectContext)
+                let hidden = UserDefaults.standard.hiddenSourceIdentifiers ?? []
+                let sources = Source.all(in: managedObjectContext).filter { !hidden.contains($0.identifier) }
                 sourceData = sources.map { ($0.objectID, $0.sourceURL) }
             }
             guard !sourceData.isEmpty else {

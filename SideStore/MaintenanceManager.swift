@@ -190,15 +190,31 @@ private extension MaintenanceManager {
             }
             guard !brandedSources.isEmpty else { return }
 
+            var hidden = UserDefaults.standard.hiddenSourceIdentifiers ?? []
+            var removed = 0
             for source in brandedSources {
-                context.delete(source)
+                for newsItem in source.newsItems {
+                    context.delete(newsItem)
+                }
+
+                let hasInstalledApps = source.apps.contains { $0.installedApp != nil }
+                if hasInstalledApps {
+                    if !hidden.contains(source.identifier) {
+                        hidden.append(source.identifier)
+                    }
+                } else {
+                    context.delete(source)
+                    removed += 1
+                    hidden.removeAll { $0 == source.identifier }
+                }
             }
+            UserDefaults.standard.hiddenSourceIdentifiers = hidden
 
             do {
                 try context.save()
-                debugLog("[MaintenanceManager] Removed \(brandedSources.count) SideStore source(s) and their news.")
+                debugLog("[MaintenanceManager] Cleared the news of \(brandedSources.count) SideStore source(s), removed \(removed) and hid \(brandedSources.count - removed).")
             } catch {
-                debugLog("[MaintenanceManager] Failed to remove the SideStore sources: \(error)")
+                debugLog("[MaintenanceManager] Failed to clear the SideStore sources: \(error)")
             }
         }
     }
