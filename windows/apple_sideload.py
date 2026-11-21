@@ -49,6 +49,7 @@ DEVELOPER = "https://developerservices2.apple.com/services/QH65B2"
 DEVELOPER_SERVICES = "https://developerservices2.apple.com/services"
 XCODE_API_VERSION = "16.2 (16C5031c)"
 APP_GROUP_FEATURE = "APG3427HIY"
+APP_GROUP_ENTITLEMENT = "com.apple.security.application-groups"
 ANISETTE_SERVERS = (
     "https://anisette.lillq.me",
     "https://new.ani.sidestore.io",
@@ -824,6 +825,9 @@ class Identity:
     def days_left(self):
         return max(0.0, (self.expires() - time.time()) / 86400.0)
 
+    def app_groups(self):
+        return profile_groups(self.profile)
+
 
 def read_profile(data):
     start = data.find(b"<?xml")
@@ -831,6 +835,21 @@ def read_profile(data):
     if start < 0 or end < 0:
         raise AppleError("The provisioning profile Apple returned could not be read.")
     return plistlib.loads(data[start : end + len(b"</plist>")])
+
+
+def group_handles(entry, identifier):
+    """The identifier, plus the internal id Apple sometimes wants, for one app group."""
+    handles = [identifier]
+    other = str(entry.get("applicationGroup") or "")
+    if other and other != identifier:
+        handles.append(other)
+    return handles
+
+
+def profile_groups(profile):
+    """The app groups the profile Apple issued actually authorises."""
+    entitlements = read_profile(profile).get("Entitlements") or {}
+    return [str(group) for group in entitlements.get(APP_GROUP_ENTITLEMENT) or []]
 
 
 def identity_path(apple_id, team_id=""):
@@ -865,6 +884,8 @@ def load_identity_for(udid, apple_id=""):
         if identity.days_left() * 86400 < PROFILE_LEEWAY:
             continue
         if not identity.covers(udid):
+            continue
+        if not identity.app_groups():
             continue
         return identity
     return None
@@ -1043,18 +1064,18 @@ class Developer:
         listed = self._legacy("ios/listApplicationGroups.action", {})
         for entry in listed.get("applicationGroupList") or []:
             if isinstance(entry, dict) and entry.get("identifier") == identifier:
-                return str(entry.get("applicationGroup") or "")
+                return group_handles(entry, identifier)
         created = self._legacy("ios/addApplicationGroup.action", {"identifier": identifier, "name": name})
-        group = created.get("applicationGroup") or {}
-        return str(group.get("applicationGroup") or "")
+        return group_handles(created.get("applicationGroup") or {}, identifier)
 
-    def enable_app_group(self, app_id, group_id):
+    def enable_app_group(self, app_id):
         self._legacy("ios/updateAppId.action", {"appIdId": app_id, APP_GROUP_FEATURE: True})
-        if group_id:
-            self._legacy("ios/assignApplicationGroupToAppId.action", {
-                "appIdId": app_id,
-                "applicationGroups": [group_id],
-            })
+
+    def assign_app_group(self, app_id, handle, as_list):
+        self._legacy("ios/assignApplicationGroupToAppId.action", {
+            "appIdId": app_id,
+            "applicationGroups": [handle] if as_list else handle,
+        })
 
     def certificate(self, apple_id):
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -1143,17 +1164,38 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
     if not resource:
         raise AppleError("Apple did not return an app identifier for %s." % bundle_id)
     say("Linking the app group SuperStore keeps its database in…")
+    group_identifier = "group.%s" % bundle_id
     try:
-        group = developer.app_group("group.%s" % bundle_id, app_name)
-        developer.enable_app_group(resource, group)
+        handles = developer.app_group(group_identifier, app_name)
+        developer.enable_app_group(resource)
     except AppleError as error:
-        say("Apple would not add the app group (%s). The app needs it to store data." % error)
+        raise AppleError(
+            "Apple would not enable the app group %s (%s). SuperStore refuses to start without "
+            "it, so nothing was installed." % (group_identifier, error)
+        )
     say("Requesting a development certificate…")
     p12, certificate = developer.certificate(login.apple_id)
     if not certificate:
         raise AppleError("Apple did not return a certificate identifier.")
     say("Fetching the provisioning profile…")
-    profile = developer.profile(resource, certificate, device, bundle_id.rsplit(".", 1)[-1])
+    profile = None
+    for handle in handles:
+        for as_list in (False, True):
+            try:
+                developer.assign_app_group(resource, handle, as_list)
+            except AppleError:
+                continue
+            candidate = developer.profile(resource, certificate, device, bundle_id.rsplit(".", 1)[-1])
+            if group_identifier in profile_groups(candidate):
+                profile = candidate
+                break
+        if profile is not None:
+            break
+    if profile is None:
+        raise AppleError(
+            "Apple's profile for this iPhone does not include %s, so SuperStore would refuse to "
+            "start. Nothing was installed." % group_identifier
+        )
     identity = Identity(
         apple_id=login.apple_id,
         team_id=team["id"],
