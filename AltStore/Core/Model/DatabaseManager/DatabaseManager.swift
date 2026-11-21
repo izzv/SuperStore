@@ -188,6 +188,10 @@ public class DatabaseManager: @unchecked Sendable
             if let app = StoreApp.first(satisfying: NSPredicate(format: "%K == %@", #keyPath(StoreApp.bundleIdentifier), StoreApp.altstoreAppID), in: context)
             {
                 storeApp = app
+                if app.sourceIdentifier != altStoreSource.identifier
+                {
+                    app.source = altStoreSource
+                }
             }
             else
             {
@@ -240,6 +244,11 @@ public class DatabaseManager: @unchecked Sendable
                     installedApp.releaseTrack = trackEntity
                 }
             }
+            if installedApp.storeApp !== storeApp
+            {
+                installedApp.storeApp = storeApp
+            }
+
             var installedExtensions = Set<InstalledExtension>()
             for appExtension in localAppBundle.appExtensions
             {
