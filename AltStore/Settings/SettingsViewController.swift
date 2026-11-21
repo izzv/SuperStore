@@ -1235,25 +1235,27 @@ extension SettingsViewController
                 
                 #if !os(tvOS)
                 // Option 3: Mail
-                alertController.addAction(UIAlertAction(title: "Send Email", style: .default) { _ in
-                    if MFMailComposeViewController.canSendMail() {
-                        let mailViewController = MFMailComposeViewController()
-                        mailViewController.mailComposeDelegate = self
-                        mailViewController.setToRecipients(["support@sidestore.io"])
+                if let supportEmail = AppConstants.Brand.supportEmail {
+                    alertController.addAction(UIAlertAction(title: "Send Email", style: .default) { _ in
+                        if MFMailComposeViewController.canSendMail() {
+                            let mailViewController = MFMailComposeViewController()
+                            mailViewController.mailComposeDelegate = self
+                            mailViewController.setToRecipients([supportEmail])
 
-                        // TODO: MARKETING_VERSION is going to be set anyways so this needs to be fixed for beta
-                        if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
-                            mailViewController.setSubject("SideStore Beta \(version) Feedback")
+                            // TODO: MARKETING_VERSION is going to be set anyways so this needs to be fixed for beta
+                            if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
+                                mailViewController.setSubject("SuperStore Beta \(version) Feedback")
+                            } else {
+                                mailViewController.setSubject("SuperStore Beta Feedback")
+                            }
+
+                           self.present(mailViewController, animated: true, completion: nil)
                         } else {
-                            mailViewController.setSubject("SideStore Beta Feedback")
+                          let toastView = ToastView(text: NSLocalizedString("Cannot Send Mail", comment: ""), detailText: nil)
+                          toastView.show(in: self)
                         }
-
-                       self.present(mailViewController, animated: true, completion: nil)
-                    } else {
-                      let toastView = ToastView(text: NSLocalizedString("Cannot Send Mail", comment: ""), detailText: nil)
-                      toastView.show(in: self)
-                    }
-                })
+                    })
+                }
                 #endif
                 
                 // Cancel action

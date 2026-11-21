@@ -45,8 +45,13 @@ final class PatreonViewController: UICollectionViewController, UICollectionViewD
     func prepare(_ headerView: AboutPatreonHeaderView)
     {
         headerView.layoutMargins = self.view.layoutMargins
+
+        // Driven entirely by AppConstants.Brand: unconfigured links hide their button.
+        headerView.supportButton.isHidden = AppConstants.Brand.patreonURL == nil
         headerView.supportButton.addTarget(self, action: #selector(PatreonViewController.openPatreonURL(_:)), for: .primaryActionTriggered)
+        headerView.twitterButton.isHidden = AppConstants.Brand.twitterURL == nil
         headerView.twitterButton.addTarget(self, action: #selector(PatreonViewController.openTwitterURL(_:)), for: .primaryActionTriggered)
+        headerView.instagramButton.isHidden = AppConstants.Brand.instagramURL == nil
         headerView.instagramButton.addTarget(self, action: #selector(PatreonViewController.openInstagramURL(_:)), for: .primaryActionTriggered)
     }
     
@@ -69,20 +74,20 @@ final class PatreonViewController: UICollectionViewController, UICollectionViewD
 
     @objc func openPatreonURL(_ sender: UIButton)
     {
-        let patreonURL = URL(string: "https://www.patreon.com/SideStoreIO")!
+        guard let patreonURL = AppConstants.Brand.patreonURL else { return }
         self.openWebURL(patreonURL, preferredTintColor: self.view.tintColor)
     }
     
     @objc func openTwitterURL(_ sender: UIButton)
     {
-        let twitterURL = URL(string: "https://twitter.com/sidestoreio")!
+        guard let twitterURL = AppConstants.Brand.twitterURL else { return }
         self.openWebURL(twitterURL, preferredTintColor: self.view.tintColor)
     }
     
     @objc func openInstagramURL(_ sender: UIButton)
     {
-        let twitterURL = URL(string: "https://instagram.com/sidestore.io")!
-        self.openWebURL(twitterURL, preferredTintColor: self.view.tintColor)
+        guard let instagramURL = AppConstants.Brand.instagramURL else { return }
+        self.openWebURL(instagramURL, preferredTintColor: self.view.tintColor)
     }
 }
 

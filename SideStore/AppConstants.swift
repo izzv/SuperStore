@@ -124,6 +124,23 @@ public enum AppConstants {
         public static let userAgent               = Constants.DeveloperServices.userAgent
     }
 
+    // MARK: - Brand
+
+    /// Branding and contact details for this fork. This is the single place
+    /// to edit them: the About screen and the feedback mail composer both
+    /// read from here. A nil value hides the matching control, so an
+    /// unfilled fork never ships a dead link.
+    public enum Brand {
+
+        /// Recipient for "Send Email" in Settings. nil hides that option.
+        public static let supportEmail: String? = nil
+
+        /// Buttons on the About screen. nil hides the button.
+        public static let patreonURL: URL?   = nil
+        public static let twitterURL: URL?   = nil
+        public static let instagramURL: URL? = nil
+    }
+
     public enum URLs {
         // Proxied upstream URLs from SideSign
         public static let developerAccount          = Constants.URLs.developerAccount
