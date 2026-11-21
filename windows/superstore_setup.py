@@ -1071,7 +1071,7 @@ class SetupApp:
             text="Signed in as %s  ·  certificate good for %d more days" % (identity.apple_id, int(identity.days_left())),
             fg=OK)
         self.log("Apple issued a certificate for this iPhone. Installs are signed on this PC now.", "ok")
-        self.refresh_buttons()
+        self.set_busy(False)
 
     def sign_in_failed(self, error):
         message = str(error) or "Apple refused the sign-in."
