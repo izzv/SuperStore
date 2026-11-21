@@ -47,6 +47,7 @@ INCORRECT_CODE = -21669
 DEVELOPER = "https://developerservices2.apple.com/services/QH65B2"
 DEVELOPER_SERVICES = "https://developerservices2.apple.com/services"
 XCODE_API_VERSION = "16.2 (16C5031c)"
+APP_GROUP_FEATURE = "APG3427HIY"
 ANISETTE_SERVERS = (
     "https://anisette.lillq.me",
     "https://new.ani.sidestore.io",
@@ -56,6 +57,7 @@ ANISETTE_SERVERS = (
     "https://ani2.stikstore.app",
 )
 ANISETTE_KEYS = ("X-Apple-I-MD", "X-Apple-I-MD-M", "X-Apple-I-MD-LU")
+PREFERRED_ANISETTE = os.environ.get("SUPERSTORE_ANISETTE", "").strip()
 P12_PASSWORD = "superstore"
 PROFILE_LEEWAY = 24 * 3600
 
@@ -449,7 +451,7 @@ class AppleLogin:
                 % MAX_ATTEMPTS
             )
         self._password = password
-        self.anisette = self.anisette or fetch_anisette()
+        self.anisette = self.anisette or fetch_anisette(PREFERRED_ANISETTE or None)
         self._srp = GrandSlamSrp()
         start = self._gsa({"A2k": self._srp.public_key(), "ps": ["s2k", "s2k_fo"], "u": self.apple_id, "o": "init"})
         status = start.get("Status") or {}
@@ -753,7 +755,7 @@ def clear_throttle(apple_id):
 def check_apple_id(apple_id, anisette=None):
     """Starts a sign-in and stops there, so a real attempt is only spent when Apple is listening."""
     apple_id = apple_id.strip()
-    anisette = anisette or fetch_anisette()
+    anisette = anisette or fetch_anisette(PREFERRED_ANISETTE or None)
     login = AppleLogin(apple_id, anisette)
     start = login._gsa(
         {"A2k": GrandSlamSrp().public_key(), "ps": ["s2k", "s2k_fo"], "u": login.apple_id, "o": "init"}
@@ -967,6 +969,8 @@ class Developer:
 
     def _legacy(self, action, payload):
         body = {"clientId": CLIENT_ID, "protocolVersion": "QH65B2", "requestId": str(uuid.uuid4()).upper()}
+        if self.team_id:
+            body["teamId"] = self.team_id
         body.update(payload)
         headers = {
             "Content-Type": "text/x-xml-plist",
@@ -1033,6 +1037,23 @@ class Developer:
             "data": {"type": "bundleIds", "attributes": {"identifier": identifier, "name": name[:50], "platform": "IOS"}},
         })
         return str((created.get("data") or {}).get("id") or "")
+
+    def app_group(self, identifier, name):
+        listed = self._legacy("ios/listApplicationGroups.action", {})
+        for entry in listed.get("applicationGroupList") or []:
+            if isinstance(entry, dict) and entry.get("identifier") == identifier:
+                return str(entry.get("applicationGroup") or "")
+        created = self._legacy("ios/addApplicationGroup.action", {"identifier": identifier, "name": name})
+        group = created.get("applicationGroup") or {}
+        return str(group.get("applicationGroup") or "")
+
+    def enable_app_group(self, app_id, group_id):
+        self._legacy("ios/updateAppId.action", {"appIdId": app_id, APP_GROUP_FEATURE: True})
+        if group_id:
+            self._legacy("ios/assignApplicationGroupToAppId.action", {
+                "appIdId": app_id,
+                "applicationGroups": [group_id],
+            })
 
     def certificate(self, apple_id):
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -1120,6 +1141,12 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
     resource = developer.bundle_id(bundle_id, app_name)
     if not resource:
         raise AppleError("Apple did not return an app identifier for %s." % bundle_id)
+    say("Linking the app group SuperStore keeps its database in…")
+    try:
+        group = developer.app_group("group.%s" % bundle_id, app_name)
+        developer.enable_app_group(resource, group)
+    except AppleError as error:
+        say("Apple would not add the app group (%s). The app needs it to store data." % error)
     say("Requesting a development certificate…")
     p12, certificate = developer.certificate(login.apple_id)
     if not certificate:

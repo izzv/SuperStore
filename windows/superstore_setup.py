@@ -410,9 +410,13 @@ def main(argv=None):
     parser.add_argument("--check-apple-id", metavar="EMAIL",
                         help="ask Apple whether it will accept this Apple ID right now, without a password")
     parser.add_argument("--force", action="store_true", help="sign in even if Apple asked to wait")
+    parser.add_argument("--anisette-server", metavar="URL",
+                        help="Anisette server to use, e.g. http://192.168.1.20:6969")
     parser.add_argument("--pairing", metavar="FILE", help="stage an existing pairing file")
     parser.add_argument("--find-pairing", action="store_true", help="look for pairing files already on this PC")
     args = parser.parse_args(argv)
+    if args.anisette_server:
+        apple.PREFERRED_ANISETTE = args.anisette_server.strip()
 
     wanted = (args.devices, args.download, args.pair, args.send_pairing, args.install is not None,
               args.pairing, args.find_pairing, args.sign_in, bool(args.apple_id),
@@ -964,6 +968,8 @@ class SetupApp:
         self.code_row, self.account_code = self.field(parent, "Code", 10)
         self.code_row.pack_forget()
         self.password_row = password_row
+        self.anisette_row, self.anisette_entry = self.field(parent, "Anisette", 28)
+        self.anisette_entry.insert(0, apple.PREFERRED_ANISETTE)
 
     def field(self, parent, label, width, secret=False):
         row = tk.Frame(parent, bg=CARD)
@@ -1023,6 +1029,7 @@ class SetupApp:
             return
         if password or code:
             self.log("Signing in as %s…" % email, "step")
+        apple.PREFERRED_ANISETTE = self.anisette_entry.get().strip()
         self.set_busy(True)
         self.account_status.configure(text="Talking to Apple…", fg=MUTED)
         serial = self.device["serial"]

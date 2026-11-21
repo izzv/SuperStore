@@ -56,7 +56,13 @@ certificate and a provisioning profile for the connected iPhone, and signs the
 - Apple's sign-in needs machine attestation ("anisette") that Windows cannot
   produce on its own, so the helper asks an anisette server for it. The server
   sees the machine identity, never the Apple ID or the password. The list is at
-  the top of `apple_sideload.py`; the first one that answers is used.
+  the top of `apple_sideload.py`; the first one that answers is used. To use your
+  own, type its address in the `Anisette` field (or pass `--anisette-server`),
+  and see `anisette/README.md` for hosting one on this PC.
+- The profile Apple issues has to carry the app group SuperStore keeps its
+  database in, so the helper registers `group.<bundle id>` on the team, turns the
+  app group capability on for the app id and links the two before asking for the
+  profile. Without it iOS starts the app and it refuses to open its container.
 - Apple's own error text is shown in the window, so a rejection is legible
   rather than a silent failure.
 - A "try again later" refusal is Apple throttling the ID, not a password
