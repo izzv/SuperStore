@@ -6,6 +6,32 @@
   "websiteURL": "https://izzv.github.io/SuperStore",
   "iconURL": "https://izzv.github.io/SuperStore/assets/icon.png",
   "tintColor": "7C5CFF",
+  "news": [
+    {
+      "identifier": "superstore-0-1",
+      "date": "2026-11-21T18:00:00Z",
+      "title": "SuperStore 0.1 is out",
+      "caption": "The first published build. Keep this source added and My Apps will offer updates as new builds land.",
+      "tintColor": "7C5CFF",
+      "url": "https://izzv.github.io/SuperStore/"
+    },
+    {
+      "identifier": "pairing-file-guide",
+      "date": "2026-11-21T18:00:00Z",
+      "title": "Pairing files, explained",
+      "caption": "How the file is made, which one to pick, and what to do when iOS rejects it.",
+      "tintColor": "34D399",
+      "url": "https://izzv.github.io/SuperStore/pairing.html"
+    },
+    {
+      "identifier": "report-bugs",
+      "date": "2026-11-21T18:00:00Z",
+      "title": "Expect rough edges",
+      "caption": "SuperStore is early software. Anything broken is worth reporting.",
+      "tintColor": "F59E0B",
+      "url": "https://github.com/izzv/SuperStore/issues"
+    }
+  ],
   "apps": [
     {
       "name": "SuperStore",

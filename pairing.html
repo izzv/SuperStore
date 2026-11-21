@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pairing file — SuperStore</title>
+<meta name="description" content="How to get the pairing file SuperStore needs to talk to your iPhone.">
+<meta name="theme-color" content="#121316">
+<link rel="icon" href="assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #121316;
+    --panel: #17181b;
+    --panel-2: #1f2023;
+    --line: #27272a;
+    --text: #fafafa;
+    --muted: #a1a1aa;
+    --dim: #71717a;
+    --purple: #5a1ae5;
+    --purple-hi: #7c3aed;
+    --lav: #c4b5fd;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: Poppins, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.6;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 90vh;
+    background:
+      radial-gradient(90vh at 25% -20px, rgba(90, 26, 229, 0.13), rgba(90, 26, 229, 0.13), rgba(0, 0, 0, 0)),
+      radial-gradient(70vh at 85% 5%, rgba(90, 26, 229, 0.06), rgba(0, 0, 0, 0));
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; font-weight: 600; }
+  .brand img { width: 28px; height: 28px; border-radius: 8px; }
+
+  h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.15; letter-spacing: -0.02em; margin: 34px 0 10px; }
+  h2 { font-size: 1.15rem; letter-spacing: -0.01em; margin: 38px 0 8px; }
+  p, li { color: var(--muted); }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 8px; }
+  strong { color: var(--text); font-weight: 600; }
+  a { color: var(--lav); }
+
+  .lead { font-size: 1.03rem; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin: 0 0 16px;
+  }
+
+  .card h2 { margin-top: 0; }
+
+  code {
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1px 6px;
+    font-size: 0.9em;
+    color: var(--lav);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, var(--purple-hi), var(--purple));
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin: 6px 8px 6px 0;
+  }
+
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); }
+
+  .note { border-left: 3px solid var(--purple-hi); padding-left: 14px; }
+  footer { margin-top: 56px; color: var(--dim); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="brand" href="./"><img src="assets/icon.png" alt="">SuperStore</a>
+
+  <h1>Getting a pairing file</h1>
+  <p class="lead">SuperStore talks to iOS device services through a pairing file: the record your computer creates when it pairs with your iPhone over USB. iOS only writes it while the phone is unlocked and you have tapped <strong>Trust</strong>, and it is tied to that one phone.</p>
+
+  <div class="card">
+    <h2>Windows: let the setup helper make it</h2>
+    <ol>
+      <li>Plug the iPhone into the PC and unlock it.</li>
+      <li>Open <strong>SuperStore Setup</strong> and press <strong>Pair</strong>.</li>
+      <li>When the iPhone asks <strong>Trust This Computer?</strong>, tap <strong>Trust</strong> and enter the passcode.</li>
+      <li>Leave the phone on the home screen, unlocked, until the window says the pairing file was copied into SuperStore.</li>
+    </ol>
+    <p>The helper writes <code>pairingFile.plist</code> and copies it into SuperStore's Documents folder, so the app finds it on its next launch without you picking anything.</p>
+  </div>
+
+  <div class="card">
+    <h2>Pick the file yourself</h2>
+    <p>On the pairing screen in SuperStore, tap <strong>Select Pairing File</strong> and choose the file your computer produced. SuperStore reads any of these:</p>
+    <ul>
+      <li><code>pairingFile.plist</code> — the lockdown pairing record, also called <code>PairingFile_Lockdown.plist</code>.</li>
+      <li><code>*.mobiledevicepairing</code> — what <a href="https://github.com/osy/Jitterbug">jitterbugpair</a> writes on macOS or Linux.</li>
+      <li><code>PairingFile_RemoteRP.plist</code> — the remote pairing record, if you already use one.</li>
+    </ul>
+    <p>Anything that only carries <code>private_key</code>, <code>public_key</code> and <code>identifier</code>, or has no <code>UDID</code>, is not a pairing record and will be rejected with <em>“Missing UDID”</em>.</p>
+  </div>
+
+  <div class="card">
+    <h2>If it is rejected</h2>
+    <ul>
+      <li>The phone was locked, or <strong>Trust</strong> was never tapped: unlock it, plug it in again, tap Trust, and make a fresh file.</li>
+      <li>You picked a different phone's record: a pairing file only works with the UDID it was made for.</li>
+      <li>The file came from an app that trimmed it: make it again with the helper, jitterbugpair, or your own tooling and keep the whole plist.</li>
+    </ul>
+    <p>You can add or replace the pairing file later under <strong>Settings → Advanced → Pairing File</strong>.</p>
+  </div>
+
+  <a class="btn" href="downloads/">Get SuperStore Setup</a>
+  <a class="btn ghost" href="https://github.com/izzv/SuperStore/issues">Ask for help</a>
+
+  <footer>SuperStore is not affiliated with Apple. Pairing records are device credentials; keep them off anything you share.</footer>
+</div>
+</body>
+</html>
