@@ -551,7 +551,7 @@ def main(argv=None):
         signed = workdir() / "SuperStore-signed.ipa"
         if login is not None:
             try:
-                apple.add_extension_profiles(login, identity, target, on_status=say)
+                apple.add_extension_profiles(login, identity, target, on_status=say, on_warning=say)
             except apple.AppleError as error:
                 say("Could not prepare the app extensions: %s" % error)
                 return 1
@@ -827,6 +827,7 @@ class SetupApp:
         self.ipa_path = None
         self.identity = None
         self.login = None
+        self.provisioned = False
         self.anisette_host = None
         self.release = None
         self.channel = "stable"
@@ -963,6 +964,7 @@ class SetupApp:
         self.log_text.tag_configure("info", foreground="#c7cedb")
         self.log_text.tag_configure("step", foreground=ACCENT_TEXT)
         self.log_text.tag_configure("ok", foreground=OK)
+        self.log_text.tag_configure("warn", foreground=WARN)
         self.log_text.tag_configure("error", foreground=ERR)
         self.log_text.configure(state="disabled")
         self.log_text.bind("<MouseWheel>", lambda event: self.log_text.yview_scroll(int(-event.delta / 120), "units"))
@@ -1034,9 +1036,12 @@ class SetupApp:
     def on_sign_in(self):
         if self.busy or not SIGNING_SUPPORT:
             return
-        if self.identity is not None:
+        if self.provisioned and self.login is not None and self.login.dsid and self.identity is not None:
             self.log("Already signed in as %s." % self.identity.apple_id, "ok")
             return
+        if self.identity is not None:
+            self.log("Signing in again so this build's app extensions can be signed for this iPhone.", "info")
+        self.provisioned = False
         email = self.account_email.get().strip()
         password = self.account_password.get()
         code = self.account_code.get().strip()
@@ -1123,6 +1128,10 @@ class SetupApp:
     def account_note(self, text):
         self.account_status.configure(text=text, fg=MUTED)
 
+    def account_warning(self, text):
+        self.account_status.configure(text=text, fg=WARN)
+        self.log(text, "warn")
+
     def ask_for_code(self, message=None):
         self.account_password.delete(0, "end")
         self.code_row.pack(after=self.password_row, fill="x", pady=(px(6), 0))
@@ -1137,6 +1146,7 @@ class SetupApp:
             self.set_busy(False)
             return
         self.identity = identity
+        self.provisioned = True
         self.code_row.pack_forget()
         self.account_code.delete(0, "end")
         self.account_password.delete(0, "end")
@@ -1147,10 +1157,11 @@ class SetupApp:
         self.set_busy(False)
 
     def sign_in_failed(self, error):
+        self.provisioned = False
         message = str(error) or "Apple refused the sign-in."
         self.account_status.configure(text=message, fg=ERR)
         self.log(message, "error")
-        if isinstance(error, apple.ThrottleHold) and not self.busy:
+        if isinstance(error, apple.ThrottleHold):
             self.force_button.pack(side="left", padx=(px(8), 0))
 
     def restore_identity(self):
@@ -1253,7 +1264,13 @@ class SetupApp:
         self.send_button.set_enabled(ready and bool(self.pairing_path))
         self.install_button.set_enabled(ready)
         self.choose_button.set_enabled(not self.busy)
-        self.sign_button.set_enabled(SIGNING_SUPPORT and not self.busy and self.identity is None)
+        signed_in = (
+            self.provisioned
+            and self.login is not None
+            and bool(self.login.dsid)
+            and self.identity is not None
+        )
+        self.sign_button.set_enabled(SIGNING_SUPPORT and not self.busy and not signed_in)
         self.check_button.set_enabled(SIGNING_SUPPORT and not self.busy)
 
     def poll_devices(self):
@@ -1471,6 +1488,7 @@ class SetupApp:
                 apple.add_extension_profiles(
                     self.login, identity, path, self.device.get("name") or "iPhone",
                     on_status=lambda text: self.post(self.account_note, text),
+                    on_warning=lambda text: self.post(self.account_warning, text),
                 )
             apple.sign(path, identity, signed)
             self.post(self.install_status.configure, "Signed. Sending it to the iPhone…", MUTED)

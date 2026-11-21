@@ -1304,7 +1304,7 @@ def provision(login, udid, device_name, bundle_id, app_name=APP_ID, on_status=No
 
 
 def sign(ipa_path, identity, output_path):
-    """Sign every bundle in the build with the profile Apple issued for that bundle."""
+    """Sign each bundle in the build with the profile Apple issued for that bundle."""
     import ipasign
     import ipasign.archive
     import ipasign.bundle
@@ -1313,67 +1313,55 @@ def sign(ipa_path, identity, output_path):
 
     profiles = identity.profiles_by_bundle()
     key_path = _materialise(identity.p12, "p12")
-    signers = {}
-
-    def signer_for(identifier):
-        if identifier not in signers:
-            key = ipasign.Key(
-                key_path,
-                _materialise(profiles[identifier], "mobileprovision", identifier),
-                P12_PASSWORD,
-            )
-            signers[identifier] = Signer(
-                identity=key.identity,
-                entitlements=key.profile.entitlements,
-                entitlements_plist=key.profile.entitlements_plist,
-                team_id=key.team_id,
-                subject_cn=key.subject_cn,
-                signing_time=datetime.datetime.now(datetime.timezone.utc),
-            )
-        return signers[identifier]
+    main = ipasign.Key(key_path, _materialise(identity.profile, "mobileprovision"), P12_PASSWORD)
+    app_signer = Signer(
+        identity=main.identity,
+        entitlements=main.profile.entitlements,
+        entitlements_plist=main.profile.entitlements_plist,
+        team_id=main.team_id,
+        subject_cn=main.subject_cn,
+        signing_time=datetime.datetime.now(datetime.timezone.utc),
+    )
 
     scratch = workdir() / "sign-tmp"
     unpacked = ipasign.archive.unpack(Path(ipa_path), scratch)
     try:
         app = unpacked.app
-        nested = ipasign.bundle.collect_nested_bundles(app)
-        apps = [app] + [bundle for bundle in nested if bundle.name.endswith((".app", ".appex"))]
-        for bundle in apps:
-            identifier = ipasign.bundle.bundle_details(bundle)[0]
-            data = profiles.get(identifier)
-            if data is None:
-                if bundle.name.endswith(".appex"):
-                    raise AppleError(
-                        "Apple has no profile for the app extension %s, so iOS would refuse this "
-                        "build. Sign in with the Apple ID again (step 2), then install." % identifier
-                    )
-                data = identity.profile
-            (bundle / "embedded.mobileprovision").write_bytes(data)
+        extensions = [
+            bundle
+            for bundle in ipasign.bundle.collect_nested_bundles(app)
+            if bundle.name.endswith(".appex")
+        ]
+        for extension in extensions:
+            identifier = ipasign.bundle.bundle_details(extension)[0]
+            profile = profiles.get(identifier)
+            if profile is None:
+                raise AppleError(
+                    "Apple has no profile for the app extension %s, so iOS would refuse this "
+                    "build. Sign in with the Apple ID again (step 2), then install." % identifier
+                )
+            ipasign.Key(
+                key_path, _materialise(profile, "mobileprovision", identifier), P12_PASSWORD
+            ).sign(str(extension))
 
-        def owner(path):
-            for bundle in sorted(apps, key=lambda candidate: len(candidate.parts), reverse=True):
-                try:
-                    path.relative_to(bundle)
-                except ValueError:
-                    continue
-                return bundle
-            return app
+        extension_paths = [extension.resolve() for extension in extensions]
 
-        def signer_for_bundle(bundle):
-            identifier = ipasign.bundle.bundle_details(bundle)[0]
-            if identifier in profiles:
-                return signer_for(identifier)
-            return signer_for_bundle(owner(bundle.parent))
+        def inside_extension(path):
+            resolved = path.resolve()
+            return any(root in resolved.parents or resolved == root for root in extension_paths)
 
+        (app / "embedded.mobileprovision").write_bytes(identity.profile)
         for path in ipasign.bundle.collect_macho_files(app):
-            sign_macho_file(signer_for_bundle(owner(path)), path)
-
-        for bundle in nested:
+            if not inside_extension(path):
+                sign_macho_file(app_signer, path)
+        for bundle in ipasign.bundle.collect_nested_bundles(app):
+            if inside_extension(bundle):
+                continue
             try:
-                ipasign.bundle.sign_bundle_member(signer_for_bundle(bundle), bundle)
+                ipasign.bundle.sign_bundle_member(app_signer, bundle)
             except BundleError:
                 continue
-        signed = ipasign.bundle.sign_bundle_member(signer_for_bundle(app), app)
+        signed = ipasign.bundle.sign_bundle_member(app_signer, app)
         ipasign.archive.pack(unpacked.root, Path(output_path))
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
@@ -1410,12 +1398,18 @@ def extension_identifiers(ipa_path):
     return identifiers
 
 
-def add_extension_profiles(login, identity, ipa_path, name="", on_status=None):
+def add_extension_profiles(login, identity, ipa_path, name="", on_status=None, on_warning=None):
     """Ask Apple for a profile per app extension, so iOS accepts the whole build."""
 
     def say(message):
         if on_status is not None:
             on_status(message)
+
+    def warn(message):
+        if on_warning is not None:
+            on_warning(message)
+        else:
+            say(message)
 
     wanted = [
         identifier
@@ -1436,26 +1430,40 @@ def add_extension_profiles(login, identity, ipa_path, name="", on_status=None):
         say("Preparing the app extension %s…" % identifier)
         try:
             resource = developer.bundle_id(identifier, label)
-            try:
-                handles = developer.app_group(group_identifier, label)
-                developer.enable_app_group(resource)
-                for handle in handles:
-                    for as_list in (False, True):
-                        try:
-                            developer.assign_app_group(resource, handle, as_list)
-                        except AppleError:
-                            continue
-            except AppleError:
-                pass
-            identity.profiles[identifier] = developer.profile(
-                resource, identity.certificate_id, identity.device_id, label
+        except AppleError as error:
+            raise AppleError(
+                "Apple would not register the app extension %s (%s), so SuperStore cannot be "
+                "signed for this iPhone. Nothing was installed." % (identifier, error)
             )
+        try:
+            handles = developer.app_group(group_identifier, label)
+            developer.enable_app_group(resource)
+            for handle in handles:
+                for as_list in (False, True):
+                    try:
+                        developer.assign_app_group(resource, handle, as_list)
+                    except AppleError:
+                        continue
+        except AppleError as error:
+            warn(
+                "Apple would not give %s the app group %s (%s), so that extension cannot read "
+                "SuperStore's database. The app itself still starts."
+                % (identifier, group_identifier, error)
+            )
+        try:
+            profile = developer.profile(resource, identity.certificate_id, identity.device_id, label)
         except AppleError as error:
             raise AppleError(
                 "Apple would not issue a profile for the app extension %s (%s). SuperStore cannot "
                 "start while an extension ships without one, so nothing was installed."
                 % (identifier, error)
             )
+        if group_identifier not in profile_groups(profile):
+            warn(
+                "%s is missing from the profile for %s, so that extension cannot read SuperStore's "
+                "database. The app itself still starts." % (group_identifier, identifier)
+            )
+        identity.profiles[identifier] = profile
     save_identity(identity)
     return identity
 
