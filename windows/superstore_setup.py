@@ -25,6 +25,14 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+try:
+    import apple_sideload as apple
+
+    SIGNING_SUPPORT = True
+except Exception:
+    apple = None
+    SIGNING_SUPPORT = False
+
 SITE = "https://izzv.github.io/SuperStore"
 VERSIONS_URL = SITE + "/downloads/versions.json"
 DEVELOPMENT_ZIP = "https://nightly.link/izzv/SuperStore/workflows/verify.yml/develop/SuperStore-ipa.zip"
@@ -365,6 +373,9 @@ def report_environment():
 
 
 def main(argv=None):
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if any(argument.startswith("-") for argument in arguments):
+        attach_console()
     if sys.stdout is None:
         sys.stdout = _NullWriter()
     if sys.stderr is None:
@@ -383,12 +394,14 @@ def main(argv=None):
     parser.add_argument("--send-pairing", action="store_true", help="copy the pairing file into SuperStore")
     parser.add_argument("--install", nargs="?", const="", metavar="IPA",
                         help="install that .ipa, or download the chosen channel and install it")
+    parser.add_argument("--apple-id", metavar="EMAIL", help="Apple ID to sign the build with")
+    parser.add_argument("--sign-in", action="store_true", help="sign in and cache a certificate for this iPhone")
     parser.add_argument("--pairing", metavar="FILE", help="stage an existing pairing file")
     parser.add_argument("--find-pairing", action="store_true", help="look for pairing files already on this PC")
     args = parser.parse_args(argv)
 
     wanted = (args.devices, args.download, args.pair, args.send_pairing, args.install is not None,
-              args.pairing, args.find_pairing)
+              args.pairing, args.find_pairing, args.sign_in, bool(args.apple_id))
     if not any(wanted):
         if args.cli:
             report_environment()
@@ -433,7 +446,7 @@ def main(argv=None):
     if devices:
         serial = devices[0].serial
 
-    if args.pair or args.send_pairing or args.install:
+    if args.pair or args.send_pairing or args.install or args.sign_in or args.apple_id:
         if not serial:
             say("No iPhone found over USB. Connect it, unlock it, and try again.")
             return 1
@@ -469,6 +482,28 @@ def main(argv=None):
         say("Copied %s into SuperStore's Documents folder." % pairing)
         say("")
 
+    if args.sign_in or args.apple_id:
+        import getpass
+
+        email = (args.apple_id or input("Apple ID: ")).strip()
+        login = apple.AppleLogin(email)
+        try:
+            login.begin(getpass.getpass("Password: "))
+        except apple.TwoFactorRequired:
+            login.two_factor(input("Two-factor code: ").strip())
+        except apple.AppleError as error:
+            say("Apple refused the sign-in: %s" % error)
+            return 1
+        summary = device_summary(serial) or {}
+        try:
+            identity = apple.provision(login, serial, summary.get("name") or "iPhone", BUNDLE_ID, on_status=say)
+        except apple.AppleError as error:
+            say("Could not get a certificate from Apple: %s" % error)
+            return 1
+        say("Signed in as %s (team %s)." % (identity.apple_id, identity.team_id))
+        say("Certificate valid for %d more days; installs are signed on this PC." % int(identity.days_left()))
+        say("")
+
     if args.install is not None:
         target = args.install
         if not target:
@@ -477,6 +512,19 @@ def main(argv=None):
             except Exception as error:
                 say("Download failed: %s" % error)
                 return 1
+        identity = apple.load_identity_for(serial, args.apple_id or "") if SIGNING_SUPPORT else None
+        if identity is None:
+            say("No Apple ID certificate for this iPhone yet.")
+            say("Run with --apple-id you@example.com to sign in first, then install again.")
+            return 1
+        signed = workdir() / "SuperStore-signed.ipa"
+        say("Signing %s for this iPhone..." % target)
+        try:
+            apple.sign(target, identity, signed)
+        except Exception as error:
+            say("Signing failed: %s" % error)
+            return 1
+        target = signed
         say("Installing %s..." % target)
         try:
             install_ipa(serial, target, progress=lambda pct: sys.stdout.write("\r  %3d%%" % pct))
@@ -484,8 +532,8 @@ def main(argv=None):
             say()
             say("Install failed: %s" % error)
             if "verification" in str(error).lower():
-                say("iOS only installs builds signed with your Apple ID, so sign the published")
-                say(".ipa once with SideStore or Sideloadly and install that copy here.")
+                say("iOS refused the signature. Check that the profile Apple issued lists this")
+                say("iPhone, then run --apple-id again to renew it.")
             return 1
         say("")
         say("Installed.")
@@ -732,14 +780,16 @@ class SetupApp:
         self.root.configure(bg=BG)
         SCALE = self.root.winfo_fpixels("1i") / 96.0
         self.scale = SCALE
-        self.root.geometry("%dx%d" % (px(1020), px(772)))
-        self.root.minsize(px(900), px(660))
+        self.root.geometry("%dx%d" % (px(1020), px(880)))
+        self.root.minsize(px(900), px(740))
         dark_title_bar(self.root)
 
         self.events = queue.Queue()
         self.device = None
         self.pairing_path = existing_pairing_file()
         self.ipa_path = None
+        self.identity = None
+        self.login = None
         self.release = None
         self.channel = "stable"
         self.stable_note = ""
@@ -781,13 +831,15 @@ class SetupApp:
         body.grid_rowconfigure(1, weight=1)
 
         steps = tk.Frame(body, bg=BG)
-        steps.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=(0, px(14)))
+        steps.grid(row=0, column=0, rowspan=3, sticky="nsew", padx=(0, px(14)))
         steps.grid_columnconfigure(0, weight=1)
 
         device_card = self.card(body)
         device_card.grid(row=0, column=1, sticky="nsew", pady=(0, px(12)))
         log_card = self.card(body)
         log_card.grid(row=1, column=1, sticky="nsew")
+        notes_card = self.card(body)
+        notes_card.grid(row=2, column=1, sticky="ew", pady=(px(12), 0))
 
         download_step = self.step(steps, "1", "Choose your build",
                                   "Stable is the published release; Development follows develop.",
@@ -798,7 +850,14 @@ class SetupApp:
         self.download_progress = ProgressBar(download_step["frame"].inner, width=360)
         self.download_progress.pack(fill="x", pady=(px(8), 0))
 
-        pair_step = self.step(steps, "2", "Pair your iPhone",
+        account_step = self.step(steps, "2", "Sign in with Apple ID",
+                                 "Apple signs the build for this iPhone. The password only goes to Apple.",
+                                 before=self.build_account)
+        self.sign_button = Button(account_step["actions"], "Sign in", self.on_sign_in)
+        self.sign_button.pack(side="left")
+        self.account_status = account_step["status"]
+
+        pair_step = self.step(steps, "3", "Pair your iPhone",
                               "Unlock the phone and tap Trust when the prompt appears.")
         self.pair_button = Button(pair_step["actions"], "Pair over USB", self.on_pair)
         self.pair_button.pack(side="left")
@@ -807,7 +866,7 @@ class SetupApp:
         self.send_button.pack(side="left", padx=(px(8), 0))
         self.pair_status = pair_step["status"]
 
-        install_step = self.step(steps, "3", "Install on iPhone",
+        install_step = self.step(steps, "4", "Install on iPhone",
                                  "Installs a build signed for this phone, then copies the pairing file across.")
         self.install_button = Button(install_step["actions"], "Install .ipa", self.on_install)
         self.install_button.pack(side="left")
@@ -818,18 +877,17 @@ class SetupApp:
         self.progress.pack(fill="x", pady=(px(12), 0))
         self.install_status = install_step["status"]
 
-        notes = self.card(steps)
-        notes.pack(fill="both", expand=True, pady=(0, px(12)))
+        notes = notes_card
         notes_head = tk.Frame(notes.inner, bg=CARD)
         notes_head.pack(fill="x")
         tk.Label(notes_head, text="Good to know", bg=CARD, fg=TEXT,
                  font=(UI_FONT, 10, "bold"), anchor="w").pack(fill="x")
         for line in (
+            "Signing in asks Apple for a certificate for this phone.",
             "Pairing writes pairingFile.plist and copies it into the app.",
-            "iOS only installs a build signed for this phone.",
         ):
             tk.Label(notes.inner, text="·  " + line, bg=CARD, fg=MUTED, font=(UI_FONT, 8), anchor="w",
-                     justify="left", wraplength=px(348)).pack(fill="x", pady=(px(5), 0))
+                     justify="left", wraplength=px(470)).pack(fill="x", pady=(px(5), 0))
 
         device_inner = device_card.inner
         device_head = tk.Frame(device_inner, bg=CARD)
@@ -866,6 +924,105 @@ class SetupApp:
         tk.Label(footer, text="Pairing file: %s" % (workdir() / PAIRING_FILENAME), bg=BG, fg=MUTED,
                  font=(UI_FONT, 8)).pack(side="left")
         Button(footer, "Open folder", self.open_folder, kind="secondary", width=110, height=26).pack(side="right")
+
+    def build_account(self, parent):
+        email_row, self.account_email = self.field(parent, "Apple ID", 28)
+        password_row, self.account_password = self.field(parent, "Password", 28, secret=True)
+        self.code_row, self.account_code = self.field(parent, "Code", 10)
+        self.code_row.pack_forget()
+        self.password_row = password_row
+
+    def field(self, parent, label, width, secret=False):
+        row = tk.Frame(parent, bg=CARD)
+        row.pack(fill="x", pady=(px(6), 0))
+        tk.Label(row, text=label, bg=CARD, fg=MUTED, font=(UI_FONT, 8), width=9,
+                 anchor="w").pack(side="left")
+        entry = tk.Entry(row, bg="#0e1016", fg=TEXT, insertbackground=TEXT, bd=0, relief="flat",
+                         highlightthickness=1, highlightbackground=BORDER, highlightcolor=ACCENT,
+                         font=(UI_FONT, 9), width=width, show="*" if secret else "")
+        entry.pack(side="left", ipady=px(4), padx=(px(4), 0))
+        return row, entry
+
+    def on_sign_in(self):
+        if self.busy or not SIGNING_SUPPORT:
+            return
+        if self.identity is not None:
+            self.log("Already signed in as %s." % self.identity.apple_id, "ok")
+            return
+        email = self.account_email.get().strip()
+        password = self.account_password.get()
+        code = self.account_code.get().strip()
+        if "@" not in email:
+            self.account_status.configure(text="Enter the Apple ID you use for Xcode or the App Store.", fg=ERR)
+            return
+        if not self.device:
+            self.account_status.configure(text="Connect the iPhone first so Apple can register it.", fg=WARN)
+            return
+        if password or code:
+            self.log("Signing in as %s…" % email, "step")
+        self.set_busy(True)
+        self.account_status.configure(text="Talking to Apple…", fg=MUTED)
+        serial = self.device["serial"]
+        name = self.device.get("name") or "iPhone"
+
+        def work():
+            if self.login is None or self.login.apple_id.lower() != email.lower():
+                self.login = apple.AppleLogin(email)
+            if not self.login.dsid:
+                if not password:
+                    raise apple.AppleError("Enter the Apple ID password in step 2.")
+                try:
+                    self.login.begin(password)
+                except apple.TwoFactorRequired:
+                    self.post(self.ask_for_code)
+                    return "code"
+            if not self.login.dsid and code:
+                self.login.two_factor(code)
+            return apple.provision(self.login, serial, name, BUNDLE_ID,
+                                   on_status=lambda text: self.post(self.account_note, text))
+
+        self.spawn(work, self.signed_in, self.sign_in_failed)
+
+    def account_note(self, text):
+        self.account_status.configure(text=text, fg=MUTED)
+
+    def ask_for_code(self):
+        self.account_password.delete(0, "end")
+        self.code_row.pack(after=self.password_row, fill="x", pady=(px(6), 0))
+        self.account_code.focus_set()
+        self.account_status.configure(
+            text="Apple sent a code to your trusted devices. Enter it, then press Sign in.", fg=WARN)
+        self.log("Two-factor authentication: enter the code Apple showed, then press Sign in again.", "info")
+
+    def signed_in(self, identity):
+        if identity == "code":
+            return
+        self.identity = identity
+        self.code_row.pack_forget()
+        self.account_code.delete(0, "end")
+        self.account_password.delete(0, "end")
+        self.account_status.configure(
+            text="Signed in as %s  ·  certificate good for %d more days" % (identity.apple_id, int(identity.days_left())),
+            fg=OK)
+        self.log("Apple issued a certificate for this iPhone. Installs are signed on this PC now.", "ok")
+        self.refresh_buttons()
+
+    def sign_in_failed(self, error):
+        self.account_status.configure(text=str(error) or "Apple refused the sign-in.", fg=ERR)
+
+    def restore_identity(self):
+        if not SIGNING_SUPPORT or self.identity is not None or not self.device:
+            return
+        identity = apple.load_identity_for(self.device["serial"])
+        if identity is None:
+            return
+        self.identity = identity
+        self.account_email.delete(0, "end")
+        self.account_email.insert(0, identity.apple_id)
+        self.account_status.configure(
+            text="Signed in as %s  ·  certificate good for %d more days" % (identity.apple_id, int(identity.days_left())),
+            fg=OK)
+        self.refresh_buttons()
 
     def card(self, parent):
         frame = tk.Frame(parent, bg=CARD, highlightbackground=BORDER, highlightthickness=1)
@@ -953,6 +1110,7 @@ class SetupApp:
         self.send_button.set_enabled(ready and bool(self.pairing_path))
         self.install_button.set_enabled(ready)
         self.choose_button.set_enabled(not self.busy)
+        self.sign_button.set_enabled(SIGNING_SUPPORT and not self.busy and self.identity is None)
 
     def poll_devices(self):
         if DEVICE_SUPPORT and not self.polling and not self.busy:
@@ -990,6 +1148,7 @@ class SetupApp:
             self.device_name.configure(text="No iPhone detected")
             self.device_detail.configure(text="Connect the iPhone with a USB cable and unlock it.")
             self.status_pill.set("Waiting for iPhone", WARN)
+        self.restore_identity()
         self.refresh_buttons()
 
     def build_channels(self, parent):
@@ -1148,15 +1307,26 @@ class SetupApp:
             self.log("No build downloaded yet. Fetching the %s build first…" % label.lower(), "step")
             self.on_download()
             return
-        self.set_busy(True)
-        self.progress.set(0.0)
-        self.install_status.configure(text="Installing %s…" % self.ipa_path.name, fg=MUTED)
-        self.log("Installing %s on %s…" % (self.ipa_path.name, self.device.get("name", "the iPhone")), "step")
         serial = self.device["serial"]
         path = self.ipa_path
+        identity = self.identity or (apple.load_identity_for(serial) if SIGNING_SUPPORT else None)
+        if identity is None:
+            self.install_status.configure(text="Sign in with your Apple ID in step 2 first.", fg=WARN)
+            self.log("Apple has to sign this build for the phone before it can install.", "info")
+            return
+
+        self.identity = identity
+        self.set_busy(True)
+        self.progress.set(0.0)
+        self.install_status.configure(text="Signing %s for this iPhone…" % path.name, fg=MUTED)
+        self.log("Signing %s with the certificate Apple issued to %s…" % (path.name, identity.apple_id), "step")
+        signed = workdir() / "SuperStore-signed.ipa"
 
         def work():
-            install_ipa(serial, path, progress=lambda pct: self.post(self.progress.set, pct / 100.0))
+            apple.sign(path, identity, signed)
+            self.post(self.install_status.configure, "Signed. Sending it to the iPhone…", MUTED)
+            self.post(self.log, "Signed copy ready (%s). Installing…" % human_size(signed.stat().st_size), "step")
+            install_ipa(serial, signed, progress=lambda pct: self.post(self.progress.set, pct / 100.0))
 
         self.spawn(work, self.installed, self.install_failed)
 
@@ -1174,9 +1344,8 @@ class SetupApp:
         message = str(error)
         self.install_status.configure(text="The phone refused the build.", fg=ERR)
         if "verification" in message.lower():
-            self.log("iOS only installs builds signed with your Apple ID. The published .ipa is "
-                     "unsigned, so sign it once with SideStore or Sideloadly and install that copy here.",
-                     "info")
+            self.log("iOS refused the signature. Check that the profile Apple issued lists this "
+                     "iPhone, then sign in again to renew it.", "info")
 
     def open_folder(self):
         try:
@@ -1185,19 +1354,32 @@ class SetupApp:
             self.log("Could not open %s (%s)." % (workdir(), error), "error")
 
 
-def hide_console():
-    if sys.platform != "win32":
+def console_stream(handle_id):
+    import msvcrt
+
+    kernel32 = ctypes.windll.kernel32
+    handle = kernel32.GetStdHandle(handle_id)
+    if handle in (None, 0, ctypes.c_void_p(-1).value) or kernel32.GetFileType(handle) == 0:
+        return None
+    descriptor = msvcrt.open_osfhandle(handle, os.O_WRONLY | os.O_TEXT)
+    return open(descriptor, "w", encoding="utf-8", errors="replace", buffering=1, closefd=False)
+
+
+def attach_console():
+    if sys.platform != "win32" or sys.stdout is not None:
         return
     try:
-        handle = ctypes.windll.kernel32.GetConsoleWindow()
-        if handle:
-            ctypes.windll.user32.ShowWindow(handle, 0)
+        kernel32 = ctypes.windll.kernel32
+        if not kernel32.AttachConsole(-1):
+            kernel32.AllocConsole()
+        sys.stdout = console_stream(-11) or open("CONOUT$", "w", encoding="utf-8", errors="replace", buffering=1)
+        sys.stderr = console_stream(-12) or open("CONOUT$", "w", encoding="utf-8", errors="replace", buffering=1)
+        sys.stdin = open("CONIN$", "r", encoding="utf-8", errors="replace")
     except Exception:
         pass
 
 
 def launch_window():
-    hide_console()
     app = SetupApp()
     app.run()
 
