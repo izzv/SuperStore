@@ -27,10 +27,12 @@ import zipfile
 from pathlib import Path
 
 try:
+    import anisette_server
     import apple_sideload as apple
 
     SIGNING_SUPPORT = True
 except Exception:
+    anisette_server = None
     apple = None
     SIGNING_SUPPORT = False
 
@@ -817,6 +819,7 @@ class SetupApp:
         self.ipa_path = None
         self.identity = None
         self.login = None
+        self.anisette_host = None
         self.release = None
         self.channel = "stable"
         self.stable_note = ""
@@ -970,6 +973,14 @@ class SetupApp:
         self.password_row = password_row
         self.anisette_row, self.anisette_entry = self.field(parent, "Anisette", 28)
         self.anisette_entry.insert(0, apple.PREFERRED_ANISETTE)
+        host_row = tk.Frame(parent, bg=CARD)
+        host_row.pack(fill="x", pady=(px(6), 0))
+        self.host_button = Button(host_row, "Host one here", self.on_host_anisette,
+                                  kind="secondary", width=118, height=26)
+        self.host_button.pack(side="left", padx=(px(74), 0))
+        self.host_note = tk.Label(host_row, text="Runs an Anisette server on this PC", bg=CARD,
+                                  fg=MUTED, font=(UI_FONT, 8), anchor="w")
+        self.host_note.pack(side="left", padx=(px(8), 0))
 
     def field(self, parent, label, width, secret=False):
         row = tk.Frame(parent, bg=CARD)
@@ -1053,6 +1064,53 @@ class SetupApp:
                                    on_status=lambda text: self.post(self.account_note, text))
 
         self.spawn(work, self.signed_in, self.sign_in_failed)
+
+    def on_host_anisette(self):
+        if self.anisette_host is not None:
+            host, self.anisette_host = self.anisette_host, None
+            host.stop()
+            self.host_button.label = "Host one here"
+            self.host_button.draw()
+            self.host_note.configure(text="Server stopped", fg=MUTED)
+            self.log("Anisette server stopped.", "info")
+            return
+        if anisette_server is None:
+            self.host_note.configure(text="Anisette hosting is unavailable in this build", fg=ERR)
+            return
+        self.host_button.label = "Starting…"
+        self.host_button.draw()
+        self.host_note.configure(text="Asking an upstream server for a machine identity…", fg=MUTED)
+
+        def work():
+            host = anisette_server.AnisetteHost(port=6969)
+            host.start()
+            host.warm()
+            return host, host.address()
+
+        def done(result):
+            host, address = result
+            self.anisette_host = host
+            apple.PREFERRED_ANISETTE = address
+            self.anisette_entry.delete(0, "end")
+            self.anisette_entry.insert(0, address)
+            self.host_button.label = "Stop"
+            self.host_button.draw()
+            self.host_note.configure(text="Serving on port %d" % host.port, fg=OK)
+            self.log("Anisette server running. Public: %s · network: %s" % (address, host.local_address()), "ok")
+            if address == host.local_address():
+                self.log("The public address could not be looked up, so devices on this PC's network "
+                         "should use %s." % address, "info")
+            else:
+                self.log("If the public address does not answer from outside, forward TCP %d on your "
+                         "router." % host.port, "info")
+
+        self.spawn(work, done, self.host_failed)
+
+    def host_failed(self, error):
+        self.anisette_host = None
+        self.host_button.label = "Host one here"
+        self.host_button.draw()
+        self.host_note.configure(text=("Could not start it: %s" % str(error))[:70], fg=ERR)
 
     def account_note(self, text):
         self.account_status.configure(text=text, fg=MUTED)
