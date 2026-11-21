@@ -139,9 +139,9 @@ public enum AppConstants {
 
         public static let pairingDocumentation      = URL(string: "https://docs.sidestore.io/docs/advanced/pairing-file")!
         public static let errorCodesDocumentation   = URL(string: "https://docs.sidestore.io/docs/troubleshooting/error-codes")!
-        public static let sideStoreWebsite          = URL(string: "https://sidestore.io")!
-        public static let sideStoreGitHub           = URL(string: "https://github.com/SideStore")!
-        public static let sideStoreIssues           = URL(string: "https://github.com/SideStore/SideStore/issues")!
+        public static let sideStoreWebsite          = URL(string: "https://izzv.github.io/SuperStore/")!
+        public static let sideStoreGitHub           = URL(string: "https://github.com/izzv/SuperStore")!
+        public static let sideStoreIssues           = URL(string: "https://github.com/izzv/SuperStore/issues")!
         public static let sideStoreDiscord          = URL(string: "https://discord.gg/sidestore-949183273383395328")!
     }
 
