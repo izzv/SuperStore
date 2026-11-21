@@ -8,6 +8,9 @@ Published builds live here.
 | `SuperStore-v<version>.ipa` | a permanent copy of each published version |
 | `versions.json` | the list the page reads: newest version, its release date, the archive |
 
+The Windows setup is not stored here: the `windows-setup` release on GitHub holds
+it as a single asset that every build replaces, and the page links to that URL.
+
 Version labels start at `v0.1` and count up — `v0.2`, `v0.3`, and so on. The label is
 the app's `CFBundleShortVersionString` with a `v` in front, so bumping `MARKETING_VERSION`
 in `Build.xcconfig` on `develop` is what changes it.

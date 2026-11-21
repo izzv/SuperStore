@@ -211,13 +211,13 @@
     </div>
   </section>
 
-  <section id="windows" hidden>
+  <section id="windows">
     <div class="list">
       <div class="row">
         <span class="v">SuperStore Setup</span>
         <span class="tag tag-win">Windows</span>
         <span class="s">Gets the IPA and stages your pairing file</span>
-        <a class="btn" href="SuperStore-Setup.exe" download>Download .exe</a>
+        <a class="btn" href="https://github.com/izzv/SuperStore/releases/download/windows-setup/SuperStore-Setup.exe">Download .exe</a>
       </div>
     </div>
   </section>
@@ -312,15 +312,6 @@
         updatedMeta.hidden = false;
       }
     }).catch(function () { /* keep the single fallback link */ });
-  })();
-
-  (function () {
-    var section = document.getElementById('windows');
-    if (!section) { return; }
-
-    fetch('SuperStore-Setup.exe', { method: 'HEAD' }).then(function (response) {
-      if (response.ok) { section.hidden = false; }
-    }).catch(function () { /* the Windows build is not published yet */ });
   })();
 </script>
 
