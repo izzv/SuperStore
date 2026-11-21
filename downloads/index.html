@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downloads · SuperStore</title>
+<meta name="description" content="Every published SuperStore build, newest first.">
+<meta name="theme-color" content="#121316">
+<meta property="og:title" content="Downloads · SuperStore">
+<meta property="og:description" content="Every published SuperStore build, newest first.">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #121316;
+    --panel: #17181b;
+    --line: #27272a;
+    --text: #fafafa;
+    --muted: #a1a1aa;
+    --dim: #71717a;
+    --purple: #5a1ae5;
+    --purple-hi: #7c3aed;
+    --lav: #c4b5fd;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: Poppins, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 90vh;
+    background:
+      radial-gradient(90vh at 25% -20px, rgba(90, 26, 229, 0.13), rgba(90, 26, 229, 0.13), rgba(0, 0, 0, 0)),
+      radial-gradient(70vh at 85% 5%, rgba(90, 26, 229, 0.06), rgba(0, 0, 0, 0));
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { width: 100%; max-width: 880px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  a { color: inherit; }
+
+  .navwrap { position: sticky; top: 0; z-index: 50; padding: 16px 16px 0; }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(23, 24, 27, 0.86);
+    backdrop-filter: blur(14px);
+  }
+
+  .brand { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 0.92rem; text-decoration: none; }
+  .brand img { width: 22px; height: 22px; border-radius: 6px; }
+
+  .nav .links { display: flex; gap: 16px; margin-left: auto; font-size: 0.85rem; color: var(--muted); }
+  .nav .links a { text-decoration: none; }
+  .nav .links a:hover { color: var(--text); }
+
+  .hero { padding: 72px 0 32px; }
+
+  .grad-text {
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin: 0 0 14px;
+    background: linear-gradient(120deg, #fff 20%, var(--lav) 55%, var(--purple-hi) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .lede { color: var(--muted); font-size: 1rem; max-width: 34em; margin: 0 0 18px; line-height: 1.6; }
+  code { font-size: 0.9em; color: var(--lav); }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .meta-row span {
+    font-size: 0.74rem;
+    color: var(--muted);
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .list {
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--panel);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.88rem;
+    text-decoration: none;
+  }
+
+  .row:first-child { border-top: 0; }
+
+  .fallback { color: var(--lav); justify-content: center; }
+
+  .v { font-weight: 600; font-size: 0.95rem; }
+
+  .tag {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #052e16;
+    background: #4ade80;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .d { color: var(--dim); }
+  .s { color: var(--muted); margin-left: auto; white-space: nowrap; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #fff;
+    background: linear-gradient(180deg, var(--purple-hi), var(--purple));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    white-space: nowrap;
+  }
+
+  .btn:hover { transform: translateY(-1px); }
+
+  .note { color: var(--dim); font-size: 0.82rem; line-height: 1.7; margin: 0 0 72px; }
+  .note a { color: var(--lav); }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0; }
+  footer p { margin: 0; color: var(--dim); font-size: 0.8rem; text-align: center; }
+  footer a { color: var(--muted); }
+
+  @media (max-width: 620px) {
+    .row { flex-wrap: wrap; gap: 8px; padding: 16px 18px; }
+    .s { margin-left: 0; width: 100%; order: 3; }
+    .btn { order: 4; width: 100%; justify-content: center; }
+    .hero { padding: 48px 0 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="navwrap">
+  <nav class="nav">
+    <a class="brand" href="../">
+      <img src="../assets/icon.png" alt="">
+      SuperStore
+    </a>
+    <div class="links">
+      <a href="../#apps">Apps</a>
+      <a href="../#open">Open Source</a>
+      <a href="./">Downloads</a>
+    </div>
+  </nav>
+</div>
+
+<main class="container">
+
+  <section class="hero">
+    <h1 class="grad-text">Downloads</h1>
+    <p class="lede">
+      Every build we publish, newest first. Each one is an unsigned <code>.ipa</code>,
+      so you sign it with your own Apple ID.
+    </p>
+    <div class="meta-row">
+      <span id="meta-version" hidden></span>
+      <span id="meta-updated" hidden></span>
+      <span>iOS 15+</span>
+      <span>arm64</span>
+      <span>AGPL-3.0</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="list" id="list">
+      <a class="row fallback" href="SuperStore.ipa" download>Download the latest build</a>
+    </div>
+  </section>
+
+  <p class="note">
+    Builds are unsigned on purpose: a signed app only installs for the Apple ID that
+    signed it, so every user signs their own copy. When a new version is published it
+    appears at the top of this list, and <code>SuperStore.ipa</code> always points at it.
+  </p>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>
+      &copy; <span id="year">2026</span> SuperStore &middot; AGPL-3.0 &middot;
+      a fork of <a href="https://github.com/SideStore/SideStore">SideStore</a>
+    </p>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  function niceDate(iso) {
+    if (!iso) { return ''; }
+    var parsed = new Date(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T00:00:00' : iso);
+    if (isNaN(parsed.getTime())) { return iso; }
+    return parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  (function () {
+    var list = document.getElementById('list');
+    if (!list) { return; }
+
+    fetch('versions.json', { cache: 'no-cache' }).then(function (response) {
+      if (!response.ok) { throw new Error('no archive'); }
+      return response.json();
+    }).then(function (versions) {
+      if (!Array.isArray(versions) || !versions.length) { return; }
+
+      list.textContent = '';
+
+      versions.forEach(function (entry) {
+        var row = document.createElement('div');
+        row.className = 'row';
+
+        var version = document.createElement('span');
+        version.className = 'v';
+        version.textContent = entry.version;
+        row.appendChild(version);
+
+        if (entry.latest) {
+          var tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = 'latest';
+          row.appendChild(tag);
+        }
+
+        var date = document.createElement('span');
+        date.className = 'd';
+        date.textContent = niceDate(entry.date);
+        row.appendChild(date);
+
+        var size = document.createElement('span');
+        size.className = 's';
+        size.textContent = [entry.size, entry.config].filter(Boolean).join(' \u00b7 ');
+        row.appendChild(size);
+
+        var link = document.createElement('a');
+        link.className = 'btn';
+        link.href = entry.file.replace('downloads/', '');
+        link.setAttribute('download', '');
+        link.textContent = 'Download .ipa';
+        row.appendChild(link);
+
+        list.appendChild(row);
+      });
+
+      var newest = versions.filter(function (entry) { return entry.latest; })[0] || versions[0];
+      var stamp = niceDate(newest.date);
+
+      var versionMeta = document.getElementById('meta-version');
+      if (versionMeta) {
+        versionMeta.textContent = newest.version;
+        versionMeta.hidden = false;
+      }
+
+      var updatedMeta = document.getElementById('meta-updated');
+      if (updatedMeta) {
+        updatedMeta.textContent = 'Updated ' + stamp;
+        updatedMeta.hidden = false;
+      }
+    }).catch(function () { /* keep the single fallback link */ });
+  })();
+</script>
+
+</body>
+</html>
