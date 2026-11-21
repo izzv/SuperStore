@@ -24,15 +24,19 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip pyinstaller pymobiledevice3
+
       - name: Check the script parses and reports
         run: |
           python -c "import ast,pathlib; ast.parse(pathlib.Path('windows/superstore_setup.py').read_text(encoding='utf-8'))"
           python windows/superstore_setup.py --cli
+          python windows/superstore_setup.py --devices
 
       - name: Build the executable
         run: |
-          python -m pip install --upgrade pip pyinstaller
-          pyinstaller --onefile --windowed --name SuperStore-Setup --distpath build --workpath build/work --specpath build windows/superstore_setup.py
+          pyinstaller --onefile --windowed --name SuperStore-Setup --collect-all pymobiledevice3 --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
           dir build
 
       - name: Upload

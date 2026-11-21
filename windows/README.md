@@ -1,44 +1,55 @@
 # SuperStore Setup (Windows)
 
-A small helper that gets the app onto a Windows PC without hunting for the file,
-and stages the pairing file so the phone side is a single copy.
+One window that downloads SuperStore, pairs an iPhone over USB, drops the
+pairing file into the app and installs the build on the phone.
 
 ```
-python superstore_setup.py               # window with two buttons
-python superstore_setup.py --cli         # same information, in the console
-python superstore_setup.py --download    # fetch the newest published IPA
-python superstore_setup.py --find-pairing
-python superstore_setup.py --pairing C:\path\to\pairingFile.plist
+SuperStore-Setup.exe                     # the window
+SuperStore-Setup.exe --cli               # same information, in the console
+SuperStore-Setup.exe --devices           # iPhones connected over USB
+SuperStore-Setup.exe --download          # fetch the newest published IPA
+SuperStore-Setup.exe --pair              # pair, write pairingFile.plist, copy it into the app
+SuperStore-Setup.exe --send-pairing      # copy an existing pairing file into the app
+SuperStore-Setup.exe --install C:\path\to\SuperStore.ipa
+SuperStore-Setup.exe --find-pairing
+SuperStore-Setup.exe --pairing C:\path\to\pairingFile.plist
 ```
 
 ## What it does
 
 - Reads `downloads/versions.json` from the site, so it always takes the newest
-  published release rather than a hard-coded link.
-- Downloads that IPA to `%LOCALAPPDATA%\SuperStore\` and prints its SHA-256.
-- Looks for an existing pairing file in Desktop, Downloads, Documents and the
-  SideServer folders, and copies the one you pick to
-  `%LOCALAPPDATA%\SuperStore\pairingFile.plist`.
-- Reports whether Apple's Mobile Device Support driver is installed, since
-  nothing can talk to an iPhone without it.
+  published release rather than a hard-coded link, and saves the IPA to
+  `%LOCALAPPDATA%\SuperStore\`.
+- Lists iPhones connected over USB through Apple's Mobile Device Service, which
+  ships with iTunes or the Apple Devices app and is the only supported way to
+  talk to a phone from Windows.
+- Pairs the phone (the iPhone shows the usual Trust prompt), writes the pairing
+  record to `%LOCALAPPDATA%\SuperStore\pairingFile.plist` and immediately copies
+  it into SuperStore's `Documents` folder, where the app reads it at launch.
+- Installs an `.ipa` with the phone's own install service, with a live progress
+  bar, then copies the pairing file in as soon as the app lands.
 
-## What it deliberately does not pretend to do
+## What the phone will refuse
 
-Pairing a device, installing the IPA over USB and writing into the app's
-container all need Apple's USB driver plus libimobiledevice (or pymobiledevice3)
-and a connected phone. None of that can be exercised on a build machine, so this
-tool does not fake it: it prepares the two files and tells you what is missing.
+iOS only installs apps signed with a development certificate and provisioning
+profile that include that specific phone. The build published on the site is
+ad-hoc signed, so a direct install ends with `ApplicationVerificationFailed`.
+Sign the IPA once with a tool that uses your Apple ID (SideStore, Sideloadly,
+AltStore) and install that signed copy through this helper - pairing, the
+pairing file and the install itself all work from here.
 
 ## How the pairing file reaches the app
 
 SuperStore keeps its pairing file at `Documents/pairingFile.plist` inside its own
-container, and reads it at launch. The container is visible in the Files app
-because the app opts into file sharing, so dropping the staged file into
-**Files → On My iPhone → SuperStore** is enough - no import dialog needed.
+container and reads it at launch. The helper writes it through the app's
+container service (`com.apple.mobile.house_arrest`), so there is nothing to drag
+into the Files app. If SuperStore is not on the phone yet, the file stays in
+`%LOCALAPPDATA%\SuperStore\` and "Send to iPhone" copies it across once the app
+is installed.
 
-## Building the .exe
+## Build
 
 `.github/workflows/windows-build.yml` builds `SuperStore-Setup.exe` with
-PyInstaller on `windows-latest` and uploads it as an artifact. Publishing it as
-`downloads/SuperStore-Setup.exe` on the `website` branch makes the Windows button
-appear on the downloads page.
+PyInstaller on `windows-latest`, bundling `pymobiledevice3` for the device work.
+Publishing it as `downloads/SuperStore-Setup.exe` on the `website` branch drives
+the Windows download on the site.
