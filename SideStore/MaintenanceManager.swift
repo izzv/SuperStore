@@ -128,26 +128,52 @@ private extension MaintenanceManager {
         let sourceURL = documentsDirectory.appendingPathComponent(AppConstants.Database.sideStoreFileName)
         guard fileManager.fileExists(atPath: sourceURL.path) else { return }
 
-        for suffix in ["", "-wal", "-shm"] {
-            let from = documentsDirectory.appendingPathComponent(AppConstants.Database.sideStoreFileName + suffix)
-            guard fileManager.fileExists(atPath: from.path) else { continue }
+        let stagingDirectory = databaseDirectory.appendingPathComponent(".import-from-sidestore")
+        try? fileManager.removeItem(at: stagingDirectory)
 
-            let to = databaseDirectory.appendingPathComponent(AppConstants.Database.fileName + suffix)
-            do {
-                if fileManager.fileExists(atPath: to.path) {
-                    try fileManager.removeItem(at: to)
+        do {
+            try fileManager.createDirectory(at: stagingDirectory, withIntermediateDirectories: true, attributes: nil)
+
+            var staged: [(suffix: String, url: URL)] = []
+            for suffix in ["", "-wal", "-shm"] {
+                let source = documentsDirectory.appendingPathComponent(AppConstants.Database.sideStoreFileName + suffix)
+                guard fileManager.fileExists(atPath: source.path) else { continue }
+
+                let stagedURL = stagingDirectory.appendingPathComponent(AppConstants.Database.fileName + suffix)
+                try fileManager.copyItem(at: source, to: stagedURL)
+
+                let expectedSize = try fileManager.attributesOfItem(atPath: source.path)[.size] as? Int64 ?? 0
+                let copiedSize = try fileManager.attributesOfItem(atPath: stagedURL.path)[.size] as? Int64 ?? 0
+                guard expectedSize == copiedSize else {
+                    throw NSError(domain: "SuperStore.DatabaseImport", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "Incomplete copy of \(source.lastPathComponent)"
+                    ])
                 }
-                try fileManager.copyItem(at: from, to: to)
-                try fileManager.removeItem(at: from)
-                debugLog("[MaintenanceManager] Imported '\(from.lastPathComponent)' from SideStore.")
-            } catch {
-                debugLog("[MaintenanceManager] Failed to import '\(from.lastPathComponent)': \(error)")
-                return
+                staged.append((suffix, stagedURL))
             }
-        }
 
-        try? Data().write(to: markerURL)
-        debugLog("[MaintenanceManager] SideStore database import finished.")
+            staged.sort { $0.suffix.count > $1.suffix.count }
+            for entry in staged {
+                let destination = databaseDirectory.appendingPathComponent(AppConstants.Database.fileName + entry.suffix)
+                if fileManager.fileExists(atPath: destination.path) {
+                    try fileManager.removeItem(at: destination)
+                }
+                try fileManager.moveItem(at: entry.url, to: destination)
+                debugLog("[MaintenanceManager] Moved '\(destination.lastPathComponent)' into place from SideStore import.")
+            }
+
+            for suffix in ["", "-wal", "-shm"] {
+                let source = documentsDirectory.appendingPathComponent(AppConstants.Database.sideStoreFileName + suffix)
+                try? fileManager.removeItem(at: source)
+            }
+            try? fileManager.removeItem(at: stagingDirectory)
+
+            try? Data().write(to: markerURL)
+            debugLog("[MaintenanceManager] SideStore database import finished.")
+        } catch {
+            try? fileManager.removeItem(at: stagingDirectory)
+            debugLog("[MaintenanceManager] Failed to import SideStore database: \(error)")
+        }
     }
 
     func migrateLegacyCachedAppBundles() async {
