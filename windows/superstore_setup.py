@@ -309,16 +309,64 @@ async def _pair_device(serial, timeout):
     return record, summary
 
 
-def send_pairing_file(serial, path):
+PAIRING_WAIT_SECONDS = 90
+LOCKED_FOLDER = (
+    "SuperStore's folder stayed locked. Unlock the iPhone, open SuperStore once (reinstall it if "
+    "it will not open), then press Send to iPhone."
+)
+
+
+def folder_locked(error):
+    status = getattr(error, "status", None)
+    if status is not None:
+        return status == 10 or "PERM_DENIED" in str(getattr(status, "name", status))
+    text = str(error).lower()
+    return "perm_denied" in text or "permission denied" in text
+
+
+def send_pairing_file(serial, path, on_wait=None):
     if not DEVICE_SUPPORT:
         raise RuntimeError("This copy has no device support.")
-    return asyncio.run(_send_pairing_file(serial, path))
+    return asyncio.run(_send_pairing_file(serial, path, on_wait))
 
 
-async def _send_pairing_file(serial, path):
+async def _send_pairing_file(serial, path, on_wait=None):
+    deadline = time.monotonic() + PAIRING_WAIT_SECONDS
+    waiting = False
+    while True:
+        try:
+            await _push_pairing_file(serial, path)
+            return
+        except Exception as error:
+            if not folder_locked(error):
+                raise
+            if time.monotonic() >= deadline:
+                raise RuntimeError(LOCKED_FOLDER) from error
+            if not waiting:
+                waiting = True
+                if on_wait is not None:
+                    on_wait(
+                        "Waiting for the iPhone to unlock SuperStore's folder. Keep the screen on "
+                        "and the phone on the home screen."
+                    )
+            await asyncio.sleep(3)
+
+
+async def _push_pairing_file(serial, path):
     async with await create_using_usbmux(serial=serial, autopair=True) as lockdown:
-        async with await HouseArrestService.create(lockdown, BUNDLE_ID, documents_only=True) as container:
-            await container.push(Path(path), PAIRING_FILENAME, progress_bar=False)
+        last = None
+        for documents_only, name in ((True, PAIRING_FILENAME), (False, "Documents/" + PAIRING_FILENAME)):
+            try:
+                async with await HouseArrestService.create(
+                    lockdown, BUNDLE_ID, documents_only=documents_only
+                ) as container:
+                    await container.push(Path(path), name, progress_bar=False)
+                return
+            except Exception as error:
+                if not folder_locked(error):
+                    raise
+                last = error
+        raise last
 
 
 def install_ipa(serial, path, progress=None):
@@ -483,7 +531,7 @@ def main(argv=None):
         say("Paired %s (iOS %s)." % (summary.get("name"), summary.get("ios")))
         say("Pairing file: %s" % pairing)
         try:
-            send_pairing_file(serial, pairing)
+            send_pairing_file(serial, pairing, on_wait=say)
             say("Copied into SuperStore's Documents folder.")
         except Exception as error:
             say("SuperStore is not on the phone yet, so the pairing file stayed on the PC.")
@@ -496,7 +544,7 @@ def main(argv=None):
             say("No pairing file yet. Run --pair first.")
             return 1
         try:
-            send_pairing_file(serial, pairing)
+            send_pairing_file(serial, pairing, on_wait=say)
         except Exception as error:
             say("Could not copy the pairing file into the app: %s" % error)
             return 1
@@ -1423,7 +1471,16 @@ class SetupApp:
             return
         serial = self.device["serial"]
         path = self.pairing_path
-        self.spawn(lambda: send_pairing_file(serial, path), self.pairing_sent, self.pairing_send_failed)
+        waiting = lambda text: self.post(self.pairing_waiting, text)
+        self.spawn(
+            lambda: send_pairing_file(serial, path, on_wait=waiting),
+            self.pairing_sent,
+            self.pairing_send_failed,
+        )
+
+    def pairing_waiting(self, text):
+        self.pair_status.configure(text=text, fg=WARN)
+        self.log(text, "warn")
 
     def pairing_sent(self, _result):
         self.pair_status.configure(text="Pairing file is in SuperStore's Documents folder.", fg=OK)
@@ -1433,11 +1490,16 @@ class SetupApp:
 
     def pairing_send_failed(self, error):
         message = str(error)
-        if "not installed" in message.lower() or "lookupfailed" in message.lower():
+        lower = message.lower()
+        if "no app with bundle id" in lower or "not installed" in lower or "lookupfailed" in lower:
             self.pair_status.configure(text="Pairing file saved on the PC.", fg=WARN)
             self.log("SuperStore is not on the phone yet. Install it, then press Send to iPhone.", "info")
+        elif "locked" in message.lower():
+            self.pair_status.configure(text="SuperStore's folder stayed locked. Unlock the iPhone.", fg=WARN)
+            self.log(message, "warn")
         else:
             self.pair_status.configure(text="Could not reach the app's folder.", fg=ERR)
+            self.log(message, "error")
 
     def on_send(self):
         if self.busy or not self.device or not self.pairing_path:
