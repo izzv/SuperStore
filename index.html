@@ -423,6 +423,49 @@
     background: rgba(255, 255, 255, 0.02);
   }
 
+  /* ---------- previous versions ---------- */
+
+  .versions {
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--panel);
+    overflow: hidden;
+  }
+
+  .versions header { padding: 24px 24px 18px; }
+  .versions h2 { font-size: 1.15rem; letter-spacing: -0.01em; margin-bottom: 5px; }
+  .versions header p { font-size: 0.85rem; }
+  .versions ul { list-style: none; margin: 0; padding: 0; }
+
+  .versions li {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 24px;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+  }
+
+  .versions .v { font-weight: 600; }
+  .versions .tag {
+    font-size: 0.66rem;
+    font-weight: 600;
+    color: #052e16;
+    background: #4ade80;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+  .versions .d { color: var(--dim); }
+  .versions .s { color: var(--muted); margin-left: auto; }
+  .versions a { color: var(--lav); text-decoration: none; white-space: nowrap; }
+  .versions a:hover { text-decoration: underline; }
+
+  @media (max-width: 620px) {
+    .versions li { flex-wrap: wrap; gap: 8px; padding: 14px 18px; }
+    .versions .s { margin-left: 0; width: 100%; order: 3; }
+    .versions a { order: 4; }
+  }
+
   /* ---------- footer ---------- */
 
   footer { padding: 72px 0 56px; text-align: center; }
@@ -653,6 +696,18 @@
     </div>
   </section>
 
+  <section class="download" id="versions" hidden>
+    <div class="container">
+      <div class="versions">
+        <header>
+          <h2 class="grad-text">Previous versions</h2>
+          <p>Every build we publish stays downloadable. Newest first.</p>
+        </header>
+        <ul id="version-list"></ul>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <footer>
@@ -693,6 +748,57 @@
         note.textContent = 'The IPA is not on this site yet. Build it from source, or take the unsigned build from the latest successful CI run.';
       }
     });
+  })();
+
+  // The version archive is a plain JSON file next to the builds, so publishing a
+  // release is: drop the .ipa in downloads/ and add a row to versions.json.
+  (function () {
+    var section = document.getElementById('versions');
+    var list = document.getElementById('version-list');
+    if (!section || !list) { return; }
+
+    fetch('downloads/versions.json', { cache: 'no-cache' }).then(function (response) {
+      if (!response.ok) { throw new Error('no archive'); }
+      return response.json();
+    }).then(function (versions) {
+      if (!Array.isArray(versions) || !versions.length) { return; }
+
+      versions.forEach(function (entry) {
+        var row = document.createElement('li');
+
+        var version = document.createElement('span');
+        version.className = 'v';
+        version.textContent = entry.version;
+        row.appendChild(version);
+
+        if (entry.latest) {
+          var tag = document.createElement('span');
+          tag.className = 'tag';
+          tag.textContent = 'latest';
+          row.appendChild(tag);
+        }
+
+        var date = document.createElement('span');
+        date.className = 'd';
+        date.textContent = entry.date;
+        row.appendChild(date);
+
+        var size = document.createElement('span');
+        size.className = 's';
+        size.textContent = [entry.size, entry.config].filter(Boolean).join(' \u00b7 ');
+        row.appendChild(size);
+
+        var link = document.createElement('a');
+        link.href = entry.file;
+        link.setAttribute('download', '');
+        link.textContent = 'Download';
+        row.appendChild(link);
+
+        list.appendChild(row);
+      });
+
+      section.hidden = false;
+    }).catch(function () { /* leave the section hidden */ });
   })();
 </script>
 
