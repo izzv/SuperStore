@@ -19,6 +19,7 @@ import shutil
 import sys
 import threading
 import time
+import traceback
 import tkinter as tk
 import tkinter.font as tkfont
 import urllib.request
@@ -84,6 +85,15 @@ SCALE = 1.0
 
 def px(value):
     return int(value * SCALE)
+
+
+def close_splash():
+    try:
+        import pyi_splash
+
+        pyi_splash.close()
+    except Exception:
+        pass
 
 
 def say(message=""):
@@ -359,6 +369,7 @@ def report_environment():
     if not has_apple_driver():
         say("  Pairing and installation need Apple's driver, which ships with iTunes or")
         say("  the Apple Devices app.")
+    say("Signing support: %s" % ("ready" if SIGNING_SUPPORT else "unavailable"))
     say("Working folder: %s" % workdir())
 
     devices = connected_devices()
@@ -799,6 +810,7 @@ class SetupApp:
         self.last_serial = None
 
         self.build()
+        close_splash()
         self.log("SuperStore Setup ready.", "ok")
         if not DEVICE_SUPPORT:
             self.log("This copy was built without device support: downloading works, pairing does not.", "error")
@@ -1382,9 +1394,30 @@ def attach_console():
         pass
 
 
+def report_crash():
+    target = workdir() / "last-error.txt"
+    try:
+        target.write_text(traceback.format_exc(), encoding="utf-8")
+    except Exception:
+        target = None
+    try:
+        ctypes.windll.user32.MessageBoxW(
+            None,
+            "SuperStore Setup hit an error and stopped.\n\n%s" % ("Details: %s" % target if target else ""),
+            "SuperStore Setup",
+            0x10,
+        )
+    except Exception:
+        pass
+
+
 def launch_window():
-    app = SetupApp()
-    app.run()
+    try:
+        app = SetupApp()
+        app.run()
+    except Exception:
+        close_splash()
+        report_crash()
 
 
 if __name__ == "__main__":

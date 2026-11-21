@@ -95,7 +95,9 @@ is installed.
 `.github/workflows/windows-build.yml` builds `SuperStore-Setup.exe` with
 PyInstaller on `windows-latest` in windowed mode, so no console window opens
 when the exe is double-clicked; a command-line flag attaches to the console it
-was started from instead. The build bundles `pymobiledevice3`, `srp`, `ipasign`,
+was started from instead. A single-file exe of this size takes a while to
+unpack before Python starts, so `windows/splash.png` is shown while that
+happens and closes once the window is up. The build bundles `pymobiledevice3`, `srp`, `ipasign`,
 `cryptography` and certifi, stamps `windows/SuperStore.ico` into the binary and
 the window, and ships `windows/apple-root-ca.pem` because Windows does not
 trust Apple's root for `gsa.apple.com` by default.
