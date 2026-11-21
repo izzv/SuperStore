@@ -43,7 +43,12 @@ certificate and a provisioning profile for the connected iPhone, and signs the
 `.ipa` on this PC with them.
 
 - The password is sent to Apple and nowhere else; it is never written to disk.
-- Two-factor accounts get the usual code prompt in the window.
+- Two-factor accounts get the usual code prompt in the window. Once the code
+  arrives, type it in the code field and press Sign in again.
+- Repeated wrong passwords are what lock an Apple ID, so the helper counts
+  failures: after the second it warns you, and after five in one day it stops
+  trying and asks you to sign in at appleid.apple.com first. A good sign-in
+  clears the count.
 - The certificate and profile are cached in `%LOCALAPPDATA%\SuperStore\signing\`,
   so later installs skip the sign-in until the profile runs out. Free accounts
   get seven days per profile; sign in again to renew.
@@ -97,7 +102,7 @@ PyInstaller on `windows-latest` in windowed mode, so no console window opens
 when the exe is double-clicked; a command-line flag attaches to the console it
 was started from instead. A single-file exe of this size takes a while to
 unpack before Python starts, so `windows/splash.png` is shown while that
-happens and closes once the window is up. The build bundles `pymobiledevice3`, `srp`, `ipasign`,
+happens and closes once the window is up. The build bundles `pymobiledevice3`, `ipasign`,
 `cryptography` and certifi, stamps `windows/SuperStore.ico` into the binary and
 the window, and ships `windows/apple-root-ca.pem` because Windows does not
 trust Apple's root for `gsa.apple.com` by default.

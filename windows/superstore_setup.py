@@ -1025,7 +1025,9 @@ class SetupApp:
         self.refresh_buttons()
 
     def sign_in_failed(self, error):
-        self.account_status.configure(text=str(error) or "Apple refused the sign-in.", fg=ERR)
+        message = str(error) or "Apple refused the sign-in."
+        self.account_status.configure(text=message, fg=ERR)
+        self.log(message, "error")
 
     def restore_identity(self):
         if not SIGNING_SUPPORT or self.identity is not None or not self.device:

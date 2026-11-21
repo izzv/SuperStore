@@ -15,15 +15,14 @@ import hmac
 import json
 import os
 import plistlib
+import secrets
 import time
 import uuid
 from dataclasses import dataclass
-from hashlib import pbkdf2_hmac, sha256
 from pathlib import Path
 
 import certifi
 import requests
-import srp
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -89,27 +88,126 @@ def http():
     return session
 
 
-class SrpPassword:
-    """Apple's password digest for either SRP variant."""
+def attempts_file():
+    folder = workdir() / "signing"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder / "attempts.json"
 
-    def __init__(self, password):
-        self._digest = sha256(password.encode("utf-8")).digest()
-        self.salt = None
-        self.iterations = None
-        self.key_length = 32
-        self.protocol = "s2k"
 
-    def set_encrypt_info(self, salt, iterations, key_length, protocol):
-        self.salt = salt
-        self.iterations = iterations
-        self.key_length = key_length or 32
-        self.protocol = protocol or "s2k"
+def recent_attempts(apple_id):
+    try:
+        data = json.loads(attempts_file().read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    stamps = data.get(apple_id.lower()) or []
+    return [float(stamp) for stamp in stamps if time.time() - float(stamp) < ATTEMPT_WINDOW]
 
-    def encode(self):
-        if self.salt is None:
-            raise AppleError("Apple did not send a sign-in salt.")
-        secret = self._digest.hex().encode() if self.protocol == "s2k_fo" else self._digest
-        return pbkdf2_hmac("sha256", secret, self.salt, self.iterations or 1, self.key_length)
+
+def record_attempt(apple_id):
+    data = {}
+    try:
+        data = json.loads(attempts_file().read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    stamps = [
+        stamp for stamp in data.get(apple_id.lower()) or [] if time.time() - float(stamp) < ATTEMPT_WINDOW
+    ]
+    stamps.append(time.time())
+    data[apple_id.lower()] = stamps
+    try:
+        attempts_file().write_text(json.dumps(data), encoding="utf-8")
+    except Exception:
+        pass
+    return len(stamps)
+
+
+def clear_attempts(apple_id):
+    try:
+        data = json.loads(attempts_file().read_text(encoding="utf-8"))
+    except Exception:
+        return
+    if data.pop(apple_id.lower(), None) is not None:
+        try:
+            attempts_file().write_text(json.dumps(data), encoding="utf-8")
+        except Exception:
+            pass
+
+
+SRP_N = int(
+    "AC6BDB41324A9A9BF166DE5E1389582FAF72B6651987EE07FC31929"
+    "43DB56050A37329CBB4A099ED8193E0757767A13DD52312AB4B03310D"
+    "CD7F48A9DA04FD50E8083969EDB767B0CF6095179A163AB3661A05FB"
+    "D5FAAAE82918A9962F0B93B855F97993EC975EEAA80D740ADBF4FF74"
+    "7359D041D5C33EA71D281E446B14773BCA97B43A23FB801676BD207A"
+    "436C6481F1D2B9078717461A5B9D32E688F87748544523B524B0D57D"
+    "5EA77A2775D2ECFA032CFBDBF52FB3786160279004E57AE6AF874E73"
+    "03CE53299CCC041C7BC308D82A5698F3A8D0C38271AE35F8E9DBFBB6"
+    "94B5C803D89F7AE435DE236D525F54759B65E372FCD68EF20FA7111F"
+    "9E4AFF73",
+    16,
+)
+SRP_G = 2
+SRP_WIDTH = 256
+MAX_ATTEMPTS = 5
+ATTEMPT_WINDOW = 24 * 3600
+
+
+def _int_bytes(value):
+    if value == 0:
+        return b"\x00"
+    return value.to_bytes((value.bit_length() + 7) // 8, "big")
+
+
+def _pad_left(data, width=SRP_WIDTH):
+    return data.rjust(width, b"\x00") if len(data) < width else data
+
+
+class GrandSlamSrp:
+    """Apple's SRP-6a variant, which salts the password hash, not the password."""
+
+    def __init__(self):
+        self._secret = secrets.randbits(256)
+        self._public = pow(SRP_G, self._secret, SRP_N)
+        self.key = b""
+        self._expected = b""
+
+    def public_key(self):
+        return _int_bytes(self._public)
+
+    def proof(self, username, password, salt, iterations, protocol, server_public):
+        digest = hashlib.sha256(password.encode("utf-8")).digest()
+        seed = digest.hex().encode() if protocol == "s2k_fo" else digest
+        passkey = hashlib.pbkdf2_hmac("sha256", seed, salt, max(1, int(iterations or 1)), 32)
+        salted = hashlib.sha256(b":" + passkey).digest()
+        x = int.from_bytes(hashlib.sha256(salt + salted).digest(), "big")
+
+        server = int.from_bytes(server_public, "big")
+        if server % SRP_N == 0:
+            raise AppleError("Apple sent an unusable sign-in challenge.")
+
+        scramble = int.from_bytes(
+            hashlib.sha256(_pad_left(_int_bytes(self._public)) + _pad_left(_int_bytes(server))).digest(), "big"
+        )
+        multiplier = int.from_bytes(
+            hashlib.sha256(_pad_left(_int_bytes(SRP_N)) + _pad_left(_int_bytes(SRP_G))).digest(), "big"
+        )
+        verifier = pow(SRP_G, x, SRP_N)
+        base = (server - (verifier * multiplier) % SRP_N) % SRP_N
+        shared = pow(base, self._secret + scramble * x, SRP_N)
+        self.key = hashlib.sha256(_int_bytes(shared)).digest()
+
+        n_hash = hashlib.sha256(_int_bytes(SRP_N)).digest()
+        g_hash = hashlib.sha256(_pad_left(_int_bytes(SRP_G))).digest()
+        mixed = bytes(left ^ right for left, right in zip(n_hash, g_hash))
+        public = _int_bytes(self._public)
+        proof = hashlib.sha256(
+            mixed + hashlib.sha256(username.encode("utf-8")).digest() + salt + public + server_public + self.key
+        ).digest()
+        self._expected = hashlib.sha256(public + proof + self.key).digest()
+        return proof
+
+    def verify(self, server_proof):
+        return bool(server_proof) and hmac.compare_digest(self._expected, server_proof)
 
 
 @dataclass
@@ -159,7 +257,7 @@ class AppleLogin:
         self.anisette = anisette
         self.dsid = ""
         self.token = ""
-        self._user = None
+        self._srp = None
         self._proof = None
         self._code = None
 
@@ -183,52 +281,71 @@ class AppleLogin:
         merged = self._headers()
         merged.update(headers or {})
         response = http().post(GSA, data=document, headers=merged, timeout=45)
-        if response.status_code >= 400:
-            raise AppleError("Apple answered HTTP %s while signing in." % response.status_code)
         try:
             parsed = plistlib.loads(response.content)
         except Exception:
+            parsed = None
+        if response.status_code >= 400:
+            status = ((parsed or {}).get("Response") or {}).get("Status") or {}
+            if status.get("au"):
+                return parsed["Response"]
+            raise AppleError(
+                status.get("em") or "Apple answered HTTP %s while signing in." % response.status_code
+            )
+        if parsed is None:
             raise AppleError("Apple did not answer with a sign-in plist.")
         return parsed.get("Response", parsed)
 
     def begin(self, password):
+        if len(recent_attempts(self.apple_id)) >= MAX_ATTEMPTS:
+            raise AppleError(
+                "%d failed sign-ins for this Apple ID in the last day. Apple locks accounts after "
+                "repeated failures, so sign in at appleid.apple.com first or wait before trying again."
+                % MAX_ATTEMPTS
+            )
         self.anisette = self.anisette or fetch_anisette()
-        secret = SrpPassword(password)
-        srp.rfc5054_enable()
-        srp.no_username_in_x()
-        user = srp.User(self.apple_id, secret, hash_alg=srp.SHA256, ng_type=srp.NG_2048)
-        _, ephemeral = user.start_authentication()
-        start = self._gsa({"A2k": ephemeral, "ps": ["s2k", "s2k_fo"], "u": self.apple_id, "o": "init"})
+        self._srp = GrandSlamSrp()
+        start = self._gsa({"A2k": self._srp.public_key(), "ps": ["s2k", "s2k_fo"], "u": self.apple_id, "o": "init"})
         status = start.get("Status") or {}
         salt = start.get("s")
         server_public = start.get("B")
         if not salt or not server_public:
             raise AppleError(status.get("em") or "Apple did not start the sign-in.")
-        secret.set_encrypt_info(salt, int(start.get("i") or 1), int(start.get("kl") or 32), start.get("sp"))
-        self._user = user
         self._code = start.get("c")
-        proof = user.process_challenge(salt, server_public)
-        if proof is None:
-            raise AppleError("Apple's sign-in challenge was rejected.")
-        self._proof = proof
-        answer = self._gsa({"M1": proof, "c": self._code, "u": self.apple_id, "o": "complete"})
+        self._proof = self._srp.proof(
+            self.apple_id,
+            password,
+            salt,
+            int(start.get("i") or 1),
+            start.get("sp") or "s2k",
+            server_public,
+        )
+        answer = self._gsa({"M1": self._proof, "c": self._code, "u": self.apple_id, "o": "complete"})
         return self._accept(answer)
 
     def _accept(self, answer):
         status = answer.get("Status") or {}
-        if status.get("au"):
+        about = "%s %s" % (status.get("au") or "", status.get("em") or "")
+        if status.get("au") or "trusteddevice" in about.lower() or "secondaryauth" in about.lower():
             try:
                 http().get(TRUSTED_DEVICE, headers=self._headers(), timeout=30)
             except Exception:
                 pass
             raise TwoFactorRequired(status.get("em") or "Apple sent a code to your trusted devices.")
         if status.get("ec"):
-            raise AppleError(status.get("em") or "Apple refused the sign-in.")
-        proof = answer.get("M2")
-        if proof:
-            self._user.verify_session(proof)
-        if not self._user.authenticated():
-            raise AppleError("Apple's sign-in proof did not match.")
+            count = record_attempt(self.apple_id)
+            message = status.get("em") or "Apple refused the sign-in."
+            hint = ""
+            if count >= 2:
+                hint = (
+                    " (Attempt %d today; Apple locks an Apple ID after repeated failures, so check "
+                    "the password and the account before trying again.)" % count
+                )
+            raise AppleError(message + hint)
+        if not self._srp.verify(answer.get("M2")):
+            record_attempt(self.apple_id)
+            raise AppleError("Apple's sign-in proof did not match; the password was not accepted.")
+        clear_attempts(self.apple_id)
         return self._session(answer)
 
     def two_factor(self, code):
@@ -259,7 +376,7 @@ class AppleLogin:
         return {"dsid": dsid, "identity": self.token, "server": self.anisette.server}
 
     def _decrypt(self, payload):
-        key = self._user.get_session_key()
+        key = self._srp.key
         aes_key = hmac.new(key, b"extra data key:", hashlib.sha256).digest()
         iv = hmac.new(key, b"extra data iv:", hashlib.sha256).digest()[:16]
         decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).decryptor()

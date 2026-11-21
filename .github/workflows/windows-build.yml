@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip pyinstaller pymobiledevice3 requests certifi cryptography srp ipasign
+          python -m pip install --upgrade pip pyinstaller pymobiledevice3 requests certifi cryptography ipasign
 
       - name: Check the script parses and reports
         run: |
@@ -38,7 +38,7 @@ jobs:
 
       - name: Build the executable
         run: |
-          pyinstaller --onefile --windowed --name SuperStore-Setup --icon "${{ github.workspace }}/windows/SuperStore.ico" --splash "${{ github.workspace }}/windows/splash.png" --add-data "${{ github.workspace }}/windows/splash.png;." --add-data "${{ github.workspace }}/windows/SuperStore.ico;." --add-data "${{ github.workspace }}/windows/apple-root-ca.pem;." --paths "${{ github.workspace }}/windows" --collect-all pymobiledevice3 --collect-all srp --collect-all ipasign --collect-data certifi --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
+          pyinstaller --onefile --windowed --name SuperStore-Setup --icon "${{ github.workspace }}/windows/SuperStore.ico" --splash "${{ github.workspace }}/windows/splash.png" --add-data "${{ github.workspace }}/windows/splash.png;." --add-data "${{ github.workspace }}/windows/SuperStore.ico;." --add-data "${{ github.workspace }}/windows/apple-root-ca.pem;." --paths "${{ github.workspace }}/windows" --collect-all pymobiledevice3 --collect-all ipasign --collect-data certifi --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
           dir build
 
       - name: Upload
