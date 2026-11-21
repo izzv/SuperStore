@@ -17,6 +17,7 @@ import os
 import plistlib
 import queue
 import shutil
+import subprocess
 import sys
 import threading
 import time
@@ -44,6 +45,7 @@ DEVELOPMENT_ZIP = "https://nightly.link/izzv/SuperStore/workflows/verify.yml/dev
 SETUP_RELEASE_URL = "https://api.github.com/repos/izzv/SuperStore/releases/tags/windows-setup"
 SETUP_DOWNLOAD_URL = "https://github.com/izzv/SuperStore/releases/download/windows-setup/SuperStore-Setup.exe"
 SETUP_CHECK_INTERVAL_MS = 30 * 60 * 1000
+SETUP_UPDATE_GRACE = datetime.timedelta(minutes=10)
 CHANNELS = (
     {"id": "stable", "label": "Stable", "summary": "the published release"},
     {"id": "development", "label": "Development", "summary": "the newest build of develop"},
@@ -197,7 +199,64 @@ def setup_update(build):
     built = parse_stamp(build.get("built_at"))
     if built is None or published is None:
         return {"newer": None, "published": published, "built": built}
-    return {"newer": published > built, "published": published, "built": built}
+    return {"newer": published > built + SETUP_UPDATE_GRACE, "published": published, "built": built}
+
+
+def download_setup(destination, on_progress=None):
+    """Fetch the published setup .exe and check that it really is one."""
+    request = urllib.request.Request(SETUP_DOWNLOAD_URL, headers={"User-Agent": "SuperStore-Setup"})
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(request, timeout=60) as response, open(destination, "wb") as handle:
+        total = int(response.headers.get("Content-Length") or 0)
+        done = 0
+        while True:
+            chunk = response.read(256 * 1024)
+            if not chunk:
+                break
+            handle.write(chunk)
+            done += len(chunk)
+            if on_progress is not None:
+                on_progress(done, total)
+    size = destination.stat().st_size
+    if size < 1024 * 1024:
+        raise RuntimeError("the download stopped after %s" % human_size(size))
+    with open(destination, "rb") as handle:
+        if handle.read(2) != b"MZ":
+            raise RuntimeError("the download is not a Windows executable")
+    return destination
+
+
+def replace_setup(target, staged):
+    """Move the staged download into the running setup's place, keeping the old one aside."""
+    target = Path(target)
+    staged = Path(staged)
+    backup = target.with_name(target.stem + ".old.exe")
+    try:
+        backup.unlink()
+    except OSError:
+        pass
+    target.rename(backup)
+    try:
+        shutil.move(str(staged), str(target))
+    except OSError:
+        try:
+            backup.rename(target)
+        except OSError:
+            pass
+        raise
+    return backup
+
+
+def clean_old_setup():
+    """Drop the previous executable left behind by an in-place update."""
+    if not getattr(sys, "frozen", False):
+        return
+    stale = Path(sys.executable).with_name(Path(sys.executable).stem + ".old.exe")
+    try:
+        stale.unlink()
+    except OSError:
+        pass
 
 
 def sha256_of(path):
@@ -981,6 +1040,7 @@ class SetupApp:
         self.settings = load_settings()
         self.build_info = build_info()
         self.update_check_logged = False
+        self.updating = False
 
         self.build()
         close_splash()
@@ -1754,7 +1814,74 @@ class SetupApp:
             self.log("Could not check for a newer setup: %s" % (str(error) or error.__class__.__name__), "info")
 
     def open_setup_download(self):
-        webbrowser.open(SETUP_DOWNLOAD_URL)
+        if self.updating:
+            return
+        if not getattr(sys, "frozen", False):
+            self.log("This copy runs from source, so it can only open the release page.", "info")
+            webbrowser.open(SETUP_DOWNLOAD_URL)
+            return
+        target = Path(sys.executable)
+        staged = target.with_name(target.stem + ".new.exe")
+        try:
+            probe = target.with_name("write-test.tmp")
+            probe.write_bytes(b"")
+            probe.unlink()
+        except OSError:
+            staged = workdir() / "SuperStore-Setup.new.exe"
+            self.log("The setup's own folder cannot be written to, so the download goes to %s." % staged.parent,
+                     "warn")
+        self.updating = True
+        self.update_note.configure(text="Downloading the new setup…", fg=WARN)
+        self.log("Downloading the new setup…", "step")
+
+        def work():
+            try:
+                download_setup(staged, on_progress=lambda done, total: self.post(self.update_progress, done, total))
+            except Exception as error:
+                self.post(self.update_download_failed, error)
+                return
+            self.post(self.update_ready, staged, target)
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def update_progress(self, done, total):
+        if total:
+            self.update_note.configure(
+                text="Downloading the new setup… %s of %s (%d%%)" % (human_size(done), human_size(total), done * 100 // total),
+                fg=WARN)
+        else:
+            self.update_note.configure(text="Downloading the new setup… %s" % human_size(done), fg=WARN)
+
+    def update_download_failed(self, error):
+        self.updating = False
+        message = str(error) or error.__class__.__name__
+        self.update_note.configure(text="The new setup could not be downloaded: %s" % message, fg=ERR)
+        self.log("The new setup could not be downloaded: %s" % message, "error")
+
+    def update_ready(self, staged, target):
+        try:
+            replace_setup(target, staged)
+        except OSError as error:
+            self.updating = False
+            self.update_note.configure(text="Starting the downloaded setup…", fg=WARN)
+            self.log("Could not replace the running setup (%s). Starting the downloaded copy instead." % error,
+                     "warn")
+            self.launch_replacement(staged)
+            return
+        self.update_note.configure(text="Restarting into the new setup…", fg=OK)
+        self.log("The new setup is in place. Restarting…", "ok")
+        self.launch_replacement(target)
+
+    def launch_replacement(self, path):
+        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        try:
+            subprocess.Popen([str(path)], close_fds=True, creationflags=flags)
+        except OSError as error:
+            self.updating = False
+            self.log("Could not start %s (%s). Open it from the folder instead." % (path, error), "error")
+            self.open_folder()
+            return
+        self.root.after(400, self.root.destroy)
 
     def open_folder(self):
         try:
@@ -1806,6 +1933,7 @@ def report_crash():
 
 
 def launch_window():
+    clean_old_setup()
     try:
         app = SetupApp()
         app.run()
