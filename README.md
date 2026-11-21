@@ -1,47 +1,67 @@
-# SideStore
+# SuperStore
 
-> SideStore is an *untethered, community driven* alternative app store for non-jailbroken iOS devices 
+> An untethered, community-driven sideloading app store for iOS — built on [SideStore](https://github.com/SideStore/SideStore), which is itself a fork of [AltStore](https://github.com/rileytestut/AltStore).
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://makeapullrequest.com)
-[![Nightly SideStore build](https://github.com/SideStore/SideStore/actions/workflows/nightly.yml/badge.svg)](https://github.com/SideStore/SideStore/actions/workflows/nightly.yml)
-[![.github/workflows/beta.yml](https://github.com/SideStore/SideStore/actions/workflows/beta.yml/badge.svg)](https://github.com/SideStore/SideStore/actions/workflows/beta.yml)
-[![Discord](https://img.shields.io/discord/949183273383395328?label=Discord)](https://dis.sidestore.io)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](./LICENSE)
 
-![Alt](https://repobeats.axiom.co/api/embed/3a329ce95955690b9a9366f8d5598626a847d96c.svg "Repobeats analytics image")
+**SuperStore is a work in progress.** Nothing has been released from this fork yet: it builds (CI compiles it on every push), but it has not been signed, installed or tested on a device under the SuperStore name.
 
-SideStore is an iOS application that allows you to sideload apps onto your iOS device with just your Apple ID. SideStore resigns apps with your personal development certificate, and then uses a [specially designed VPN](https://github.com/jkcoxson/em_proxy) in order to trick iOS into installing them. SideStore will periodically "refresh" your apps in the background, to keep their normal 7-day development period from expiring.
+---
 
-SideStore's goal is to provide an untethered sideloading experience. It's a community driven fork of [AltStore](https://github.com/rileytestut/AltStore), and has already implemented some of the community's most-requested features.
+## What it does
 
-(Contributions are welcome! 🙂)
+SuperStore is a normal, sandboxed iOS app that sideloads other apps using nothing but your Apple ID. It signs them with your personal development certificate, installs them over a loopback tunnel provided by a VPN, and re-signs them before Apple's seven-day development window expires.
+
+- **No AltServer, no computer, no jailbreak.**
+- **Your own certificate** — apps are signed on-device.
+- **Background refresh** — apps are re-signed so they keep opening.
+
+## What this fork changes
+
+- **Anisette server failover.** A dead or misbehaving Anisette server used to dump its raw HTML error page into the sign-in alert. SuperStore now tries the next configured server instead, and only reports a failure once every one has failed.
+- **Sign-in errors that explain themselves.** Apple's `-80046`, `-80045` and `-22411` come with a plain-language cause and a suggested fix rather than a bare code.
+- **Independent branding.** New name, icon set and About screen. Contact and social links live in `AppConstants.Brand` so they can be filled in one place — an unset value hides the control instead of shipping a dead link.
+
+Everything else — sources, installation, refresh, backups — is inherited from SideStore.
 
 ## Requirements
-- Xcode 15
-- iOS 14+
-- Rustup (`brew install rustup`)
 
-Why iOS 14? Targeting such a recent version of iOS allows us to accelerate development, especially since not many developers have older devices to test on. This is corrobated by the fact that SwiftUI support is much better, allowing us to transistion to a more modern UI codebase.
-## Project Overview
+- macOS with Xcode 15 or newer to build
+- iOS 14 or newer on the device
+- [LocalDevVPN](https://github.com/jkcoxson/LocalDevVPN) installed on the device, which provides the tunnel on-device installation needs
 
-### SideStore
-SideStore is a just regular, sandboxed iOS application. The AltStore app target contains the vast majority of SideStore's functionality, including all the logic for downloading and updating apps through SideStore. SideStore makes heavy use of standard iOS frameworks and technologies most iOS developers are familiar with.
+## Building
 
-### EM Proxy
-[EM Proxy](https://github.com/jkcoxson/em_proxy) powers the defining feature of SideStore: untethered app installation. By leveraging a custom-built App Store app with additional entitlements ([LocalDevVPN](https://github.com/jkcoxson/LocalDevVPN)) to create the VPN tunnel for us, it allows SideStore to take advantage of [Jitterbug](https://github.com/osy/Jitterbug)'s loopback method without requiring a paid developer account.
+The app builds unsigned for the arm64 device slice, which needs no certificate, no provisioning profile and no attached device:
 
-### Minimuxer
-[Minimuxer](https://github.com/jkcoxson/minimuxer) is a lockdown muxer that can run inside iOS’s sandbox. It replicates Apple’s usbmuxd protocol on macOS to “discover” devices to interface with LocalDevVPN on-device.
+```sh
+xcodebuild build \
+  -project AltStore.xcodeproj \
+  -scheme SideStore \
+  -config Debug \
+  -destination 'generic/platform=iOS' \
+  CODE_SIGNING_ALLOWED=NO
+```
 
-### Roxas
-[Roxas](https://github.com/rileytestut/roxas) is Riley Testut's internal framework from AltStore used across many of their iOS projects, developed to simplify a variety of common tasks used in iOS development.
+That is exactly what CI runs (`.github/workflows/verify.yml`) on a GitHub-hosted macOS runner.
 
-We're hoping to eventually eliminate our dependency on it, as it increases the amount of unnecessary Objective-C in the project.
+Do **not** target the simulator: the bundled `minimuxer` and `idevice` libraries ship only an arm64 slice, so `generic/platform=iOS Simulator` fails at link time with undefined symbols.
 
-## Contributing/Compilation Instructions
+For signing, provisioning and running on a device, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-Please see [CONTRIBUTING.md](./CONTRIBUTING.md)
+## How it fits together
+
+| Piece | Role |
+| --- | --- |
+| `AltStore/`, `SideStore/` | The app itself: sources, app IDs, signing, installation, refresh |
+| [SideSign](Dependencies/SideSign) | Apple Developer Services and Anisette client |
+| [minimuxer](https://github.com/jkcoxson/minimuxer) | Lockdown muxer that runs inside the iOS sandbox |
+| [EM Proxy](https://github.com/jkcoxson/em_proxy) | The loopback tunnel that makes on-device installation possible |
+
+## Contributing
+
+Build instructions, code signing setup and project conventions are in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Licensing
 
-This project is licensed under the **AGPLv3 license**.
+AGPL-3.0. SuperStore is a fork of SideStore, which is a fork of AltStore; both are AGPL-3.0, and the original copyright notices are preserved in [LICENSE](./LICENSE).
