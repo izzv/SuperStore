@@ -984,15 +984,16 @@ class SetupApp:
             if self.login is None or self.login.apple_id.lower() != email.lower():
                 self.login = apple.AppleLogin(email)
             if not self.login.dsid:
-                if not password:
-                    raise apple.AppleError("Enter the Apple ID password in step 2.")
-                try:
-                    self.login.begin(password)
-                except apple.TwoFactorRequired:
-                    self.post(self.ask_for_code)
-                    return "code"
-            if not self.login.dsid and code:
-                self.login.two_factor(code)
+                if code:
+                    self.login.two_factor(code)
+                else:
+                    if not password:
+                        raise apple.AppleError("Enter the Apple ID password in step 2.")
+                    try:
+                        self.login.begin(password)
+                    except apple.TwoFactorRequired:
+                        self.post(self.ask_for_code)
+                        return "code"
             return apple.provision(self.login, serial, name, BUNDLE_ID,
                                    on_status=lambda text: self.post(self.account_note, text))
 
