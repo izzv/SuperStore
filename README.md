@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://github.com/izzv/SuperStore/actions/workflows/verify.yml"><img src="https://github.com/izzv/SuperStore/actions/workflows/verify.yml/badge.svg?branch=develop" alt="Verify"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-8b5cf6" alt="License: AGPL-3.0"></a>
-  <img src="https://img.shields.io/badge/platform-iOS%2014%2B-lightgrey" alt="Platform: iOS 14+">
+  <img src="https://img.shields.io/badge/platform-iOS%2015%2B-lightgrey" alt="Platform: iOS 15+">
   <img src="https://img.shields.io/badge/language-Swift-f05138" alt="Swift">
   <a href="https://github.com/izzv/SuperStore/commits/develop"><img src="https://img.shields.io/github/last-commit/izzv/SuperStore/develop" alt="Last commit"></a>
   <a href="https://izzv.github.io/SuperStore/"><img src="https://img.shields.io/badge/website-live-22d3ee" alt="Website"></a>
@@ -42,7 +42,8 @@ Everything else — sources, installation, refresh, backups — is inherited fro
 ## Requirements
 
 - macOS with Xcode 15 or newer to build
-- iOS 14 or newer on the device
+- iOS 15 or newer on the device (CI builds against the current iOS SDK, so the
+  newest iOS is covered too)
 - [LocalDevVPN](https://github.com/jkcoxson/LocalDevVPN) installed on the device, which provides the tunnel on-device installation needs
 
 ## Building
