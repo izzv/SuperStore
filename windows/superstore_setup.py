@@ -802,6 +802,9 @@ class SetupApp:
         self.log("SuperStore Setup ready.", "ok")
         if not DEVICE_SUPPORT:
             self.log("This copy was built without device support: downloading works, pairing does not.", "error")
+        if not SIGNING_SUPPORT:
+            self.account_status.configure(text="This build cannot sign in: installs would stay unsigned.", fg=ERR)
+            self.log("This copy was built without signing support; the Apple ID step is disabled.", "error")
         if self.pairing_path:
             self.log("Using the pairing file already on this PC: %s" % self.pairing_path.name, "info")
         self.refresh_buttons()
