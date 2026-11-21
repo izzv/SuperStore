@@ -46,10 +46,10 @@
     content: "";
     position: fixed;
     inset: 0 0 auto 0;
-    height: 120vh;
+    height: 105vh;
     background:
-      radial-gradient(120vh at 25% -20px, rgba(90, 26, 229, 0.15), rgba(90, 26, 229, 0.15), rgba(0, 0, 0, 0)),
-      radial-gradient(90vh at 85% 10%, rgba(90, 26, 229, 0.10), rgba(0, 0, 0, 0));
+      radial-gradient(105vh at 25% -20px, rgba(90, 26, 229, 0.13), rgba(90, 26, 229, 0.13), rgba(0, 0, 0, 0)),
+      radial-gradient(80vh at 85% 5%, rgba(90, 26, 229, 0.06), rgba(0, 0, 0, 0));
     pointer-events: none;
     z-index: 0;
   }
@@ -141,7 +141,7 @@
 
   /* ---------- hero ---------- */
 
-  .hero { padding: 92px 0 40px; }
+  .hero { padding: 88px 0 0; }
 
   .hero-grid {
     display: grid;
@@ -156,14 +156,14 @@
   }
 
   .hero h1 {
-    font-size: clamp(3rem, 7vw, 5rem);
+    font-size: clamp(2.75rem, 4.6vw, 3.6rem);
     font-weight: 600;
-    letter-spacing: -0.035em;
-    margin-bottom: 22px;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
   }
 
   .hero .lede {
-    font-size: 1.06rem;
+    font-size: 1.02rem;
     max-width: 30em;
     margin-bottom: 30px;
   }
@@ -264,7 +264,20 @@
   .screen-head .t { font-size: 0.82rem; font-weight: 600; }
   .screen-head .ra { font-size: 0.62rem; color: var(--lav-dim); font-weight: 500; }
 
-  .bar { height: 34px; border-radius: 10px; background: linear-gradient(90deg, #2a1150, #3b1a6e); display: flex; align-items: center; padding: 0 10px; margin-top: 2px; }
+  .bar {
+    height: 30px;
+    border-radius: 9px;
+    background: #17171a;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 9px;
+    margin-top: 2px;
+  }
+
+  .bar::before { content: ""; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid #52525b; flex: 0 0 auto; }
+  .bar::after { content: ""; height: 6px; flex: 1; border-radius: 3px; background: rgba(255, 255, 255, 0.06); }
 
   .row {
     display: flex;
@@ -296,7 +309,7 @@
 
   /* ---------- feature sections ---------- */
 
-  .feature { padding: 96px 0 8px; }
+  .feature { padding: 88px 0 8px; }
 
   .feature-head { text-align: center; max-width: 42em; margin: 0 auto 44px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
 
