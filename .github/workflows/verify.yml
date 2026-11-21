@@ -3,7 +3,10 @@ name: Verify (simulator)
 # Verifies SuperStore with no physical iPhone, on GitHub-hosted macOS runners.
 # No local Mac required.
 #
-# job "build"  - compiles the app for the iOS Simulator. Works today.
+# job "build"   - compiles the app for the iOS Simulator. Works today.
+# job "promote" - fast-forwards main to develop, but only on a push to develop
+#                 whose build succeeded (and whose tests passed, when enabled).
+#                 This is the only thing that moves main.
 # job "test"   - runs XCTest/XCUITest. Gated OFF because AltStore.xcodeproj
 #                currently has NO test targets (only 2 app + 1 extension), the
 #                shared scheme references UITests blueprint A8E2DB20... which is
@@ -173,3 +176,40 @@ jobs:
           name: verify-xcresult
           path: ${{ env.RESULT_BUNDLE }}
           if-no-files-found: warn
+
+  # develop is the integration branch: every push to it is built (and tested, if
+  # enabled) before this job moves main. A red build leaves main untouched.
+  # Pushing with GITHUB_TOKEN does not start new workflow runs, so this cannot loop.
+  promote:
+    name: Merge develop into main
+    needs: [build, test]
+    if: >
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop' &&
+      needs.build.result == 'success' &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+
+    steps:
+      - name: Fast-forward main to develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          sha=$(git ls-remote "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" refs/heads/develop | cut -f1)
+          if [ -z "$sha" ]; then
+            echo "could not resolve develop" >&2
+            exit 1
+          fi
+          echo "develop is at $sha"
+          curl -sf -X PATCH \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/git/refs/heads/main" \
+            -d "{\"sha\":\"${sha}\",\"force\":true}"
+          echo "main -> $sha"
