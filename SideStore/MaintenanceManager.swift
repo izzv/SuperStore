@@ -12,7 +12,7 @@ import SideSign
 public final class MaintenanceManager {
     public static let shared = MaintenanceManager()
 
-    public static let currentMaintenanceCounter = 7
+    public static let currentMaintenanceCounter = 8
 
     public static let maintenanceCounterFileName = ".maintenance_counter"
 
@@ -43,6 +43,8 @@ public final class MaintenanceManager {
             switch pass {
             case 4:
                 await migrateDatabaseFiles()
+            case 8:
+                await importSideStoreDatabaseIfNeeded()
             default:
                 break
             }
@@ -110,6 +112,42 @@ private extension MaintenanceManager {
                 }
             }
         }
+    }
+
+    func importSideStoreDatabaseIfNeeded() async {
+        let fileManager = FileManager.default
+        let databaseDirectory = PersistentContainer.defaultDirectoryURL()
+        let documentsDirectory = fileManager.documentsDirectory
+
+        let markerURL = databaseDirectory.appendingPathComponent(".importedFromSideStore")
+        guard !fileManager.fileExists(atPath: markerURL.path) else { return }
+
+        let targetURL = databaseDirectory.appendingPathComponent(AppConstants.Database.fileName)
+        guard !fileManager.fileExists(atPath: targetURL.path) else { return }
+
+        let sourceURL = documentsDirectory.appendingPathComponent(AppConstants.Database.sideStoreFileName)
+        guard fileManager.fileExists(atPath: sourceURL.path) else { return }
+
+        for suffix in ["", "-wal", "-shm"] {
+            let from = documentsDirectory.appendingPathComponent(AppConstants.Database.sideStoreFileName + suffix)
+            guard fileManager.fileExists(atPath: from.path) else { continue }
+
+            let to = databaseDirectory.appendingPathComponent(AppConstants.Database.fileName + suffix)
+            do {
+                if fileManager.fileExists(atPath: to.path) {
+                    try fileManager.removeItem(at: to)
+                }
+                try fileManager.copyItem(at: from, to: to)
+                try fileManager.removeItem(at: from)
+                debugLog("[MaintenanceManager] Imported '\(from.lastPathComponent)' from SideStore.")
+            } catch {
+                debugLog("[MaintenanceManager] Failed to import '\(from.lastPathComponent)': \(error)")
+                return
+            }
+        }
+
+        try? Data().write(to: markerURL)
+        debugLog("[MaintenanceManager] SideStore database import finished.")
     }
 
     func migrateLegacyCachedAppBundles() async {

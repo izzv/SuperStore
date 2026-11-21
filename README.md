@@ -39,6 +39,16 @@ SuperStore is a normal, sandboxed iOS app that sideloads other apps using nothin
 
 Everything else — sources, installation, refresh, backups — is inherited from SideStore.
 
+## Coming from SideStore
+
+iOS gives every app its own sandbox, so SuperStore cannot read SideStore's data and no app can do that for you. What SuperStore does support is taking the database by hand:
+
+1. Get `SideStore.sqlite` — plus `SideStore.sqlite-wal` and `SideStore.sqlite-shm` if they exist — out of SideStore, using its backup/export tools or a device backup.
+2. Copy those files into **Files → On My iPhone → SuperStore**. The app's Documents folder is visible there because it opts into file sharing.
+3. Launch SuperStore. The first launch copies them into its own database directory and opens them.
+
+That brings across your sources, the signed-in account record and the list of installed apps. It does **not** bring across the signing certificate, the Anisette data or any app's own data — those live in the keychain, which cannot be moved between apps. Reinstall the apps from the restored sources and they behave as before.
+
 ## Requirements
 
 - macOS with Xcode 15 or newer to build

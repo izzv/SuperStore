@@ -19,6 +19,8 @@ public enum AppConstants {
         public static let legacyName     = "AltStore"
         public static let fileName       = "\(name).sqlite"
         public static let legacyFileName = "\(legacyName).sqlite"
+        public static let sideStoreName     = "SideStore"
+        public static let sideStoreFileName = "\(sideStoreName).sqlite"
     }
 
     public enum Proxy {
