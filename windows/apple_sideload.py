@@ -43,7 +43,7 @@ XCODE_VERSION = "14.2 (14C18)"
 CLIENT_ID = "XABBG36SBA"
 TWO_FACTOR_MODES = ("trustedDeviceSecondaryAuth", "secondaryAuth")
 INCORRECT_CODE = -21669
-DEVELOPER = "https://developerservices2.apple.com/services/QH65B2/ios"
+DEVELOPER = "https://developerservices2.apple.com/services/QH65B2"
 ANISETTE_SERVERS = (
     "https://anisette.lillq.me",
     "https://new.ani.sidestore.io",
