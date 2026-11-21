@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import UIKit
 import SideSign
 
@@ -24,10 +23,8 @@ final class PipelineHandler: PipelineExecutionHandler,
     var unsupportedVersionHandler: UnsupportedVersionHandler { self }
     var installAppHandler: InstallAppHandler { self }
     var userCustomizationHandler: UserCustomizationHandler { self }
-    
     let isResignActive: Bool
     private let presenterProvider: PresenterProvider?
-    
     init(
         isResignActive: Bool = false,
         presenterProvider: PresenterProvider? = nil
@@ -45,16 +42,13 @@ final class PipelineHandler: PipelineExecutionHandler,
     private var activePresenter: UIViewController? {
         return self.presenterProvider?()
     }
-    
     @MainActor
     func resolveBundleIDMismatch(targetID: String, activeEffectiveID: String) async -> Bool {
         guard let presenter = self.activePresenter else {
             return false
         }
-        
         let title = NSLocalizedString("Bundle ID Mismatch", comment: "")
         let message = String(format: NSLocalizedString("The app you are installing has a bundle ID (%@) that does not match the active app (%@). Would you like to proceed?", comment: ""), targetID, activeEffectiveID)
-        
         return await withCheckedContinuation { continuation in
             let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: UIAlertAction.cancel.title, style: UIAlertAction.cancel.style) { _ in
@@ -66,7 +60,6 @@ final class PipelineHandler: PipelineExecutionHandler,
             presenter.present(alertController, animated: true)
         }
     }
-    
     @MainActor
     func reviewPermissions(_ permissions: [ALTEntitlement], for app: AppProtocol, mode: PermissionReviewMode) async throws {
         guard let presenter = self.activePresenter else {
@@ -74,20 +67,16 @@ final class PipelineHandler: PipelineExecutionHandler,
         }
         let reviewPermissionsViewController = ReviewPermissionsViewController(app: app, permissions: permissions, mode: mode)
         let navigationController = UINavigationController(rootViewController: reviewPermissionsViewController)
-        
         defer {
             navigationController.dismiss(animated: true)
         }
-        
         try await withCheckedThrowingContinuation { continuation in
             reviewPermissionsViewController.completionHandler = { result in
                 continuation.resume(with: result)
             }
-            
             presenter.present(navigationController, animated: true)
         }
     }
-    
     @MainActor
     func selectAppExtensionsToRemove(
         appBundle: ALTApplication,
@@ -97,7 +86,6 @@ final class PipelineHandler: PipelineExecutionHandler,
         guard let presenter = self.activePresenter else {
             return .removeSelected(excessExtensions)
         }
-        
         return try await withCheckedThrowingContinuation { continuation in
             let firstSentence: String
             if UserDefaults.standard.activeAppLimitIncludesExtensions {
@@ -105,9 +93,7 @@ final class PipelineHandler: PipelineExecutionHandler,
             } else {
                 firstSentence = NSLocalizedString("Non-developer Apple IDs are limited to creating 10 App IDs per week.", comment: "")
             }
-            
             let message = firstSentence + " " + NSLocalizedString("Would you like to remove this app's extensions so they don't count towards your limit? There are \(appBundle.appExtensions.count) Extensions", comment: "")
-            
             let alertController = UIAlertController(title: NSLocalizedString("App Contains Extensions", comment: ""), message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: UIAlertAction.cancel.title, style: UIAlertAction.cancel.style, handler: { _ in
                 continuation.resume(throwing: OperationError.cancelled)
@@ -121,17 +107,14 @@ final class PipelineHandler: PipelineExecutionHandler,
             alertController.addAction(UIAlertAction(title: NSLocalizedString("Remove App Extensions", comment: ""), style: .destructive) { _ in
                 continuation.resume(returning: .removeAll)
             })
-            
             alertController.addAction(UIAlertAction(title: NSLocalizedString("Choose App Extensions", comment: ""), style: .default) { _ in
                 let popoverContentController = AppExtensionViewHostingController(extensions: appBundle.appExtensions) { selection in
                     continuation.resume(returning: .removeSelected(Set(selection)))
                 }
-                
                 let suiview = popoverContentController.view!
                 suiview.translatesAutoresizingMaskIntoConstraints = false
                 #if !os(tvOS)
                 popoverContentController.modalPresentationStyle = .popover
-                
                 if let popoverPresentationController = popoverContentController.popoverPresentationController {
                     popoverPresentationController.sourceView = presenter.view
                     popoverPresentationController.sourceRect = CGRect(x: 50, y: 50, width: 4, height: 4)
@@ -145,7 +128,6 @@ final class PipelineHandler: PipelineExecutionHandler,
                 presenter.present(popoverContentController, animated: true)
                 #endif
             })
-            
             presenter.present(alertController, animated: true) {
                 if presenter.presentedViewController == nil && !alertController.isViewLoaded {
                     let errMsg = "RemoveAppExtensionsOperation: unable to present dialog, view context not available." +
@@ -155,16 +137,13 @@ final class PipelineHandler: PipelineExecutionHandler,
             }
         }
     }
-    
     @MainActor
     func resolveUnsupportediOSVersion(errorDescription: String, appName: String, compatibleVersion: String) async throws -> Bool {
         guard let presenter = self.activePresenter else {
             return false
         }
-        
         let title = NSLocalizedString("Unsupported iOS Version", comment: "")
         let message = errorDescription + "\n\n" + NSLocalizedString("Would you like to download the last version compatible with this device instead?", comment: "")
-        
         return await withCheckedContinuation { continuation in
             let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alertController.addAction(UIAlertAction(title: UIAlertAction.cancel.title, style: UIAlertAction.cancel.style) { _ in
@@ -176,7 +155,6 @@ final class PipelineHandler: PipelineExecutionHandler,
             presenter.present(alertController, animated: true)
         }
     }
-    
     func requestBackgroundSuspension() async {
         await withCheckedContinuation { continuation in
             Task { @MainActor in
@@ -190,12 +168,10 @@ final class PipelineHandler: PipelineExecutionHandler,
                 alert.addAction(UIAlertAction(title: NSLocalizedString("Continue", comment: ""), style: .default, handler: { _ in
                     continuation.resume()
                 }))
-                
                 let presenter = self.activePresenter
                                 ?? UIApplication.shared.connectedScenes
                                     .compactMap { ($0 as? UIWindowScene)?.keyWindow }
                                     .first?.rootViewController
-                                    
                 if var topVC = presenter {
                     while let presented = topVC.presentedViewController {
                         topVC = presented
@@ -207,20 +183,17 @@ final class PipelineHandler: PipelineExecutionHandler,
             }
         }
     }
-    
     func suspendToHomeScreen() async {
         await CellularRefreshManager.shared.turnOnDataIfNeeded()
         await MainActor.run {
             _ = UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
         }
     }
-    
     func isAppInForeground() async -> Bool {
         await MainActor.run {
             UIApplication.shared.applicationState == .active
         }
     }
-    
     @MainActor
     func resolveInfoPlistCustomization(
         targets: [InfoPlistTarget],
@@ -288,7 +261,6 @@ final class PipelineHandler: PipelineExecutionHandler,
         return (plist, result.appendTeamID)
     }
 
-
     @MainActor
     func resolveEntitlementsCustomization(
         targets: [EntitlementsTarget],
@@ -343,16 +315,13 @@ final class PipelineHandler: PipelineExecutionHandler,
         guard let presenter = self.activePresenter else {
             return (initialBundleID, true)
         }
-        
         let titleText = NSLocalizedString("AppID Customization", comment: "")
         let messageText = NSLocalizedString("Customize the AppID if required and press 'Confirm' to proceed.", comment: "")
-        
         let alert = UIAlertController(
             title: titleText,
             message: messageText,
             preferredStyle: .alert
         )
-        
         let team = try await AuthManager.shared.getAuthenticatedTeam()
         debugLog("[PipelineHandler] resolveBundleIDOverride: initialBundleID='\(initialBundleID)', teamID='\(team.identifier)', isAuthenticated=\(AuthManager.shared.isAuthenticated)")
         let teamID = team.identifier
@@ -385,11 +354,9 @@ final class PipelineHandler: PipelineExecutionHandler,
             textField.clearButtonMode = .whileEditing
             checkboxView.attach(to: textField, teamID: teamID)
         }
-        
         alert.addTextField { textField in
             textField.isUserInteractionEnabled = false
         }
-        
         _ = alert.view
         if let tf1 = alert.textFields?.first, let tf1View = tf1.superview {
             tf1View.layer.cornerRadius = 20
@@ -402,13 +369,10 @@ final class PipelineHandler: PipelineExecutionHandler,
             ]
             tf1View.layer.masksToBounds = true
             tf1View.clipsToBounds = true
-            
-            // Clear outer table grouping container so it doesn't draw flat bottom edges
             tf1View.superview?.backgroundColor = .clear
             tf1View.superview?.layer.borderWidth = 0
             tf1View.superview?.layer.borderColor = UIColor.clear.cgColor
         }
-        
         if (alert.textFields?.count ?? 0) >= 2,
            let tf1 = alert.textFields?.first,
            let tf2 = alert.textFields?[1],
@@ -417,12 +381,10 @@ final class PipelineHandler: PipelineExecutionHandler,
             container.backgroundColor = .clear
             container.layer.borderWidth = 0
             container.layer.borderColor = UIColor.clear.cgColor
-            
             for subview in container.subviews where subview !== checkboxView && subview !== tf2 {
                 subview.isHidden = true
                 subview.alpha = 0
             }
-            
             container.addSubview(checkboxView)
             NSLayoutConstraint.activate([
                 checkboxView.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 16),
@@ -430,7 +392,6 @@ final class PipelineHandler: PipelineExecutionHandler,
                 checkboxView.centerYAnchor.constraint(equalTo: container.centerYAnchor)
             ])
         }
-        
         return await withCheckedContinuation { continuation in
             let okAction = UIAlertAction(title: NSLocalizedString("Confirm", comment: ""), style: .default) { _ in
                 let baseID = checkboxView.cleanBaseID()
@@ -439,7 +400,6 @@ final class PipelineHandler: PipelineExecutionHandler,
                 debugLog("[PipelineHandler] resolveBundleIDOverride confirmed: baseID='\(baseID)', customID='\(customID)', appendTeamID=\(appendTeamID)")
                 continuation.resume(returning: (customID, appendTeamID))
             }
-            
             let cancelAction = UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel) { _ in
                 continuation.resume(returning: nil)
             }
@@ -449,31 +409,24 @@ final class PipelineHandler: PipelineExecutionHandler,
         }
     }
 
-
     @MainActor
     func resolveAppGroupMismatch(originalGroup: String, correctedGroup: String) async throws -> AppGroupResolution {
         guard let presenter = self.activePresenter else {
             return .correctAndProceed(correctedGroup)
         }
-        
         let title = NSLocalizedString("App Group Discrepancy", comment: "")
         let message = String(format: NSLocalizedString("The app group '%@' does not match the app's bundle ID casing. Would you like to correct it to '%@'?", comment: ""), originalGroup, correctedGroup)
-        
         return await withCheckedContinuation { continuation in
             let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-            
             alert.addAction(UIAlertAction(title: NSLocalizedString("Correct & Proceed", comment: ""), style: .default) { _ in
                 continuation.resume(returning: .correctAndProceed(correctedGroup))
             })
-            
             alert.addAction(UIAlertAction(title: NSLocalizedString("Keep Original", comment: ""), style: .destructive) { _ in
                 continuation.resume(returning: .keepOriginal(originalGroup))
             })
-            
             alert.addAction(UIAlertAction(title: UIAlertAction.cancel.title, style: .cancel) { _ in
                 continuation.resume(returning: .keepOriginal(originalGroup))
             })
-            
             presenter.present(alert, animated: true)
         }
     }

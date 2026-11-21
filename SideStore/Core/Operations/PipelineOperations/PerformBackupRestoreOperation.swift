@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/12/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import SideSign
@@ -19,14 +18,11 @@ extension PerformBackupRestoreOperation {
 
 final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOperationContext, URL>, @unchecked Sendable {
     let action: Action
-    
     private var appName: String?
-    
     init(action: Action, context: InstallAppOperationContext) throws {
         self.action = action
         try super.init(context: context)
     }
-    
     override func execute(parentProgress: Progress?) async throws -> URL {
         let startTime = CFAbsoluteTimeGetCurrent()
         self.debugLog("[BackupRestoreAppOperation] execute() started. Action: \(action.rawValue)")
@@ -39,23 +35,19 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
             self.debugLog("[BackupRestoreAppOperation] Error: context.installedApp is nil")
             throw OperationError.invalidParameters("BackupRestoreAppOperation.execute: context.installedApp is nil")
         }
-        
         guard let context = installedApp.managedObjectContext else {
             throw OperationError.invalidParameters("BackupRestoreAppOperation: installedApp.managedObjectContext is nil")
         }
         let (bundleID, fileURL, name, openAppURL) = context.performAndWait {
             (installedApp.bundleIdentifier, installedApp.fileURL, installedApp.name, installedApp.openAppURL)
         }
-        
         self.debugLog("[BackupRestoreAppOperation] Ready to open app and observe backup. InstalledApp: \(bundleID)")
         try await self.openAppAndObserve(installedApp: installedApp, bundleIdentifier: bundleID, name: name, openAppURL: openAppURL)
         self.debugLog("[BackupRestoreAppOperation] execute() completed successfully.")
         return fileURL
     }
-    
     private func constructBackupURLs(bundleIdentifier: String, name: String, openAppURL: URL) throws -> (openURL: URL, returnURL: URL) {
         self.appName = name
-        
         let appGroupBundleID = Bundle.Info.activeBundleIdentifier
         guard let altstoreOpenURL = URL(string: "sidestore://")
         else {
@@ -79,23 +71,19 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
         openURLComponents.scheme = openAppURL.scheme
         openURLComponents.host = self.action.rawValue
         openURLComponents.queryItems = queryItems
-        
         guard let openURL = openURLComponents.url else { throw OperationError.openAppFailed(name: name) }
         return (openURL, returnURL)
     }
 
     private func mapBackupError(_ error: Error) -> Error {
         let appName = self.appName ?? self.context.bundleIdentifier
-        
         switch (error, self.action) {
         case (let error as NSError, _) where (self.context.error as NSError?) == error: fallthrough
         case (is CancellationError, _):
             return error
-            
         case (let error as NSError, .backup):
             let localizedFailure = String(format: NSLocalizedString("Could not back up “%@”.", comment: ""), appName)
             return error.withLocalizedFailure(localizedFailure)
-            
         case (let error as NSError, .restore):
             let localizedFailure = String(format: NSLocalizedString("Could not restore “%@”.", comment: ""), appName)
             return error.withLocalizedFailure(localizedFailure)
@@ -131,9 +119,7 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
     private func openAppAndObserve(installedApp: InstalledApp, bundleIdentifier: String, name: String, openAppURL: URL) async throws {
         let (openURL, returnURL) = try self.constructBackupURLs(bundleIdentifier: bundleIdentifier, name: name, openAppURL: openAppURL)
         self.debugLog("[BackupRestoreAppOperation] openAppAndObserve() constructed URLs. openURL: \(openURL.absoluteString), returnURL: \(returnURL.absoluteString)")
-        
         self.debugLog("[BackupRestoreAppOperation] Starting observation...")
-        
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let lock = NSLock()
             var applicationWillReturnObserver: NSObjectProtocol?
@@ -145,7 +131,6 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
                 defer { lock.unlock() }
                 guard !hasResumed else { return false }
                 hasResumed = true
-                
                 if let observer = applicationWillReturnObserver {
                     NotificationCenter.default.removeObserver(observer)
                     applicationWillReturnObserver = nil
@@ -154,7 +139,6 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
                     NotificationCenter.default.removeObserver(observer)
                     backupResponseObserver = nil
                 }
-                
                 continuation.resume(with: result)
                 return true
             }
@@ -172,7 +156,6 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
                     _ = removeObserversAndResume(.failure(OperationError.timedOut))
                 }
             }
-            
             let backupRespObs = NotificationCenter.default.addObserver(
                 forName: AppDelegate.appBackupDidFinish,
                 object: nil,
@@ -181,11 +164,9 @@ final class PerformBackupRestoreOperation: BasePipelineOperation<InstallAppOpera
                 self.debugLog("[BackupRestoreAppOperation] appBackupDidFinish notification received. UserInfo: \(String(describing: notification.userInfo))")
                 Task.detached {
                     await AppDelegate.dumpSideBackupLogsIfNeeded()
-                    
                     let result = notification.userInfo?[AppDelegate.appBackupResultKey] as? Result<Void, Error> ?? .failure(OperationError.unknownResult)
                     let mappedResult = result.mapError { self.mapBackupError($0) }
                     self.debugLog("[BackupRestoreAppOperation] Resuming continuation with mapped result: \(mappedResult)")
-                    
                     let didResume = removeObserversAndResume(mappedResult)
                     if didResume, case .success = mappedResult {
                         self.setProgress(self.progress.completedUnitCount + 1)

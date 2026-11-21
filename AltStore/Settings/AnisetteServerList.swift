@@ -5,14 +5,12 @@
 //  Created by ny on 6/18/24.
 //  Copyright © 2024 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import SwiftUI
 import SideSign
 
 private typealias SUIButton = SwiftUI.Button
 
-// MARK: - AnisetteServerData
 struct AnisetteServerData: Codable {
     let servers: [Server]
     let oda: ODAValue?
@@ -34,7 +32,6 @@ struct AnisetteServerData: Codable {
     }
 }
 
-// MARK: - Server
 struct Server: Codable, Identifiable, Hashable {
     var id: String { address }
     var name: String
@@ -264,7 +261,6 @@ struct AnisetteServersView: View {
 
     var body: some View {
         List {
-            // Section 1: Server Selection
             Section {
                 if viewModel.items.isEmpty || viewModel.errorMessage != nil {
                     if viewModel.items.isEmpty && viewModel.errorMessage == nil && viewModel.isLoading {
@@ -402,7 +398,6 @@ struct AnisetteServersView: View {
                 }
             }
 
-            // Section 2: Source Configuration
             Section {
                 if viewModel.isOfflineMode {
                     HStack {
@@ -541,7 +536,6 @@ struct AnisetteServersView: View {
                         }
                     }
 
-                    // Section: Customization
                     Section {
                         Toggle(isOn: Binding(
                             get: { !UserDefaults.standard.disableAnisetteRotation },
@@ -555,7 +549,6 @@ struct AnisetteServersView: View {
                         Text("Control if SuperStore automatically rotates/retries servers upon failure.")
                     }
 
-                    // Bottom spacing section
                     Section {
                         Color.clear
                             .frame(height: 20)
@@ -752,5 +745,3 @@ struct AnisetteServersView: View {
         }
     }
 }
-
-

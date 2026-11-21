@@ -5,7 +5,6 @@
 //  Created by Magesh K on 3/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -185,32 +184,18 @@ public enum OperationError: LocalizedError, CustomNSError, Sendable, Equatable {
     }
 }
 
-/// Apple GrandSlam / Anisette rejection codes that deserve their own explanation
-/// instead of a bare "(-80046)" in an alert.
 public enum AppleSignInErrorCodes {
     public static let anisetteRejected        = -80046
     public static let machineIdentityMismatch = -80045
     public static let rateLimited             = -22411
 }
 
-/// The single interpreter for sign-in failures.
-///
-/// `classify(_:)` is the only place that decides what an error means: which
-/// failures are worth retrying on another Anisette server, and which message the
-/// user should see. The failover loop and every alert read it, so the rules
-/// cannot drift apart and no raw server payload reaches the UI.
 public enum SignInFailure {
     public enum Classification: Equatable {
-        /// One server failed: bad status, HTML where JSON was expected, or an
-        /// unusable payload. Another server may answer differently.
         case serverUnavailable(statusCode: Int?)
-        /// Something answered with an error page instead of a response.
         case endpointUnavailable(statusCode: Int?)
-        /// -80046: Apple no longer accepts the machine identity.
         case identityRejected
-        /// -80045: Anisette data does not match the machine it claims to be.
         case identityMismatch
-        /// -22411: Apple is throttling sign-in for this account or device.
         case rateLimited
 
         public var statusCode: Int? {
@@ -223,18 +208,13 @@ public enum SignInFailure {
         }
     }
 
-    /// True when a payload is really an error page (proxy, CDN or Apple 503)
-    /// rather than the JSON/plist we asked for.
     public static func looksLikeMarkup(_ text: String) -> Bool {
         let head = text.prefix(512).lowercased()
         return head.contains("<html") || head.contains("<!doctype")
             || head.contains("<body") || head.contains("<head")
     }
 
-    /// nil means "this is not a sign-in failure" — leave the error untouched.
     public static func classify(_ error: Error) -> Classification? {
-        // withLocalizedTitle(_:) and withLocalizedFailure(_:) wrap the real
-        // error, so look inside before giving up.
         if let wrappedError = error as? ALTWrappedError {
             return classify(wrappedError.wrappedError)
         }
@@ -277,9 +257,6 @@ public enum SignInFailure {
         return nil
     }
 
-    /// Whether another Anisette server could plausibly succeed where this one
-    /// failed. Server-specific problems say nothing about the next server;
-    /// account-level rejections would repeat everywhere.
     public static func shouldRetryOnAnotherServer(_ error: Error) -> Bool {
         if error is URLError {
             return true
@@ -303,8 +280,6 @@ public enum SignInFailure {
         }
     }
 
-    /// Maps an error onto actionable text. Returns the error unchanged when it
-    /// is not a sign-in failure.
     public static func normalized(_ error: Error) -> Error {
         guard let classification = classify(error) else { return error }
 
@@ -322,8 +297,6 @@ public enum SignInFailure {
         }
     }
 
-    /// `normalized(_:)` for display: keeps any title the caller attached with
-    /// `withLocalizedTitle(_:)` so alerts keep their heading.
     public static func normalizedForDisplay(_ error: Error) -> NSError {
         let originalError = error as NSError
         guard classify(error) != nil else { return originalError }
@@ -333,7 +306,6 @@ public enum SignInFailure {
         return normalizedError.withLocalizedTitle(title)
     }
 
-    /// Log-safe description: an HTML error page is never written out verbatim.
     public static func logSummary(for error: Error) -> String {
         if let anisetteError = error as? SideSign.AnisetteError,
            case .badServerResponse(let statusCode, let payload) = anisetteError {
@@ -343,8 +315,6 @@ public enum SignInFailure {
         return error.localizedDescription
     }
 
-    /// Pulls the first plausible HTTP status out of an error page so the
-    /// message can say "HTTP 503" instead of nothing.
     static func statusCode(in payload: String) -> Int? {
         var digits = ""
         for character in payload {

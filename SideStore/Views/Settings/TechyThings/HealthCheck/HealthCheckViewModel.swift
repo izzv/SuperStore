@@ -5,24 +5,9 @@
 //  Created by Magesh K on 11/07/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Minimuxer
 import Combine
-
-/*
- Minimuxer.shared().isReady Result Mapping to Core Requirements Statuses:
- 
- | Ready Result Case                        | Network   | VPN       | IPSec     | Ping      | Pairing   | DDI       |
- | ---------------------------------------- | --------- | --------- | --------- | --------- | --------- | --------- |
- | .success                                 | Satisfied | Satisfied | Satisfied | Satisfied | Satisfied | Satisfied |
- | .failure(.noConnection)                  | Failed    | Unknown   | Unknown   | Unknown   | Unknown   | Unknown   |
- | .failure(.noVPN) / .failure(.invalidVPN) | Satisfied | Failed    | Unknown   | Unknown   | Unknown   | Unknown   |
- | .failure(.pairingFile)                   | Satisfied | Satisfied | Satisfied | Satisfied | Failed    | Unknown   |
- | .failure(.invalidPairing)                | Satisfied | Satisfied | Satisfied | Satisfied | Failed    | Unknown   |
- | .failure(.mount)                         | Satisfied | Satisfied | Satisfied | Satisfied | Satisfied | Failed    |
- | .failure(.muxerNotListening)             | Satisfied | Satisfied | Satisfied | Satisfied | Satisfied | Satisfied |
- */
 
 @MainActor
 final class HealthCheckViewModel: ObservableObject {
@@ -33,7 +18,6 @@ final class HealthCheckViewModel: ObservableObject {
     @Published var connectionMode: DeviceConnectionMode = .localVPN
     @Published var isUTunAvailable = false
     @Published var isIKEv2IPSecAvailable = false
-    
     @Published var tunnelIfaceIp: String? = nil
     @Published var tunnelIfaceSubnetMask: String? = nil
     @Published var tunnelPeerIp: String? = nil
@@ -42,22 +26,18 @@ final class HealthCheckViewModel: ObservableObject {
     @Published var remoteServerIp: String = ""
     @Published var remotePeerIp: String? = nil
     @Published var remoteReachable = false
-    
     @Published var activeProtocol = ""
     @Published var isPingSuccessful = false
-    
     @Published var isDDIMounted = false
     @Published var isPairingFileVerified = false
     @Published var isRPPairing = false
     @Published var isPairingFileLoaded = false
-    
     @Published var networkSatisfied: Bool? = nil
     @Published var vpnSatisfied: Bool? = nil
     @Published var ipsecSatisfied: Bool? = nil
     @Published var pingSatisfied: Bool? = nil
     @Published var pairingSatisfied: Bool? = nil
     @Published var ddiSatisfied: Bool? = nil
-    
     @Published var minimuxerReadyResult: Result<Bool, MinimuxerError>? = nil
     @Published var availableInterfaces: [LocalInterfaceInfo] = []
 
@@ -95,7 +75,6 @@ final class HealthCheckViewModel: ObservableObject {
         let bridge = minimuxer.network.isBridgeSatisfied
         let utun = minimuxer.network.isUTunAvailable
         let ipsec = minimuxer.network.isIKEv2IPSecAvailable
-        
         let tunnelIfaceIp = ConnectionConfig.shared.formattedTunnelIface
         let tunnelIfaceSubnetMask = ConnectionConfig.shared.tunnelIfaceSubnetMask
         let tunnelPeerIp = ConnectionConfig.shared.formattedTunnelPeer
@@ -104,7 +83,6 @@ final class HealthCheckViewModel: ObservableObject {
         let remoteServerIp = ConnectionConfig.shared.remoteServerIp
         let remotePeerIp = ConnectionConfig.shared.remotePeerIp
         let remoteReachable = ConnectionConfig.shared.remoteReachable
-        
         let pairingType = minimuxer.core.pairingFileType
         let protocolStr: String
         switch pairingType {
@@ -115,17 +93,14 @@ final class HealthCheckViewModel: ObservableObject {
         case .unknown:
             protocolStr = "Unknown"
         }
-        
         let targetIp = mode == .localVPN ? (overrideTunnelPeerEffective ? overrideTunnelPeerIp : (ConnectionConfig.shared.tunnelPeerIp ?? "")) : remoteServerIp
         let pingSuccess = !targetIp.isEmpty && minimuxer.core.testDeviceConnection(ifaddr: targetIp)
-        
         let ddi = (try? await minimuxer.core.isDDIMounted()) ?? false
         let pairingVerified = (try? await fetchUDID(forceLive: true)) != nil
         let isRpPairing = minimuxer.core.pairingFileType == .rppairing
         let isPairingLoaded = minimuxer.core.isPairingFileLoaded
         let readyResult = await minimuxer.core.isReady(withDDIMountCheck: true)
         let scanned = minimuxer.network.activeInterfaces
-        
         return HealthCheckMetrics(
             connectionMode: mode,
             wifi: wifi, wired: wired, usb: usb, bridge: bridge, utun: utun, ipsec: ipsec,
@@ -139,13 +114,10 @@ final class HealthCheckViewModel: ObservableObject {
     }
 
     func observeMetrics() async {
-        // Perform initial diagnostics load
         let initialMetrics = await self.fetchMetrics()
         let initialStatus = self.computeStatuses(initialMetrics)
         self.updateUI(metrics: initialMetrics, status: initialStatus)
-        
         await withTaskGroup(of: Void.self) { group in
-            // Immediate Network & Interface Updates (Wi-Fi, interfaces, VPN tunnel presence)
             group.addTask {
                 for await _ in minimuxer.network.pathPublisher.values {
                     guard !Task.isCancelled else { break }
@@ -153,7 +125,6 @@ final class HealthCheckViewModel: ObservableObject {
                 }
             }
 
-            // Minimuxer Readiness Updates (Ping, DDI mount, Pairing verification, Muxer status)
             group.addTask {
                 for await _ in minimuxerStatusPublisher.values {
                     guard !Task.isCancelled else { break }
@@ -183,7 +154,6 @@ final class HealthCheckViewModel: ObservableObject {
             }
         }
     }
-    
     typealias CoreRequirementStatuses = (
         netSat: Bool?,
         vpnSat: Bool?,
@@ -240,7 +210,6 @@ final class HealthCheckViewModel: ObservableObject {
             return (netSat, vpnSat, ipsecSat, pingSat, pairingSat, ddiSat)
         }
     }
-    
     @MainActor
     func updateUI(metrics: HealthCheckMetrics, status: CoreRequirementStatuses) {
         self.connectionMode = metrics.connectionMode
@@ -250,7 +219,6 @@ final class HealthCheckViewModel: ObservableObject {
         self.isBridgeSatisfied = metrics.bridge
         self.isUTunAvailable = metrics.utun
         self.isIKEv2IPSecAvailable = metrics.ipsec
-        
         self.tunnelIfaceIp = metrics.tunnelIfaceIp
         self.tunnelIfaceSubnetMask = metrics.tunnelIfaceSubnetMask
         self.tunnelPeerIp = metrics.tunnelPeerIp
@@ -259,22 +227,18 @@ final class HealthCheckViewModel: ObservableObject {
         self.remoteServerIp = metrics.remoteServerIp
         self.remotePeerIp = metrics.remotePeerIp
         self.remoteReachable = metrics.remoteReachable
-        
         self.activeProtocol = metrics.protocolStr
         self.isPingSuccessful = metrics.pingSuccess
-        
         self.isDDIMounted = metrics.ddi
         self.isPairingFileVerified = metrics.pairingVerified
         self.isRPPairing = metrics.isRpPairing
         self.isPairingFileLoaded = metrics.isPairingLoaded
-        
         self.networkSatisfied = status.netSat
         self.vpnSatisfied = status.vpnSat
         self.ipsecSatisfied = status.ipsecSat
         self.pingSatisfied = status.pingSat
         self.pairingSatisfied = status.pairingSat
         self.ddiSatisfied = status.ddiSat
-        
         self.minimuxerReadyResult = metrics.readyResult
         self.availableInterfaces = metrics.scanned
     }

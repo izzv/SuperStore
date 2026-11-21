@@ -5,13 +5,11 @@
 //  Created by Magesh K on 24/08/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Minimuxer
 
 struct WirelessPairTargetDialog: View {
     @ObservedObject var viewModel: WirelessPairViewModel
-    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -49,7 +47,6 @@ struct WirelessPairTargetDialog: View {
                             .clipShape(Circle())
                     }
                 }
-                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     SwiftUI.Button("Select") {
                         debugLog("[WirelessPairTargetDialog] Select button tapped (mode=\(viewModel.dialogMode.rawValue))")
@@ -67,9 +64,6 @@ struct WirelessPairTargetDialog: View {
             viewModel.onDialogDisappear()
         }
     }
-    
-    // MARK: - Server Mode Views
-    
     @ViewBuilder
     private var serverModeContent: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -78,7 +72,6 @@ struct WirelessPairTargetDialog: View {
                 .fontWeight(.bold)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 4)
-            
             if viewModel.activeInterfaces.isEmpty {
                 Text("No active local interfaces detected.")
                     .font(.footnote)
@@ -94,13 +87,11 @@ struct WirelessPairTargetDialog: View {
             }
         }
     }
-    
     private func interfaceTypeTag(name: String, color: Color) -> some View {
         HStack(spacing: 4) {
             Circle()
                 .fill(color)
                 .frame(width: 5, height: 5)
-            
             Text(name)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
@@ -116,14 +107,12 @@ struct WirelessPairTargetDialog: View {
                 #endif
         )
     }
-    
     private func localInterfaceRow(for iface: LocalInterfaceInfo) -> some View {
         let isIpV4 = !iface.ip.contains(":")
         let v4 = isIpV4 ? iface.ip : nil
         let v6 = iface.ipv6 ?? (!isIpV4 ? iface.ip : nil)
         let isSelected = viewModel.selectedServerInterfaceId == iface.id
         let tagColor: Color = iface.type.isVPN ? .green : (iface.type == .wifi ? .accentColor : .secondary)
-        
         return SwiftUI.Button {
             debugLog("[WirelessPairTargetDialog] Tapped local interface row: '\(iface.name)' [\(iface.type.rawValue)] (id=\(iface.id))")
             viewModel.selectServerInterface(id: iface.id)
@@ -134,16 +123,12 @@ struct WirelessPairTargetDialog: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(isSelected ? .accentColor : .secondary)
                         .frame(width: 20)
-                    
                     Text(iface.name)
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
-                    
                     interfaceTypeTag(name: iface.type.rawValue, color: tagColor)
-                    
                     Spacer()
-                    
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 19))
                         #if !os(tvOS)
@@ -152,7 +137,6 @@ struct WirelessPairTargetDialog: View {
                         .foregroundColor(isSelected ? .green : Color.secondary)
                         #endif
                 }
-                
                 VStack(alignment: .leading, spacing: 3) {
                     if let v4 = v4, !v4.isEmpty {
                         Text("IPv4: \(v4)")
@@ -160,7 +144,6 @@ struct WirelessPairTargetDialog: View {
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
-                    
                     if let v6 = v6, !v6.isEmpty {
                         Text("IPv6: \(v6)")
                             .font(.caption.monospaced())
@@ -187,30 +170,22 @@ struct WirelessPairTargetDialog: View {
         }
         .buttonStyle(.plain)
     }
-    
-    // MARK: - Client Mode Views
-    
     @ViewBuilder
     private var clientModeContent: some View {
-        // Section: Configured Fallback Endpoint
         VStack(alignment: .leading, spacing: 10) {
             Text("CONFIGURED ENDPOINT")
                 .font(.caption)
                 .fontWeight(.bold)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 4)
-            
             fallbackEndpointRow
         }
-        
-        // Section: Discovered Devices
         VStack(alignment: .leading, spacing: 10) {
             Text("DISCOVERED NEARBY")
                 .font(.caption)
                 .fontWeight(.bold)
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 4)
-            
             if viewModel.discoveredTargets.isEmpty {
                 HStack(spacing: 10) {
                     if viewModel.isScanning {
@@ -236,11 +211,9 @@ struct WirelessPairTargetDialog: View {
             }
         }
     }
-    
     private func discoveredTargetRow(for target: WirelessPairTarget) -> some View {
         let isSelected = viewModel.isTargetSelected(target)
         let portString = target.port > 0 ? String(format: "%u", target.port) : ""
-        
         return SwiftUI.Button {
             debugLog("[WirelessPairTargetDialog] Tapped discovered target row: '\(target.name)' [\(target.rawType)] (id=\(target.id))")
             viewModel.selectTarget(target)
@@ -251,21 +224,16 @@ struct WirelessPairTargetDialog: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(isSelected ? .accentColor : .secondary)
                         .frame(width: 20)
-                    
                     interfaceTypeTag(name: target.rawType, color: .accentColor)
-                    
                     Spacer()
-                    
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 19))
                         .foregroundColor(isSelected ? .green : Color(.tertiaryLabel))
                 }
-                
                 Text(target.name)
                     .font(.footnote)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
-                
                 VStack(alignment: .leading, spacing: 3) {
                     if let v4 = target.ipv4, !v4.isEmpty {
                         let formattedV4 = portString.isEmpty ? v4 : "\(v4):\(portString)"
@@ -274,7 +242,6 @@ struct WirelessPairTargetDialog: View {
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                     }
-                    
                     if let v6 = target.ipv6, !v6.isEmpty {
                         let formattedV6 = portString.isEmpty ? v6 : "[\(v6)]:\(portString)"
                         Text("IPv6: \(formattedV6)")
@@ -283,7 +250,6 @@ struct WirelessPairTargetDialog: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
-                    
                     if (target.ipv4 == nil || target.ipv4?.isEmpty == true) && (target.ipv6 == nil || target.ipv6?.isEmpty == true) {
                         if !portString.isEmpty {
                             Text("Port: \(portString)")
@@ -318,12 +284,10 @@ struct WirelessPairTargetDialog: View {
         }
         .buttonStyle(.plain)
     }
-    
     private var fallbackEndpointRow: some View {
         let fallback = viewModel.fallbackConfigEndpoint
         let isSelected = viewModel.isFallbackSelected
         let portString = String(format: "%u", fallback.port)
-        
         return SwiftUI.Button {
             debugLog("[WirelessPairTargetDialog] Tapped configured fallback row (\(fallback.ip):\(portString))")
             viewModel.selectFallbackEndpoint()
@@ -334,21 +298,16 @@ struct WirelessPairTargetDialog: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(isSelected ? .accentColor : .secondary)
                         .frame(width: 20)
-                    
                     interfaceTypeTag(name: "Manual", color: .secondary)
-                    
                     Spacer()
-                    
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                         .font(.system(size: 19))
                         .foregroundColor(isSelected ? .green : Color(.tertiaryLabel))
                 }
-                
                 Text("Configured Target")
                     .font(.footnote)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
-                
                 let isV6 = fallback.ip.contains(":")
                 let label = isV6 ? "IPv6" : "IPv4"
                 let formattedIp = isV6 ? "[\(fallback.ip)]:\(portString)" : "\(fallback.ip):\(portString)"

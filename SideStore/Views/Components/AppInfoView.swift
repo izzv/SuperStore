@@ -5,7 +5,6 @@
 //  Created by Magesh K on 2/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import SideSign
 import CodeSignKit
@@ -19,7 +18,6 @@ struct AppInfoView: View {
     let installedApp: InstalledApp
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var certificatesViewModel = CertificatesViewModel()
-    
     @State private var isShowingToast: Bool = false
     @State private var toastMessage: String = ""
     @State private var showResignedProfile: Bool = true
@@ -31,7 +29,6 @@ struct AppInfoView: View {
     private var isSideStoreSelf: Bool {
         installedApp.resignedBundleIdentifier.isAltStoreAppID
     }
-    
     private var appBundleURL: URL {
         if isSideStoreSelf {
             return Bundle.Info.activeBundleURL
@@ -39,44 +36,36 @@ struct AppInfoView: View {
             return installedApp.fileURL
         }
     }
-    
     private var resignedProfileURL: URL? {
         if isSideStoreSelf {
             return Bundle.Info.activeBundleURL.appendingPathComponent("embedded.mobileprovision")
         }
         return installedApp.customProvisioningProfileURL
     }
-    
     private var bundleProfileURL: URL? {
         let url = appBundleURL.appendingPathComponent("embedded.mobileprovision")
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
-    
     private var activeProfileURL: URL? {
         showResignedProfile ? resignedProfileURL : bundleProfileURL
     }
-    
     private var provisioningProfile: ALTProvisioningProfile? {
         guard let url = activeProfileURL else { return nil }
         return try? ALTProvisioningProfile(url: url)
     }
-    
     private var resignedInfoPlistURL: URL? {
         if isSideStoreSelf {
             return InfoPlistParser.resolveInfoPlistURL(for: Bundle.Info.activeBundleURL)
         }
         return installedApp.customInfoPlistURL
     }
-    
     private var bundleInfoPlistURL: URL? {
         let url = InfoPlistParser.resolveInfoPlistURL(for: appBundleURL)
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
-    
     private var activeInfoPlistURL: URL? {
         showResignedInfoPlist ? resignedInfoPlistURL : bundleInfoPlistURL
     }
-    
     private var infoPlistParser: InfoPlistParser? {
         guard let url = activeInfoPlistURL else { return nil }
         return try? InfoPlistParser(plistURL: url)
@@ -85,22 +74,18 @@ struct AppInfoView: View {
     private var infoPlist: [String: any Sendable]? {
         infoPlistParser?.rawDictionary
     }
-    
     var body: some View {
         NavigationView {
             List {
-                // Header
                 Section {
                     HStack(spacing: 16) {
                         AppIconView(installedApp: installedApp)
-                        
                         VStack(alignment: .leading, spacing: 4) {
                             Text(installedApp.name)
                                 .font(.headline)
                             Text(installedApp.bundleIdentifier)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
-                            
                             if installedApp.resignedBundleIdentifier != installedApp.bundleIdentifier {
                                 Text("Resigned: \(installedApp.resignedBundleIdentifier)")
                                     .font(.caption)
@@ -110,8 +95,6 @@ struct AppInfoView: View {
                     }
                     .padding(.vertical, 8)
                 }
-                
-                // Metadata Section
                 Section(header: Text("General Metadata")) {
                     InfoRow(label: "Status", value: installedApp.isActive ? "Active" : "Inactive", valueColor: installedApp.isActive ? .green : .red)
                     InfoRow(label: "Version", value: installedApp.localizedVersion)
@@ -145,8 +128,6 @@ struct AppInfoView: View {
                     }
                     InfoRow(label: "Uses Main Profile", value: installedApp.useMainProfile ? "Yes" : "No")
                 }
-                
-                // Provisioning Profile Section
                 if resignedProfileURL != nil || bundleProfileURL != nil {
                     Section(header: HStack {
                         Text(showResignedProfile ? "Provisioning Profile (Resigned)" : "Provisioning Profile (Bundle)")
@@ -206,8 +187,6 @@ struct AppInfoView: View {
                         }
                     }
                 }
-                
-                // Info.plist Section
                 if resignedInfoPlistURL != nil || bundleInfoPlistURL != nil {
                     Section(header: HStack {
                         Text(showResignedInfoPlist ? "Info.plist (Resigned)" : "Info.plist (Bundle)")
@@ -262,8 +241,6 @@ struct AppInfoView: View {
                         }
                     }
                 }
-                
-                // App Extensions Section
                 if !installedApp.appExtensions.isEmpty {
                     Section(header: Text("App Extensions")) {
                         ForEach(Array(installedApp.appExtensions), id: \.bundleIdentifier) { ext in
@@ -280,7 +257,6 @@ struct AppInfoView: View {
                     }
                 }
 
-                // Resources Section
                 Section(header: Text("Resources")) {
                     NavigationLink(destination: BundleResourceBrowserView(rootURL: appBundleURL, title: "Bundle Contents")) {
                         Text("Browse Bundle Contents")
@@ -307,7 +283,6 @@ struct AppInfoView: View {
             #endif
         }
     }
-    
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -315,8 +290,6 @@ struct AppInfoView: View {
         return formatter.string(from: date)
     }
 }
-
-// MARK: - Provisioning Profile Detail View
 
 struct ProvisioningProfileDetailView: View {
     let profile: ALTProvisioningProfile
@@ -327,7 +300,6 @@ struct ProvisioningProfileDetailView: View {
     #if !os(tvOS)
     @State private var showingShareSheet = false
     #endif
-    
     private var shareURL: URL? {
         if let profileURL = profileURL, FileManager.default.fileExists(atPath: profileURL.path) {
             return profileURL
@@ -339,7 +311,6 @@ struct ProvisioningProfileDetailView: View {
         }
         return nil
     }
-    
     var body: some View {
         List {
             Section(header: Text("Profile Metadata")) {
@@ -355,7 +326,6 @@ struct ProvisioningProfileDetailView: View {
                 ProfileInfoRow(label: "Expires", value: formatDate(profile.expirationDate))
                 ProfileInfoRow(label: "Free Developer Profile", value: profile.isFreeProvisioningProfile ? "Yes" : "No")
             }
-            
             if !profile.certificates.isEmpty {
                 Section(header: Text("Developer Certificates (\(profile.certificates.count))")) {
                     ForEach(profile.certificates, id: \.serialNumber) { cert in
@@ -371,7 +341,6 @@ struct ProvisioningProfileDetailView: View {
                     }
                 }
             }
-            
             if !profile.deviceIDs.isEmpty {
                 Section(header: Text("Provisioned Devices (\(profile.deviceIDs.count))")) {
                     NavigationLink(destination: DeviceIDsView(devices: profile.deviceIDs)) {
@@ -379,7 +348,6 @@ struct ProvisioningProfileDetailView: View {
                     }
                 }
             }
-            
             Section(header: Text("Entitlements (\(profile.entitlements.count))")) {
                 let sortedEntitlements = profile.entitlements.sorted { $0.key < $1.key }
                 ForEach(sortedEntitlements, id: \.key) { entitlement, value in
@@ -409,7 +377,6 @@ struct ProvisioningProfileDetailView: View {
         .navigationTitle("Profile Details")
         .interactiveDismissDisabled(true)
     }
-    
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -418,14 +385,9 @@ struct ProvisioningProfileDetailView: View {
     }
 }
 
-
-
-// MARK: - Helper Views
-
 struct AppIconView: View {
     let installedApp: InstalledApp
     @State private var image: UIImage? = nil
-    
     var body: some View {
         Group {
             if let image = image {
@@ -459,7 +421,6 @@ struct InfoRow: View {
     let label: String
     let value: String
     var valueColor: Color = .primary
-    
     var body: some View {
         HStack {
             Text(label)
@@ -478,7 +439,6 @@ struct ProfileInfoRow: View {
     let label: String
     let value: String
     var valueColor: Color = .primary
-    
     var body: some View {
         HStack {
             Text(label)
@@ -505,7 +465,6 @@ struct ProfileInfoRow: View {
 struct EntitlementRow: View {
     let key: String
     let value: Any
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(key)
@@ -532,7 +491,6 @@ struct EntitlementRow: View {
         }
         #endif
     }
-    
     private func formatValue(_ val: Any) -> String {
         if let array = val as? [Any] {
             return "[" + array.map { "\($0)" }.joined(separator: ", ") + "]"
@@ -544,11 +502,8 @@ struct EntitlementRow: View {
     }
 }
 
-// MARK: - Device IDs View
-
 struct DeviceIDsView: View {
     let devices: [String]
-    
     var body: some View {
         List(devices, id: \.self) { udid in
             HStack {
@@ -571,8 +526,6 @@ struct DeviceIDsView: View {
     }
 }
 
-// MARK: - Extension Info View
-
 struct ExtensionInfoView: View {
     let appExtension: InstalledExtension
     let parentAppURL: URL
@@ -584,7 +537,6 @@ struct ExtensionInfoView: View {
     @State private var shareSheetItem: ShareableURLItem? = nil
     #endif
 
-    // Resolve the .appex bundle URL by scanning PlugIns/ and matching bundle ID
     private var extensionURL: URL? {
         let pluginsDir = parentAppURL.appendingPathComponent("PlugIns")
         guard let contents = try? FileManager.default.contentsOfDirectory(
@@ -593,7 +545,6 @@ struct ExtensionInfoView: View {
             options: [.skipsHiddenFiles]
         ) else { return nil }
 
-        // Match by bundle ID in Info.plist
         for url in contents where url.pathExtension == "appex" {
             if let parser = try? InfoPlistParser(bundleURL: url),
                let bid = parser.bundleIdentifier,
@@ -601,7 +552,6 @@ struct ExtensionInfoView: View {
                 return url
             }
         }
-        // Fallback: name-based guess
         return contents.first { $0.pathExtension == "appex" && $0.deletingPathExtension().lastPathComponent == appExtension.name }
     }
 
@@ -647,7 +597,6 @@ struct ExtensionInfoView: View {
         infoPlistParser?.rawDictionary
     }
 
-    // Nested sub-extensions inside this .appex (rare but possible)
     private var subExtensions: [URL] {
         guard let url = extensionURL,
               let contents = try? FileManager.default.contentsOfDirectory(
@@ -660,7 +609,6 @@ struct ExtensionInfoView: View {
 
     var body: some View {
         List {
-            // General Metadata — sourced from the actual bundle, not CoreData
             Section(header: Text("Extension Metadata")) {
                 let plist = infoPlist
                 let profile = provisioningProfile
@@ -702,14 +650,12 @@ struct ExtensionInfoView: View {
                     }
                 }
 
-                // Dates from provisioning profile (ground truth)
                 if let profile = profile {
                     InfoRow(label: "Profile Created", value: formatDate(profile.creationDate))
                     InfoRow(label: "Profile Expires", value: formatDate(profile.expirationDate))
                 }
             }
 
-            // Provisioning Profile
             if resignedProfileURL != nil || bundleProfileURL != nil {
                 Section(header: HStack {
                     Text(showResignedProfile ? "Provisioning Profile (Resigned)" : "Provisioning Profile (Bundle)")
@@ -773,7 +719,6 @@ struct ExtensionInfoView: View {
                 }
             }
 
-            // Info.plist
             if resignedInfoPlistURL != nil || bundleInfoPlistURL != nil {
                 Section(header: HStack {
                     Text(showResignedInfoPlist ? "Info.plist (Resigned)" : "Info.plist (Bundle)")
@@ -829,7 +774,6 @@ struct ExtensionInfoView: View {
                 }
             }
 
-            // Nested Sub-Extensions (recursive)
             if !subExtensions.isEmpty {
                 Section(header: Text("Nested Extensions (\(subExtensions.count))")) {
                     ForEach(subExtensions, id: \.path) { subURL in
@@ -870,8 +814,6 @@ struct ExtensionInfoView: View {
         return formatter.string(from: date)
     }
 }
-
-// MARK: - Generic Bundle Inspector (for recursive .appex drill-down)
 
 struct BundleInspectorView: View {
     let bundleURL: URL
@@ -991,7 +933,6 @@ struct BundleInspectorView: View {
                 }
             }
 
-            // Resources
             Section(header: Text("Resources")) {
                 NavigationLink(destination: BundleResourceBrowserView(rootURL: bundleURL, title: "Bundle Contents")) {
                     Text("Browse Bundle Contents")
@@ -1017,13 +958,9 @@ struct BundleInspectorView: View {
     }
 }
 
-
-// MARK: - Toast View
-
 struct AppInfoToastView: View {
     @Binding var isShowing: Bool
     let message: String
-    
     var body: some View {
         VStack {
             Spacer()

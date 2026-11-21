@@ -5,7 +5,6 @@
 //  Created by Megarushing on 4/26/21.
 //  Copyright © 2021 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import SideSign
 
@@ -13,27 +12,21 @@ final class SelectTeamViewController: UITableViewController
 {
     public var teams: [ALTTeam]?
     public var completionHandler: ((Result<ALTTeam, Swift.Error>)  -> Void)?
-    
     private var prototypeHeaderFooterView: SettingsHeaderFooterView!
-    
     #if !os(tvOS)
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
     }
     #endif
-    
     override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
-    
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return teams?.count ?? 0
     }
-    
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         return self.completionHandler!(.success((self.teams?[indexPath.row])!))
     }
-    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "TeamCell", for: indexPath) as! InsetGroupTableViewCell
 
@@ -50,9 +43,7 @@ final class SelectTeamViewController: UITableViewController
 
         return cell
     }
-    
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         "Teams"
     }
-    
 }

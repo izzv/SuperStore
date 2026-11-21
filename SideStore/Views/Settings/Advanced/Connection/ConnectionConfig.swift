@@ -5,14 +5,12 @@
 //  Created by Magesh K on 02/03/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Combine
 
 final class ConnectionConfig: ObservableObject {
     static let shared = ConnectionConfig()
 
-    // yeah we dont use default coz we expect auto discovery to find it
     private static var defaultOverrideIP: String { "" }     
     private static var defaultRemoteServerIP: String { AppConstants.Connection.defaultRemoteServerIP }
     private static var defaultWireGuardServerHost: String { AppConstants.Proxy.address }

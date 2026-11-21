@@ -5,7 +5,6 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 import Foundation
 
 final class CacheAppOperation: BasePipelineOperation<InstallAppOperationContext, URL?>, @unchecked Sendable {
@@ -53,7 +52,6 @@ final class CacheAppOperation: BasePipelineOperation<InstallAppOperationContext,
     }
 
     static func pruneUnusedCaches(activeSignatures: Set<String> = [], activeBundleIDs: Set<String>, isActivelyManaging: (String) -> Bool) {
-        // 1. Prune unused payloads in Apps/Payloads/
         let payloadsDirectory = InstalledApp.appsDirectoryURL.appendingPathComponent("Payloads")
         if let cachedPayloadDirs = try? FileManager.default.contentsOfDirectory(
             at: payloadsDirectory,
@@ -74,7 +72,6 @@ final class CacheAppOperation: BasePipelineOperation<InstallAppOperationContext,
             }
         }
 
-        // 2. Prune unused instance directories in Apps/
         do {
             let cachedAppDirectories = try FileManager.default.contentsOfDirectory(
                 at: InstalledApp.appsDirectoryURL,
@@ -86,7 +83,6 @@ final class CacheAppOperation: BasePipelineOperation<InstallAppOperationContext,
                     let resourceValues = try appDirectory.resourceValues(forKeys: [.isDirectoryKey, .nameKey])
                     guard let isDirectory = resourceValues.isDirectory, let bundleID = resourceValues.name else { continue }
                     if bundleID == "Payloads" { continue }
-                    
                     if isDirectory && !activeBundleIDs.contains(bundleID) && !isActivelyManaging(bundleID) {
                         SideStore.debugLog("[CacheAppOperation] DELETING CACHED APP: \(bundleID)")
                         try FileManager.default.removeItem(at: appDirectory)

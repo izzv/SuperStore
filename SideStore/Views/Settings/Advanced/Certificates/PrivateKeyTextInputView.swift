@@ -5,7 +5,6 @@
 //  Created by Magesh K on 2026-07-03.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import UniformTypeIdentifiers
 import SideSign
@@ -16,12 +15,10 @@ struct PrivateKeyTextInputView: View {
     let viewModel: CertificatesViewModel
     let allowedKeyImportTypes: [UTType]
     var onCancel: () -> Void
-    
     @State private var showFilePicker = false
     @State private var errorMessage: String? = nil
     @State private var isEditing = false
     @State private var showSuccessAlert = false
-    
     var body: some View {
         NavigationView {
             VStack(spacing: 12) {
@@ -31,13 +28,11 @@ struct PrivateKeyTextInputView: View {
                         .font(.caption)
                         .padding(.horizontal)
                 }
-                
                 Text("Paste your PEM-formatted private key below, or import it from a text file.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .padding(.horizontal)
                     .padding(.top)
-                
                 PrivateKeyTextEditor(text: $text, isEditing: $isEditing)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(4)
@@ -48,7 +43,6 @@ struct PrivateKeyTextInputView: View {
                     #endif
                     .cornerRadius(8)
                     .padding(.horizontal)
-                
                 HStack(spacing: 12) {
                     SwiftUI.Button {
                         #if !os(tvOS)
@@ -78,7 +72,6 @@ struct PrivateKeyTextInputView: View {
                             .padding(.vertical, 8)
                     }
                     .buttonStyle(.bordered)
-                    
                     SwiftUI.Button {
                         if let keyData = text.data(using: .utf8) {
                             do {

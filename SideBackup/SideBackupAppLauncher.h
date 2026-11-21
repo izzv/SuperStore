@@ -6,7 +6,6 @@
 //  Solution credits: Thanks to @HugeBlack
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN

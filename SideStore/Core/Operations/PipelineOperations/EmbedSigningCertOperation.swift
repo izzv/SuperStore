@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/5/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -18,25 +17,18 @@ final class EmbedSigningCertOperation: BasePipelineOperation<InstallAppOperation
             debugLog("[EmbedSigningCertOperation] execute() took: \(String(format: "%.3fs", elapsed))")
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
-        
-        // 1. Resolve the certificate used for signing this app
         guard let cert = self.context.targetSigningCertificate else
         {
             throw OperationError.invalidParameters("EmbedSigningCertOperation: No signing certificate found in context.")
         }
-        
         guard let certData = cert.data else {
             debugLog("[EmbedSigningCertOperation] WARNING: Certificate has no data to embed.")
             return
         }
-        
-        // 2. Write ALTCertificate.p12 (if p12) or ALTCertificate.der (if der) directly inside the target app bundle
         guard let appBundle = self.context.targetAppBundle else {
             throw OperationError.invalidParameters("EmbedSigningCertOperation: targetAppBundle is missing in context.")
         }
-        
         let p12Password = CertificateManager.shared.getPassword(for: cert)
-        
         do {
             if let p12Data = try? CertificateManager.convert(cert, password: p12Password) {
                 let p12URL = appBundle.fileURL.appendingPathComponent("ALTCertificate.p12")

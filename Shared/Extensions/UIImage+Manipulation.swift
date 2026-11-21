@@ -1,10 +1,3 @@
-//
-//  UIImage+Manipulation.swift
-//  AltStore
-//
-//  Created by Magesh K on 6/17/26.
-//
-
 @preconcurrency import UIKit
 
 public extension UIImage {
@@ -16,7 +9,6 @@ public extension UIImage {
         default:
             break
         }
-        
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = self.scale
         let renderer = UIGraphicsImageRenderer(size: finalSize, format: format)
@@ -24,7 +16,6 @@ public extension UIImage {
             self.draw(in: CGRect(origin: .zero, size: finalSize))
         }.withRenderingMode(self.renderingMode)
     }
-    
     func resizing(toFit size: CGSize) -> UIImage? {
         let imageSize = self.size
         let horizontalScale = size.width / imageSize.width
@@ -33,7 +24,6 @@ public extension UIImage {
         let finalSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
         return self.resizing(to: finalSize)
     }
-    
     func resizing(toFill size: CGSize) -> UIImage? {
         let imageSize = self.size
         let horizontalScale = size.width / imageSize.width
@@ -42,11 +32,9 @@ public extension UIImage {
         let finalSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
         return self.resizing(to: finalSize)
     }
-    
     func withCornerRadius(_ cornerRadius: CGFloat) -> UIImage? {
         return self.withCornerRadius(cornerRadius, inset: .zero)
     }
-    
     func withCornerRadius(_ cornerRadius: CGFloat, inset: UIEdgeInsets) -> UIImage? {
         var correctedInset = inset
         switch self.imageOrientation {
@@ -68,10 +56,8 @@ public extension UIImage {
         default:
             break
         }
-        
         let clippedRect = CGRect(x: 0, y: 0, width: self.size.width - correctedInset.left - correctedInset.right, height: self.size.height - correctedInset.top - correctedInset.bottom)
         let drawingRect = CGRect(x: -correctedInset.left, y: -correctedInset.top, width: self.size.width, height: self.size.height)
-        
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = self.scale
         let renderer = UIGraphicsImageRenderer(size: clippedRect.size, format: format)
@@ -81,19 +67,15 @@ public extension UIImage {
             self.draw(in: drawingRect)
         }.withRenderingMode(self.renderingMode)
     }
-    
     func rotated(to imageOrientation: UIImage.Orientation) -> UIImage? {
         guard let cgImage = self.cgImage else { return nil }
         return UIImage(cgImage: cgImage, scale: self.scale, orientation: imageOrientation).rotatedToIntrinsicOrientation()
     }
-    
     func rotatedToIntrinsicOrientation() -> UIImage? {
         if self.imageOrientation == .up {
             return self
         }
-        
         var transform = CGAffineTransform.identity
-        
         switch self.imageOrientation {
         case .down, .downMirrored:
             transform = transform.translatedBy(x: self.size.width, y: self.size.height)
@@ -107,7 +89,6 @@ public extension UIImage {
         default:
             break
         }
-        
         switch self.imageOrientation {
         case .upMirrored, .downMirrored:
             transform = transform.translatedBy(x: self.size.width, y: 0)
@@ -118,10 +99,8 @@ public extension UIImage {
         default:
             break
         }
-        
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = self.scale
-        
         var renderSize = self.size
         switch self.imageOrientation {
         case .left, .leftMirrored, .right, .rightMirrored:
@@ -129,11 +108,9 @@ public extension UIImage {
         default:
             break
         }
-        
         let renderer = UIGraphicsImageRenderer(size: renderSize, format: format)
         return renderer.image { context in
             context.cgContext.concatenate(transform)
-            
             switch self.imageOrientation {
             case .left, .leftMirrored, .right, .rightMirrored:
                 self.draw(in: CGRect(x: 0, y: 0, width: renderSize.height, height: renderSize.width))

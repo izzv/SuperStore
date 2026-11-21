@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/9/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 extension AppIconImageView
@@ -24,7 +23,6 @@ class AppIconImageView: UIImageView
             self.setNeedsLayout()
         }
     }
-    
     override var image: UIImage? {
         get {
             return super.image
@@ -49,43 +47,32 @@ class AppIconImageView: UIImageView
             }
         }
     }
-    
     init(style: Style) 
     {
         self.style = style
-        
         super.init(image: nil)
-        
         self.initialize()
     }
-    
     required init?(coder: NSCoder) 
     {
         super.init(coder: coder)
-        
         self.initialize()
     }
-    
     private func initialize()
     {
         self.contentMode = .scaleAspectFill
         self.clipsToBounds = true
         self.backgroundColor = .white
-        
         self.layer.cornerCurve = .continuous
     }
-    
     override func layoutSubviews()
     {
         super.layoutSubviews()
-        
         switch self.style
         {
         case .icon:
-            // Based off of 60pt icon having 12pt radius.
             let radius = self.bounds.height / 5
             self.layer.cornerRadius = radius
-            
         case .circular:
             let radius = self.bounds.height / 2
             self.layer.cornerRadius = radius
@@ -117,7 +104,6 @@ extension UIImage
             }
         }
     }
-    
     var cachedDropShadowImage: UIImage? {
         get {
             return dropShadowCache.object(forKey: self)
@@ -138,20 +124,16 @@ extension UIImage
                alphaInfo != .noneSkipLast &&
                alphaInfo != .noneSkipFirst
     }
-    
     var isPredominantlyLight: Bool {
         if let cached = self.cachedIsPredominantlyLight {
             return cached
         }
-        
         guard let cgImage = self.cgImage else { return false }
-        
         let width = 16
         let height = 16
         let bytesPerPixel = 4
         let bytesPerRow = width * bytesPerPixel
         let bitsPerComponent = 8
-        
         var rawData = [UInt8](repeating: 0, count: width * height * bytesPerPixel)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let context = CGContext(
@@ -163,13 +145,10 @@ extension UIImage
             space: colorSpace,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
         )
-        
         guard let context = context else { return false }
         context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        
         var totalLuminance: CGFloat = 0.0
         var totalOpaquePixels: CGFloat = 0.0
-        
         for y in 0..<height {
             for x in 0..<width {
                 let offset = (y * width + x) * bytesPerPixel
@@ -177,39 +156,30 @@ extension UIImage
                 let g = CGFloat(rawData[offset + 1])
                 let b = CGFloat(rawData[offset + 2])
                 let a = CGFloat(rawData[offset + 3]) / 255.0
-                
-                // Only consider pixels that are not fully transparent (alpha > 0.1)
                 if a > 0.1 {
-                    // Relative luminance formula
                     let luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
                     totalLuminance += luminance * a
                     totalOpaquePixels += a
                 }
             }
         }
-        
         if totalOpaquePixels == 0 {
             self.cachedIsPredominantlyLight = false
             return false
         }
-        
         let averageLuminance = totalLuminance / totalOpaquePixels
         let result = averageLuminance > 0.5
         self.cachedIsPredominantlyLight = result
         return result
     }
-    
     func withDropShadow(color: UIColor, radius: CGFloat, offset: CGSize, opacity: Float) -> UIImage?
     {
         if let cached = self.cachedDropShadowImage {
             return cached
         }
-        
         let shadowColor = color.withAlphaComponent(CGFloat(opacity)).cgColor
-        
         let format = UIGraphicsImageRendererFormat()
         format.scale = self.scale
-        
         let renderer = UIGraphicsImageRenderer(size: self.size, format: format)
         let result = renderer.image { context in
             let cgContext = context.cgContext

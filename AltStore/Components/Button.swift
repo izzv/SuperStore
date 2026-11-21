@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/9/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 final class Button: UIButton
@@ -16,32 +15,24 @@ final class Button: UIButton
         size.height += 10
         return size
     }
-    
     override func awakeFromNib()
     {
         super.awakeFromNib()
-        
         self.setTitleColor(.white, for: .normal)
-        
         self.layer.masksToBounds = true
         self.layer.cornerRadius = 8
-        
         self.update()
     }
-    
     override func tintColorDidChange()
     {
         super.tintColorDidChange()
-        
         self.update()
     }
-    
     override var isHighlighted: Bool {
         didSet {
             self.update()
         }
     }
-    
     override var isEnabled: Bool {
         didSet {
             self.update()

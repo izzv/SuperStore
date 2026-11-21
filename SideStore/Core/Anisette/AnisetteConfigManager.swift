@@ -4,7 +4,6 @@
 //  Created by Magesh K on 31/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import AnisetteKit
 import SideSign
@@ -19,7 +18,6 @@ public struct AnisetteConfig: Codable, Equatable {
     public var customXcodeVersion: String?
     public var customSerialNumber: String?
     public var customRoutingInfo: String?
-    
     public init(
         clientInfo: String,
         userAgent: String,
@@ -45,17 +43,14 @@ public struct AnisetteConfig: Codable, Equatable {
 
 public actor AnisetteConfigManager {
     public static let shared = AnisetteConfigManager()
-    
     public nonisolated var anisetteIdentifier: String? {
         get { Keychain.shared.identifier }
         set { Keychain.shared.identifier = newValue }
     }
-    
     public nonisolated var anisetteAdiBlob: String? {
         get { Keychain.shared.adiPb }
         set { Keychain.shared.adiPb = newValue }
     }
-    
     public func resolveDeviceIdentifier() -> UUID {
         if let storedId = anisetteIdentifier, !storedId.isEmpty {
             if let parsed = UUID(uuidString: storedId) {
@@ -70,17 +65,14 @@ public actor AnisetteConfigManager {
         anisetteIdentifier = generated.uuidString
         return generated
     }
-    
     private nonisolated var configFileURL: URL {
         let libraryDirectory = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
         return libraryDirectory.appendingPathComponent("anisette-config.json")
     }
-    
     private nonisolated var serverHeadersFileURL: URL {
         let libraryDirectory = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
         return libraryDirectory.appendingPathComponent("anisette-server-headers.json")
     }
-    
     public func saveServerHeaders(_ headers: [String: String]) {
         var existing = loadServerHeaders()
         for (key, val) in headers {
@@ -92,7 +84,6 @@ public actor AnisetteConfigManager {
             try? data.write(to: serverHeadersFileURL, options: .atomic)
         }
     }
-    
     public func loadServerHeaders() -> [String: String] {
         if let data = try? Data(contentsOf: serverHeadersFileURL),
            let headers = try? Foundation.JSONDecoder().decode([String: String].self, from: data) {
@@ -100,7 +91,6 @@ public actor AnisetteConfigManager {
         }
         return [:]
     }
-    
     public nonisolated var isOfflineMode: Bool {
         get {
             UserDefaults.standard.isAnisetteOfflineMode
@@ -109,7 +99,6 @@ public actor AnisetteConfigManager {
             UserDefaults.standard.isAnisetteOfflineMode = newValue
         }
     }
-    
     public func loadConfig() -> AnisetteConfig {
         let ud = UserDefaults.standard
         let udClientInfo   = ud.customAnisetteClientInfo
@@ -170,7 +159,6 @@ public actor AnisetteConfigManager {
     public func resolvedXcodeVersion() async -> String {
         return loadConfig().customXcodeVersion ?? "26.0 (26A242)"
     }
-    
     public func saveConfig(_ config: AnisetteConfig) {
         let encoder = Foundation.JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
@@ -188,11 +176,8 @@ public actor AnisetteConfigManager {
         ud.customAnisetteSerialNumber = config.customSerialNumber
         ud.customAnisetteRoutingInfo  = config.customRoutingInfo
     }
-    
     public func importFromFile(url: URL) throws -> AnisetteConfig {
         let data = try Data(contentsOf: url)
-        
-        // Flexible decoding supporting both camelCase and snake_case
         let config: AnisetteConfig
         if let direct = try? Foundation.JSONDecoder().decode(AnisetteConfig.self, from: data) {
             config = direct
@@ -201,24 +186,19 @@ public actor AnisetteConfigManager {
             guard let json = json else {
                 throw NSError(domain: "AnisetteConfigManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON format."])
             }
-            
             let clientInfo = (json["clientInfo"] as? String) ?? (json["client_info"] as? String)
             let userAgent = (json["userAgent"] as? String) ?? (json["user_agent"] as? String)
-            
             let customDeviceID = (json["customDeviceID"] as? String) ?? (json["custom_device_id"] as? String) ?? (json["deviceUniqueIdentifier"] as? String)
             let customLocalUserID = (json["customLocalUserID"] as? String) ?? (json["custom_local_user_id"] as? String) ?? (json["localUserID"] as? String)
             let customLocale = (json["customLocale"] as? String) ?? (json["custom_locale"] as? String) ?? (json["locale"] as? String)
             let customTimeZone = (json["customTimeZone"] as? String) ?? (json["custom_time_zone"] as? String) ?? (json["timeZone"] as? String)
-            
             let customSerialNumber = (json["customSerialNumber"] as? String) ?? (json["custom_serial_number"] as? String) ?? (json["serialNumber"] as? String)
             let customRoutingInfo = (json["customRoutingInfo"] as? String) ?? (json["custom_routing_info"] as? String) ?? (json["routingInfo"] as? String)
             let customXcodeVersion = (json["customXcodeVersion"] as? String) ?? (json["custom_xcode_version"] as? String) ?? (json["xcodeVersion"] as? String)
-            
             guard let finalClientInfo = clientInfo, !finalClientInfo.isEmpty,
                   let finalUserAgent = userAgent, !finalUserAgent.isEmpty else {
                 throw NSError(domain: "AnisetteConfigManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "Missing or empty required keys (clientInfo, userAgent)."])
             }
-            
             config = AnisetteConfig(
                 clientInfo: finalClientInfo,
                 userAgent: finalUserAgent,
@@ -231,18 +211,15 @@ public actor AnisetteConfigManager {
                 customRoutingInfo: customRoutingInfo
             )
         }
-        
         saveConfig(config)
         return config
     }
-    
     public func exportConfigData() -> Data? {
         let config = loadConfig()
         let encoder = Foundation.JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         return try? encoder.encode(config)
     }
-    
     @discardableResult
     public nonisolated func resetToDefaults() -> AnisetteConfig {
         let ud = UserDefaults.standard
@@ -263,11 +240,9 @@ public actor AnisetteConfigManager {
         )
         return config
     }
-    
     public nonisolated func deleteConfigFile() {
         try? FileManager.default.removeItem(at: configFileURL)
     }
-    
     public nonisolated func hasConfigFile() -> Bool {
         return FileManager.default.fileExists(atPath: configFileURL.path)
     }

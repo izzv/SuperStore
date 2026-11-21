@@ -5,7 +5,6 @@
 //  Created by Magesh K on 13/09/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import SideSign
@@ -17,7 +16,6 @@ protocol DeviceProvisioningHandler: AnyObject, Sendable {
 
 final class DeviceRegistrationFlow: @unchecked Sendable {
     weak var handler: DeviceProvisioningHandler?
-    
     init(handler: DeviceProvisioningHandler? = nil) {
         self.handler = handler
     }
@@ -44,16 +42,13 @@ final class DeviceRegistrationFlow: @unchecked Sendable {
             }
         }
     }
-    
     private func fetchDeviceUDID() async throws -> String {
         let isCellularEnabled = CellularRefreshManager.shared.isEnabled
         if isCellularEnabled {
             await CellularRefreshManager.shared.turnOffDataIfNeeded()
         }
-        
         do {
             let udid = try await safeFetchUDID()
-            
             if isCellularEnabled {
                 await CellularRefreshManager.shared.turnOnDataIfNeeded(addOnDelay: 2.0)
             }
@@ -70,7 +65,6 @@ final class DeviceRegistrationFlow: @unchecked Sendable {
         debugLog("[DeviceRegistrationFlow] performDeviceRegistration starting...")
         let udid = try await self.fetchDeviceUDID()
         debugLog("[DeviceRegistrationFlow] Fetched device UDID: \(udid). Fetching team devices...")
-        
         let devices = try await DeveloperPortalProxy.shared.fetchDevices(for: team, types: .all)
         if let device = devices.first(where: { $0.identifier.caseInsensitiveCompare(udid) == .orderedSame }) {
             debugLog("[DeviceRegistrationFlow] Device '\(device.name)' (UDID: \(udid)) is registered on team.")

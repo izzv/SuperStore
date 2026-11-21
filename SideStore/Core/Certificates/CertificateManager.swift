@@ -5,7 +5,6 @@
 //  Created by Magesh K on 1/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 import CodeSignKit
@@ -14,7 +13,6 @@ public struct ActiveSigningCertificate: Sendable {
     public let certificate: ALTCertificate
     public let p12Data: Data
     public let password: String?
-    
     public var serialNumber: String {
         certificate.serialNumber
     }
@@ -28,16 +26,12 @@ public struct ActiveSigningCertificate: Sendable {
 
 public final class CertificateManager: @unchecked Sendable {
     public static let shared = CertificateManager()
-    
     private let serialsKey = "importedCertificateSerials"
     private let metadataPrefix = "certMetadata_"
-    
     public private(set) var activeCertificate: ActiveSigningCertificate?
-    
     private init() {
         _ = try? loadActiveCertificate()
     }
-    
     public static func parse(_ data: Data, password: String?) throws -> ALTCertificate {
         if let password = password {
             return try ALTCertificate(p12Data: data, password: password)
@@ -54,9 +48,6 @@ public final class CertificateManager: @unchecked Sendable {
         }
     }
 
-    // MARK: - Active Keychain Certificate Encapsulation
-    
-    /// Loads active signing certificate from Keychain into memory.
     @discardableResult
     public func loadActiveCertificate() throws -> ActiveSigningCertificate? {
         guard let data = Keychain.shared.signingCertificate else {
@@ -86,7 +77,6 @@ public final class CertificateManager: @unchecked Sendable {
         return serialNumber
     }
 
-    /// Sets active signing certificate in memory cache, encrypts and persists to Keychain.
     public func setActiveCertificate(_ cert: ALTCertificate?) throws {
         if let cert = cert {
             do {
@@ -109,15 +99,11 @@ public final class CertificateManager: @unchecked Sendable {
         }
     }
 
-    /// Clears active certificate in memory cache and Keychain.
     public func clearActiveCertificate() {
         debugLog("[CertificateManager] clearActiveCertificate: Clearing active certificate.")
         self.activeCertificate = nil
         Keychain.shared.clearCertificates()
     }
-    
-    // MARK: - Certificate Encoding Helpers
-    
     public var activeSigningCertificateBase64Encoded: String? {
         guard let data = activeCertificate?.p12Data else { return nil }
         let base64 = data.base64EncodedString()
@@ -129,7 +115,6 @@ public final class CertificateManager: @unchecked Sendable {
     public func saveCertificate(_ cert: ALTCertificate) {
         debugLog("[CertificateManager] saveCertificate started for serial: \(cert.serialNumber)")
         defer { debugLog("[CertificateManager] saveCertificate completed for serial: \(cert.serialNumber)") }
-        
         do {
             let password = getPassword(for: cert)
             let p12Data = try Self.convert(cert, password: password)
@@ -139,14 +124,12 @@ public final class CertificateManager: @unchecked Sendable {
         } catch {
             debugLog("[CertificateManager] Failed to export/save p12 to keychain: \(error)")
         }
-        
         let serials = getImportedCertificateSerials()
         if !serials.contains(cert.serialNumber) {
             var updatedSerials = serials
             updatedSerials.append(cert.serialNumber)
             setImportedCertificateSerials(updatedSerials)
         }
-        
         var metadataDict: [String: String] = getCertificateMetadata(for: cert.serialNumber) ?? [:]
         metadataDict["name"] = cert.name
         metadataDict["serialNumber"] = cert.serialNumber
@@ -159,20 +142,17 @@ public final class CertificateManager: @unchecked Sendable {
     public func saveX509Certificate(_ x509: ALTX509Certificate) {
         debugLog("[CertificateManager] saveX509Certificate started for serial: \(x509.serialNumber)")
         defer { debugLog("[CertificateManager] saveX509Certificate completed for serial: \(x509.serialNumber)") }
-        
         if let derData = x509.data {
             debugLog("[CertificateManager] derData exists, size: \(derData.count)")
             Keychain.shared[certificateSerial: x509.serialNumber] = derData
             debugLog("[CertificateManager] Successfully saved der to keychain")
         }
-        
         let serials = getImportedCertificateSerials()
         if !serials.contains(x509.serialNumber) {
             var updatedSerials = serials
             updatedSerials.append(x509.serialNumber)
             setImportedCertificateSerials(updatedSerials)
         }
-        
         var metadataDict: [String: String] = getCertificateMetadata(for: x509.serialNumber) ?? [:]
         metadataDict["name"] = x509.name
         metadataDict["serialNumber"] = x509.serialNumber
@@ -181,7 +161,6 @@ public final class CertificateManager: @unchecked Sendable {
         if let v = x509.requesterEmail { metadataDict["requesterEmail"] = v }
         setCertificateMetadata(metadataDict, for: x509.serialNumber)
     }
-    
     public func getLocalCertificate(serialNumber: String) -> ALTCertificate? {
         if let active = self.activeCertificate, active.serialNumber == serialNumber {
             return active.certificate
@@ -221,7 +200,6 @@ public final class CertificateManager: @unchecked Sendable {
         }
         return nil
     }
-    
     public func getAllLocalCertificates() -> [ALTCertificate] {
         let serials = getImportedCertificateSerials()
         debugLog("[CertificateManager] getAllLocalCertificates count: \(serials.count)")
@@ -244,7 +222,6 @@ public final class CertificateManager: @unchecked Sendable {
         }
         return certs
     }
-    
     public func deleteCertificate(serialNumber: String) {
         debugLog("[CertificateManager] deleteCertificate: \(serialNumber)")
         if self.activeCertificate?.serialNumber == serialNumber {
@@ -261,11 +238,9 @@ public final class CertificateManager: @unchecked Sendable {
         if let cert = getLocalCertificate(serialNumber: serialNumber) {
             return cert
         }
-        
         if let cert = loadEmbeddedCertificate(for: serialNumber, fallbackPassword: fallbackPassword) {
             return cert
         }
-        
         debugLog("[CertificateManager] getSignableCertificate: No signable certificate found for serial \(serialNumber).")
         return nil
     }
@@ -309,7 +284,6 @@ public final class CertificateManager: @unchecked Sendable {
         return nil
     }
 
-    // Reads the Mach-O binary contents of an app bundle to extract its leaf signing certificate.
     private func readBinaryCertificate(at url: URL) -> ALTX509Certificate? {
         let executableURL: URL
         if url.pathExtension == "app" {
@@ -321,24 +295,18 @@ public final class CertificateManager: @unchecked Sendable {
         } else {
             executableURL = url
         }
-        
         guard let parser = try? MachOParser(url: executableURL) else {
             debugLog("[CertificateManager] readBinaryCertificate: Failed to parse Mach-O at \(executableURL.path)")
             return nil
         }
-        
         let certChain = parser.x509Certificates()
 
         debugLog("[CertificateManager] readBinaryCertificate: Found \(certChain.count) certificate(s) in Mach-O chain.")
-        
         for (index, x509Cert) in certChain.enumerated() {
             guard let derData = x509Cert.data else { continue }
             let details = parseCertificate(derData: derData)
-            
-            // Filter out Root & Intermediate CA certificates
             let subjectDN = details.subject
             let isFilteredOut = subjectDN.contains("Root") || subjectDN.contains("Authority") || subjectDN.contains("Relations")
-            
             verboseLog("""
             [CertificateManager] readBinaryCertificate: Certificate [\(index)]:
               - Subject: '\(details.subject)'
@@ -349,11 +317,9 @@ public final class CertificateManager: @unchecked Sendable {
               - Filtered Out: \(isFilteredOut)
               - Parsed ALTX509Certificate: Success (serial: \(x509Cert.serialNumber))
             """)
-            
             if isFilteredOut {
                 continue
             }
-            
             debugLog("[CertificateManager] readBinaryCertificate: Extracted leaf signing certificate from Mach-O (\(executableURL.lastPathComponent))")
             return x509Cert
         }
@@ -377,12 +343,10 @@ public final class CertificateManager: @unchecked Sendable {
 
         verboseLog("[CertificateManager] getSigningCertificate started for app: \(app.name), isSelf: \(isSelf), bundleID: \(bundleID)")
 
-        // STEP 1: Mach-O Binary Check (Only for SideStore itself)
         if isSelf {
             return self.getSigningCertificate(at: Bundle.Info.activeBundleURL)
         }
 
-        // STEP 2: App Group Cached Certificate Check (For third-party apps)
         let certURL = app.signingCertificateURL
         verboseLog("[CertificateManager] Step 2 (App Group Cached Cert): Checking \(certURL.path)...")
 
@@ -407,21 +371,16 @@ public final class CertificateManager: @unchecked Sendable {
     }
 }
 
-// MARK: - Private Domain Persistence Boundary Extension
-
 private extension CertificateManager {
     func getImportedCertificateSerials() -> [String] {
         return UserDefaults.standard.stringArray(forKey: serialsKey) ?? []
     }
-    
     func setImportedCertificateSerials(_ serials: [String]) {
         UserDefaults.standard.set(serials, forKey: serialsKey)
     }
-    
     func getCertificateMetadata(for serial: String) -> [String: String]? {
         return UserDefaults.standard.dictionary(forKey: metadataPrefix + serial) as? [String: String]
     }
-    
     func setCertificateMetadata(_ metadata: [String: String]?, for serial: String) {
         if let metadata = metadata {
             UserDefaults.standard.set(metadata, forKey: metadataPrefix + serial)

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public extension FileManager {
@@ -65,7 +64,6 @@ public extension FileManager {
 
         let temporaryDirectory = try self.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: destinationURL, create: true)
         let temporaryURL = temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        
         let removeDirectory = {
             do {
                 try self.removeItem(at: temporaryDirectory)

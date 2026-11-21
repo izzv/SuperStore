@@ -5,7 +5,6 @@
 //  Created by Magesh K on 22/02/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import Minimuxer
 
@@ -29,9 +28,7 @@ func startEMProxy(bind_addr: String = AppConstants.Proxy.serverURL) async throws
     let overrideIp = ConnectionConfig.shared.overrideTunnelPeerIp.trimmingCharacters(in: .whitespacesAndNewlines)
     let initialHandshakePeer = !overrideIp.isEmpty ? overrideIp : (ConnectionConfig.shared.tunnelPeerIp ?? "")
     let lockdowndPort = AppConstants.Minimuxer.lockdowndPort
-    
     minimuxer.emproxy.setHandshakeClient(host: initialHandshakePeer, port: lockdowndPort, enabled: !initialHandshakePeer.isEmpty)
-    
     do {        
         try await minimuxer.emproxy.start(host: host, port: port)
     } catch {

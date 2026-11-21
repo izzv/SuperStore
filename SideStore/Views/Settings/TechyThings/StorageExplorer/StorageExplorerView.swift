@@ -5,18 +5,14 @@
 //  Created by Magesh K on 1/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Combine
-
-// MARK: - Root Storage Explorer View
 
 public struct StorageExplorerView: View {
     private static var hasCompletedInitialStatsScan: Bool = false
     private static var cachedAppStorageUsed: String = ""
     private static var cachedFreeSpace: String = ""
     private static var cachedTotalSpace: String = ""
-    
     public static func clearCache() {
         verboseLog("[StorageExplorerView] Static cache cleared")
         hasCompletedInitialStatsScan = false
@@ -24,19 +20,15 @@ public struct StorageExplorerView: View {
         cachedFreeSpace = ""
         cachedTotalSpace = ""
     }
-    
     @State private var locations: [StorageLocation] = []
     @State private var totalHardwareSpaceString: String = StorageExplorerView.cachedTotalSpace
     @State private var freeHardwareSpaceString: String = StorageExplorerView.cachedFreeSpace
     @State private var appStorageUsedString: String = StorageExplorerView.cachedAppStorageUsed
     @State private var statsTask: Task<Void, Never>? = nil
-    
     public var onSelectFolder: ((URL) -> Void)?
-    
     public init(onSelectFolder: ((URL) -> Void)? = nil) {
         self.onSelectFolder = onSelectFolder
     }
-    
     public var body: some View {
         List {
             Section(
@@ -79,13 +71,10 @@ public struct StorageExplorerView: View {
             self.statsTask = nil
         }
     }
-    
     private func loadLocations() {
         Task.detached {
             var locs: [StorageLocation] = []
             let fileManager = FileManager.default
-            
-            // 1. Private Documents
             if let docsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
                 locs.append(StorageLocation(
                     name: "Private Documents",
@@ -94,8 +83,6 @@ public struct StorageExplorerView: View {
                     url: docsURL
                 ))
             }
-            
-            // 2. App Group Containers
             var seenGroupPaths = Set<String>()
             for groupID in Bundle.main.appGroups {
                 if let groupURL = fileManager.containerURL(forSecurityApplicationGroupIdentifier: groupID),
@@ -109,8 +96,6 @@ public struct StorageExplorerView: View {
                     ))
                 }
             }
-            
-            // 3. App Backups Directory
             if let backupsURL = fileManager.appBackupsDirectory {
                 locs.append(StorageLocation(
                     name: "App Backups Directory",
@@ -119,8 +104,6 @@ public struct StorageExplorerView: View {
                     url: backupsURL
                 ))
             }
-            
-            // 4. Temporary Directory
             let tmpURL = fileManager.temporaryDirectory
             locs.append(StorageLocation(
                 name: "Temporary Directory (tmp)",
@@ -128,17 +111,14 @@ public struct StorageExplorerView: View {
                 iconName: "trash.circle",
                 url: tmpURL
             ))
-            
             Task { @MainActor in
                 self.locations = locs
             }
         }
     }
-    
     private func loadStorageStats(delayMs: Int = 0) {
         verboseLog("[StorageExplorerView] loadStorageStats requested (delayMs: \(delayMs))")
         statsTask?.cancel()
-        
         statsTask = Task.detached {
             if delayMs > 0 {
                 verboseLog("[StorageExplorerView] statsTask waiting \(delayMs)ms before scanning...")
@@ -148,11 +128,9 @@ public struct StorageExplorerView: View {
                 verboseLog("[StorageExplorerView] statsTask cancelled during initial delay")
                 return
             }
-            
             verboseLog("[StorageExplorerView] statsTask starting container scan on background thread")
             let fileManager = FileManager.default
             var totalAppSize: Int64 = 0
-            
             var containerURLs: [URL] = []
             if let docsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
                 containerURLs.append(docsURL)
@@ -166,7 +144,6 @@ public struct StorageExplorerView: View {
                 containerURLs.append(backupsURL)
             }
             containerURLs.append(fileManager.temporaryDirectory)
-            
             var seenPaths = Set<String>()
             for containerURL in containerURLs {
                 if Task.isCancelled {
@@ -182,12 +159,10 @@ public struct StorageExplorerView: View {
                     totalAppSize += size
                 }
             }
-            
             if Task.isCancelled {
                 verboseLog("[StorageExplorerView] statsTask cancelled before HW space query")
                 return
             }
-            
             var hwTotalStr = "Unknown"
             var hwFreeStr = "Unknown"
             #if !os(tvOS)
@@ -213,18 +188,14 @@ public struct StorageExplorerView: View {
                 }
             } catch {}
             #endif
-            
             let appSizeStr = ByteCountFormatter.string(fromByteCount: totalAppSize, countStyle: .file)
             verboseLog("[StorageExplorerView] statsTask completed successfully. totalAppSize: \(appSizeStr), freeSpace: \(hwFreeStr)")
-            
             if Task.isCancelled { return }
-            
             Task { @MainActor in
                 StorageExplorerView.hasCompletedInitialStatsScan = true
                 StorageExplorerView.cachedTotalSpace = hwTotalStr
                 StorageExplorerView.cachedFreeSpace = hwFreeStr
                 StorageExplorerView.cachedAppStorageUsed = appSizeStr
-                
                 self.totalHardwareSpaceString = hwTotalStr
                 self.freeHardwareSpaceString = hwFreeStr
                 self.appStorageUsedString = appSizeStr
@@ -236,13 +207,11 @@ public struct StorageExplorerView: View {
 private struct StorageLocationRowView: View {
     let location: StorageLocation
     let onSelectFolder: ((URL) -> Void)?
-    
     private var rowContent: some View {
         HStack(spacing: 12) {
             Image(systemName: location.iconName)
                 .font(.title2)
                 .foregroundColor(.accentColor)
-            
             VStack(alignment: .leading, spacing: 2) {
                 Text(location.name)
                     .font(.headline)
@@ -250,9 +219,7 @@ private struct StorageLocationRowView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
             Spacer()
-            
             Image(systemName: "chevron.right")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(Color.secondary.opacity(0.4))
@@ -260,7 +227,6 @@ private struct StorageLocationRowView: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
     }
-    
     var body: some View {
         #if !os(tvOS)
         rowContent
@@ -284,7 +250,6 @@ private struct StorageExplorerFooterView: View {
     let appStorageUsedString: String
     let freeHardwareSpaceString: String
     let totalHardwareSpaceString: String
-    
     var body: some View {
         VStack(alignment: .center, spacing: 5) {
             if !appStorageUsedString.isEmpty {

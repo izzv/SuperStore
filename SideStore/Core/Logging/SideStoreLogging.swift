@@ -64,8 +64,6 @@ public func formatLogMessage(_ message: String) -> String {
     {
         return message
     }
-    
-    // Extract URL
     var failingURL: String? = nil
     if let urlMatch = message.range(of: "NSErrorFailingURLStringKey=([^,}\\s]+)", options: .regularExpression) {
         let extracted = String(message[urlMatch])
@@ -74,36 +72,26 @@ public func formatLogMessage(_ message: String) -> String {
         let extracted = String(message[urlMatch])
         failingURL = extracted.replacingOccurrences(of: "NSErrorFailingURL=", with: "")
     }
-    
-    // Extract Domain
     var domain: String? = nil
     if let domainMatch = message.range(of: "Error Domain=([^\\s,]+)", options: .regularExpression) {
         let extracted = String(message[domainMatch])
         domain = extracted.replacingOccurrences(of: "Error Domain=", with: "")
     }
-    
-    // Extract Code
     var code: String? = nil
     if let codeMatch = message.range(of: "Code=(-?\\d+)", options: .regularExpression) {
         let extracted = String(message[codeMatch])
         code = extracted.replacingOccurrences(of: "Code=", with: "")
     }
-    
-    // Extract Localized Description
     var desc: String? = nil
     if let descMatch = message.range(of: "\"([^\"]+)\"", options: .regularExpression) {
         desc = String(message[descMatch]).trimmingCharacters(in: CharacterSet(charactersIn: "\""))
     } else if let descMatch = message.range(of: "NSLocalizedDescription=([^,}\n]+)", options: .regularExpression) {
         desc = String(message[descMatch]).replacingOccurrences(of: "NSLocalizedDescription=", with: "")
     }
-    
-    // Extract Stream Error Code
     var streamCode: String? = nil
     if let streamMatch = message.range(of: "_kCFStreamErrorCodeKey=(\\d+)", options: .regularExpression) {
         streamCode = String(message[streamMatch]).replacingOccurrences(of: "_kCFStreamErrorCodeKey=", with: "")
     }
-    
-    // Clean Header Line
     var header = message
     if let range = message.range(of: "Error Domain=") {
         header = String(message[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -119,7 +107,6 @@ public func formatLogMessage(_ message: String) -> String {
     if let desc = desc, !header.contains(desc) {
         header += ": \(desc)"
     }
-    
     var bullets: [String] = [header]
     if let url = failingURL, !url.isEmpty {
         bullets.append("  • url: '\(url)'")
@@ -133,6 +120,5 @@ public func formatLogMessage(_ message: String) -> String {
     if let stream = streamCode {
         bullets.append("  • streamErrorCode: \(stream)")
     }
-    
     return bullets.joined(separator: "\n")
 }

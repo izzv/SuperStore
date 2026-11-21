@@ -5,7 +5,6 @@
 //  Created by Magesh K on 1/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import SideSign
@@ -13,13 +12,10 @@ import CoreData
 
 public final class AuthManager: @unchecked Sendable {
     public static let shared = AuthManager()
-    
     private var portalProxy: DeveloperPortalProxyWithAuth {
         DeveloperPortalProxy.shared as! DeveloperPortalProxyWithAuth
     }
-    
     private init() {}
-    
     private var team: ALTTeam?
     private var session: ALTAppleAPISession?
 
@@ -29,35 +25,28 @@ public final class AuthManager: @unchecked Sendable {
         let hasToken = Keychain.shared.appleIDXcodeToken != nil
         return hasEmail && (hasPassword || hasToken)
     }
-    
     public var currentAppleID: String? {
         get { Keychain.shared.appleIDEmailAddress }
         set { Keychain.shared.appleIDEmailAddress = newValue }
     }
-    
     public var password: String? {
         get { Keychain.shared.appleIDPassword }
         set { Keychain.shared.appleIDPassword = newValue }
     }
-    
     public var adsid: String? {
         get { Keychain.shared.appleIDAdsid }
         set { Keychain.shared.appleIDAdsid = newValue }
     }
-    
     public var xcodeToken: String? {
         get { Keychain.shared.appleIDXcodeToken }
         set { Keychain.shared.appleIDXcodeToken = newValue }
     }
-    
     public var hasStoredPassword: Bool {
         return Keychain.shared.appleIDPassword != nil
     }
-    
     public var hasStoredXcodeToken: Bool {
         return Keychain.shared.appleIDXcodeToken != nil
     }
-    
     public func signOut(
         keepCertificate: Bool = false,
         keepAnisetteData: Bool = true,
@@ -94,19 +83,17 @@ public final class AuthManager: @unchecked Sendable {
 
         AnisetteDataManager.shared.clearCache()
     }
-    
     @discardableResult
     public func getAuthenticatedSession() async throws -> ALTAppleAPISession {
         return try await TaskChainCoalescer.shared.coalesce(key: "apple_auth_session") {
-            guard let adsid = self.adsid,                           // directory services id
-                  let xcodeToken = self.xcodeToken else             // xcode token
+            guard let adsid = self.adsid,                           
+                  let xcodeToken = self.xcodeToken else             
             {
                 debugLog("[AuthManager] No stored tokens found.")
                 throw OperationError.notAuthenticated
             }
-            let anisetteData = try await AnisetteProvider.fetch()   // one time pass
+            let anisetteData = try await AnisetteProvider.fetch()   
             let xcodeVersion = await AnisetteConfigManager.shared.resolvedXcodeVersion()
-            
             let session = ALTAppleAPISession(
                 dsid: adsid,
                 authToken: xcodeToken,
@@ -122,7 +109,6 @@ public final class AuthManager: @unchecked Sendable {
         if let team = self.team {
             return team
         }
-        
         let team = try await self.resolveActiveTeam()
         self.team = team
         return team
@@ -136,7 +122,6 @@ public final class AuthManager: @unchecked Sendable {
             return ALTTeam(identifier: dbTeam.identifier, name: dbTeam.name, type: dbTeam.type)
         }
     }
-    
     @discardableResult
     func signIn(
         presentingViewController: UIViewController? = nil,
@@ -151,7 +136,6 @@ public final class AuthManager: @unchecked Sendable {
             steps: .signIn,
             dbBackgroundContext: dbBackgroundContext
         )
-        
         let signInOperation = try SignInOperation(
             context: context,
             signInHandler: signInFlowHandler,
@@ -166,9 +150,6 @@ public final class AuthManager: @unchecked Sendable {
         self.session = result.session
         return result
     }
-    
-    
-    // Developer Portal Operations
     public func signIn(appleID: String, 
                        password: String, 
                        anisetteData: ALTAnisetteData, 
@@ -190,7 +171,6 @@ public final class AuthManager: @unchecked Sendable {
 }
 
 fileprivate extension DatabaseManager {
-    //TODO: this is not clean, but for now this should be fine, ie we should later make this proper async instead of blocking
     func deactivateActiveAccountAndTeam() async {
         guard self.isStarted else {
             debugLog("[AuthManager] DatabaseManager is not started. Skipping CoreData active account/team deactivation.")
@@ -210,7 +190,6 @@ fileprivate extension DatabaseManager {
                 debugLog("[AuthManager] Failed to save CoreData context when deactivating active account and team: \(error)")
             }
         }
-        
         await self.viewContext.perform {
             self.viewContext.processPendingChanges()
             self.viewContext.refreshAllObjects()

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 13/09/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import SideSign
@@ -19,12 +18,10 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
     weak var handler: CertificateProvisioningHandler?
     let skipCertificateProvisioning: Bool
     private(set) var portalCertificates: [ALTX509Certificate]?
-    
     init(handler: CertificateProvisioningHandler? = nil, skipCertificateProvisioning: Bool = false) {
         self.handler = handler
         self.skipCertificateProvisioning = skipCertificateProvisioning
     }
-    
     func resolveCertificate(for team: ALTTeam) async throws -> ALTCertificate? {
         while true {
             do {
@@ -46,14 +43,12 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
             }
         }
     }
-    
     private func performCertificateResolution(for team: ALTTeam) async throws -> ALTCertificate? {
         let activeCert = CertificateManager.shared.activeCertificate?.certificate
         let isCustomCert = activeCert?.data.map { data in
             let details = parseCertificate(derData: data)
             return !details.subject.contains(team.identifier) && !details.issuer.contains(team.identifier)
         } ?? false
-        
         if isCustomCert {
             debugLog("[CertificateProvisioningFlow] Custom active certificate detected (Subject OU mismatch with Team ID '\(team.identifier)'). Bypassing portal fetch.")
             return activeCert
@@ -65,7 +60,6 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
             return certificate
         }
     }
-    
     func fetchPortalCertificates(for team: ALTTeam) async throws -> [ALTX509Certificate] {
         if let cached = self.portalCertificates {
             return cached
@@ -74,13 +68,10 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
         self.portalCertificates = fetched
         return fetched
     }
-    
     private func fetchCertificate(for team: ALTTeam) async throws -> ALTCertificate {
         let portalCertificates = try await DeveloperPortalProxy.shared.fetchCertificates(team: team)
         self.portalCertificates = portalCertificates
-        
         let mainBundleCertSerial = Bundle.main.object(forInfoDictionaryKey: Bundle.Info.certificateID) as? String
-        
         if let activeCert = CertificateManager.shared.activeCertificate,
            let certificate = portalCertificates.first(where: { $0.serialNumber == activeCert.serialNumber }) 
         {
@@ -94,7 +85,6 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
             }
             return keyStoreCert
         }
-        
         if let mainBundleCertSerial = mainBundleCertSerial,
            let certificate = portalCertificates.first(where: { $0.serialNumber.lowercased() == mainBundleCertSerial.lowercased() }),
            var cert = CertificateManager.shared.getSignableCertificate(for: mainBundleCertSerial, fallbackPassword: certificate.machineIdentifier) 
@@ -103,14 +93,12 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
             debugLog("[CertificateProvisioningFlow] Using running bundle certificate (\(cert.serialNumber)) with valid private key from signable cache.")
             return cert
         }
-        
         if portalCertificates.isEmpty {
             return try await self.requestCertificate(for: team)
         } else {
             return try await self.replaceCertificate(portalCertificates: portalCertificates, for: team)
         }
     }
-    
     private func requestCertificate(for team: ALTTeam) async throws -> ALTCertificate {
         let deviceName = await UIDevice.current.name
         let accountName = team.account?.firstName ?? team.name
@@ -120,7 +108,6 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
         do {
             let newPortalCertificate = try await DeveloperPortalProxy.shared.createCertificate(machineName: machineName, team: team)
             debugLog("[CertificateProvisioningFlow] Successfully requested new portal certificate (Serial: \(newPortalCertificate.serialNumber)).")
-            
             let portalCertificates = try await DeveloperPortalProxy.shared.fetchCertificates(team: team)
             self.portalCertificates = portalCertificates
 
@@ -137,7 +124,6 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
             throw error
         }
     }
-    
     private func replaceCertificate(portalCertificates: [ALTX509Certificate], for team: ALTTeam) async throws -> ALTCertificate {
         let iosCertificates = portalCertificates.filter { cert in
             let nameLower = cert.name.lowercased()
@@ -145,12 +131,10 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
         }
 
         debugLog("[CertificateProvisioningFlow] replaceCertificate: Starting. Total certs on portal: \(portalCertificates.count), iOS Development certs: \(iosCertificates.count)")
-        
         if iosCertificates.isEmpty {
             debugLog("[CertificateProvisioningFlow] replaceCertificate: No iOS Development certificates found on portal. Requesting new...")
             return try await self.requestCertificate(for: team)
         }
-        
         if let handler = self.handler {
             debugLog("[CertificateProvisioningFlow] replaceCertificate: Presenting revoke alert for \(iosCertificates.count) iOS Development cert(s)...")
             let action = try await handler.resolveRevocation(certificates: iosCertificates, teamType: team.type)
@@ -159,7 +143,6 @@ final class CertificateProvisioningFlow: @unchecked Sendable {
             case .keepExisting:
                 debugLog("[CertificateProvisioningFlow] replaceCertificate: Keeping existing, calling requestCertificate...")
                 return try await self.requestCertificate(for: team)
-                
             case .revokeSelected(let certsToRevoke):
                 debugLog("[CertificateProvisioningFlow] replaceCertificate: Revoking \(certsToRevoke.count) selected certificate(s)...")
                 var firstError: Error? = nil

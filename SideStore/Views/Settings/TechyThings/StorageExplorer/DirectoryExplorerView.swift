@@ -5,22 +5,17 @@
 //  Created by Magesh K on 3/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Combine
-
-// MARK: - Directory Explorer View
 
 public struct DirectoryExplorerView: View {
     @StateObject private var viewModel: StorageExplorerViewModel
     @ObservedObject private var clipboard = StorageExplorerClipboard.shared
     public var onSelectFolder: ((URL) -> Void)?
-    
     public init(url: URL, onSelectFolder: ((URL) -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: StorageExplorerViewModel(url: url))
         self.onSelectFolder = onSelectFolder
     }
-    
     private var folderSummaryString: String {
         let items = viewModel.filteredAndSortedItems
         if items.isEmpty {
@@ -29,7 +24,6 @@ public struct DirectoryExplorerView: View {
         let folders = items.filter { $0.isDirectory }
         let files = items.filter { !$0.isDirectory }
         let sizeStr = ByteCountFormatter.string(fromByteCount: viewModel.currentFolderSize, countStyle: .file)
-        
         if !folders.isEmpty && !files.isEmpty {
             let folderLabel = folders.count == 1 ? "1 Folder" : "\(folders.count) Folders"
             let fileLabel = files.count == 1 ? "1 File" : "\(files.count) Files"
@@ -42,12 +36,10 @@ public struct DirectoryExplorerView: View {
             return "\(fileLabel) (\(sizeStr))"
         }
     }
-    
     public var body: some View {
         VStack(spacing: 0) {
             if viewModel.isLoading {
                 Spacer()
-                
                 VStack(spacing: 12) {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle())
@@ -57,21 +49,17 @@ public struct DirectoryExplorerView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity)
-                
                 Spacer()
             } else if viewModel.filteredAndSortedItems.isEmpty {
                 Spacer()
-                
                 VStack(spacing: 16) {
                     Image(systemName: "folder.badge.minus")
                         .font(.system(size: 64, weight: .light))
                         .foregroundColor(.secondary.opacity(0.7))
-                    
                     VStack(spacing: 4) {
                         Text("Empty Directory")
                             .font(.title3.weight(.semibold))
                             .foregroundColor(.primary)
-                        
                         Text("No files or subfolders found in this directory.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
@@ -84,7 +72,6 @@ public struct DirectoryExplorerView: View {
                 .contextMenu {
                     EmptyAreaContextMenuView(viewModel: viewModel, clipboard: clipboard)
                 }
-                
                 Spacer()
             } else {
                 List {
@@ -98,16 +85,12 @@ public struct DirectoryExplorerView: View {
                 #endif
                 .searchable(text: $viewModel.searchText, prompt: "Search files & folders")
             }
-            
-            // Bottom Status & Storage Information Bar + Selection Actions Bar
             VStack(spacing: 0) {
                 Divider()
-                
                 if viewModel.isSelectionMode {
                     SelectionActionBarView(viewModel: viewModel)
                     Divider()
                 }
-                
                 BottomInformationBarView(viewModel: viewModel, clipboard: clipboard, folderSummaryString: folderSummaryString)
             }
         }
@@ -136,7 +119,6 @@ public struct DirectoryExplorerView: View {
             viewModel.cancelLoading()
         }
     }
-    
     private func makeAlert(for alertType: StorageExplorerViewModel.ActiveAlert) -> Alert {
         let vm = self.viewModel
         switch alertType {
@@ -200,22 +182,17 @@ public struct DirectoryExplorerView: View {
     }
 }
 
-// MARK: - Subview Components
-
 private struct DirectoryItemListSectionView: View {
     let viewModel: StorageExplorerViewModel
     @ObservedObject var clipboard: StorageExplorerClipboard
     var onSelectFolder: ((URL) -> Void)?
-    
     @State private var filteredAndSortedItems: [StorageExplorerItem] = []
     @State private var isSelectionMode: Bool = false
     @State private var selectedURLs: Set<URL> = []
     @State private var isTextWrapEnabled: Bool = true
-    
     var body: some View {
         let folders = filteredAndSortedItems.filter { $0.isDirectory }
         let files = filteredAndSortedItems.filter { !$0.isDirectory }
-        
         Group {
             if !folders.isEmpty && !files.isEmpty {
                 Section("Folders (\(folders.count))") {
@@ -223,7 +200,6 @@ private struct DirectoryItemListSectionView: View {
                         renderRow(item: item)
                     }
                 }
-                
                 Section("Files (\(files.count))") {
                     ForEach(files) { item in
                         renderRow(item: item)
@@ -250,14 +226,12 @@ private struct DirectoryItemListSectionView: View {
             updateState()
         }
     }
-    
     private func updateState() {
         self.filteredAndSortedItems = viewModel.filteredAndSortedItems
         self.isSelectionMode = viewModel.isSelectionMode
         self.selectedURLs = viewModel.selectedURLs
         self.isTextWrapEnabled = viewModel.isTextWrapEnabled
     }
-    
     @ViewBuilder
     private func renderRow(item: StorageExplorerItem) -> some View {
         let isSelected = selectedURLs.contains(item.url)
@@ -297,7 +271,6 @@ private struct DirectoryItemListSectionView: View {
 private struct EmptyPasteAreaSectionView: View {
     let viewModel: StorageExplorerViewModel
     let clipboard: StorageExplorerClipboard
-    
     var body: some View {
         Section {
             Color.clear
@@ -312,11 +285,9 @@ private struct EmptyPasteAreaSectionView: View {
 
 private struct SelectionActionBarView: View {
     let viewModel: StorageExplorerViewModel
-    
     @State private var selectedURLs: Set<URL> = []
     @State private var filteredCount: Int = 0
     @State private var allFilteredURLs: Set<URL> = []
-    
     var body: some View {
         let count = selectedURLs.count
         let copyTitle = count > 0 ? "Copy (\(count))" : "Copy"
@@ -324,7 +295,6 @@ private struct SelectionActionBarView: View {
         let deleteTitle = count > 0 ? "Delete (\(count))" : "Delete"
         let isAllSelected = count > 0 && count == filteredCount
         let selectTitle = isAllSelected ? "Deselect All" : "Select All"
-        
         HStack(spacing: 6) {
             SwiftUI.Button {
                 if isAllSelected {
@@ -337,9 +307,7 @@ private struct SelectionActionBarView: View {
                     .font(.caption.bold())
                     .lineLimit(1)
             }
-            
             Spacer(minLength: 2)
-            
             SwiftUI.Button {
                 if !selectedURLs.isEmpty {
                     viewModel.copySelectedToClipboard()
@@ -353,7 +321,6 @@ private struct SelectionActionBarView: View {
             .controlSize(.small)
             .fixedSize(horizontal: true, vertical: false)
             .disabled(selectedURLs.isEmpty)
-            
             SwiftUI.Button {
                 if !selectedURLs.isEmpty {
                     if count == 1, let firstURL = selectedURLs.first, let item = viewModel.items.first(where: { $0.url == firstURL }) {
@@ -372,7 +339,6 @@ private struct SelectionActionBarView: View {
             .controlSize(.small)
             .fixedSize(horizontal: true, vertical: false)
             .disabled(selectedURLs.isEmpty)
-            
             SwiftUI.Button(role: .destructive) {
                 if !selectedURLs.isEmpty {
                     viewModel.activeAlert = .confirmBulkDelete
@@ -402,7 +368,6 @@ private struct SelectionActionBarView: View {
             updateState()
         }
     }
-    
     private func updateState() {
         self.selectedURLs = viewModel.selectedURLs
         let filtered = viewModel.filteredAndSortedItems
@@ -415,12 +380,10 @@ private struct BottomInformationBarView: View {
     let viewModel: StorageExplorerViewModel
     let clipboard: StorageExplorerClipboard
     let folderSummaryString: String
-    
     @State private var freeDiskSpaceString: String = ""
     @State private var isSelectionMode: Bool = false
     @State private var hasCopiedItems: Bool = false
     @State private var pasteLabelText: String = "Paste"
-    
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
@@ -432,7 +395,6 @@ private struct BottomInformationBarView: View {
                     .foregroundColor(.secondary)
             }
             Spacer()
-            
             if hasCopiedItems && !isSelectionMode {
                 SwiftUI.Button {
                     viewModel.pasteCopiedItems()
@@ -461,7 +423,6 @@ private struct BottomInformationBarView: View {
             updateState()
         }
     }
-    
     private func updateState() {
         self.freeDiskSpaceString = viewModel.freeDiskSpaceString
         self.isSelectionMode = viewModel.isSelectionMode
@@ -472,7 +433,6 @@ private struct BottomInformationBarView: View {
 
 private struct TrailingToolbarMenuView: View {
     let viewModel: StorageExplorerViewModel
-    
     @State private var isSelectionMode: Bool = false
     @State private var sortOption: StorageSortOption = .name
     @State private var sortAscending: Bool = true
@@ -481,7 +441,6 @@ private struct TrailingToolbarMenuView: View {
     #if os(tvOS)
     @State private var showTvMenu: Bool = false
     #endif
-    
     var body: some View {
         #if !os(tvOS)
         Menu {
@@ -491,9 +450,7 @@ private struct TrailingToolbarMenuView: View {
             } label: {
                 Label(isSelectionMode ? "Done Selecting" : "Select", systemImage: "checkmark.circle")
             }
-            
             Divider()
-            
             Menu("Sort By") {
                 ForEach(StorageSortOption.allCases) { option in
                     SwiftUI.Button {
@@ -512,11 +469,9 @@ private struct TrailingToolbarMenuView: View {
                     }
                 }
             }
-            
             Toggle(isOn: Binding(get: { groupFoldersFirst }, set: { viewModel.groupFoldersFirst = $0 })) {
                 Text("Folders First")
             }
-            
             Toggle(isOn: Binding(get: { isTextWrapEnabled }, set: { viewModel.isTextWrapEnabled = $0 })) {
                 Text("Wrap File Names")
             }
@@ -565,7 +520,6 @@ private struct TrailingToolbarMenuView: View {
         }
         #endif
     }
-    
     private func updateState() {
         self.isSelectionMode = viewModel.isSelectionMode
         self.sortOption = viewModel.sortOption
@@ -578,9 +532,7 @@ private struct TrailingToolbarMenuView: View {
 private struct ItemContextMenuView: View {
     let viewModel: StorageExplorerViewModel
     let item: StorageExplorerItem
-    
     @State private var isSelectionMode: Bool = false
-    
     var body: some View {
         if !isSelectionMode {
             SwiftUI.Button {
@@ -588,7 +540,6 @@ private struct ItemContextMenuView: View {
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
-            
             SwiftUI.Button {
                 viewModel.renameInput = item.name
                 viewModel.itemToRename = item
@@ -596,7 +547,6 @@ private struct ItemContextMenuView: View {
             } label: {
                 Label("Rename", systemImage: "pencil")
             }
-            
             if !item.isDirectory {
                 SwiftUI.Button {
                     viewModel.shareURL = item.url
@@ -604,7 +554,6 @@ private struct ItemContextMenuView: View {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
             }
-            
             SwiftUI.Button(role: .destructive) {
                 viewModel.activeAlert = .confirmSingleDelete(item)
             } label: {
@@ -617,10 +566,8 @@ private struct ItemContextMenuView: View {
 private struct EmptyAreaContextMenuView: View {
     let viewModel: StorageExplorerViewModel
     let clipboard: StorageExplorerClipboard
-    
     @State private var hasCopiedItems: Bool = false
     @State private var pasteLabelText: String = "Paste"
-    
     var body: some View {
         if hasCopiedItems {
             SwiftUI.Button {
@@ -632,14 +579,11 @@ private struct EmptyAreaContextMenuView: View {
     }
 }
 
-// MARK: - Item Row Component
-
 private struct ItemRow: View {
     let item: StorageExplorerItem
     let isSelected: Bool
     let isSelectionMode: Bool
     let isTextWrapEnabled: Bool
-    
     var body: some View {
         HStack(spacing: 12) {
             if isSelectionMode {
@@ -647,11 +591,9 @@ private struct ItemRow: View {
                     .foregroundColor(isSelected ? .accentColor : .secondary)
                     .imageScale(.large)
             }
-            
             Image(systemName: item.isDirectory ? "folder.fill" : fileIcon(for: item.url))
                 .font(.title2)
                 .foregroundColor(item.isDirectory ? .blue : .secondary)
-            
             VStack(alignment: .leading, spacing: 2) {
                 if isTextWrapEnabled {
                     Text(item.name)
@@ -663,7 +605,6 @@ private struct ItemRow: View {
                         .font(.body)
                         .lineLimit(1)
                 }
-                
                 HStack(spacing: 6) {
                     if item.isDirectory {
                         Text("\(item.itemCount) items")
@@ -678,12 +619,10 @@ private struct ItemRow: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
-            
             Spacer()
         }
         .contentShape(Rectangle())
     }
-    
     private func fileIcon(for url: URL) -> String {
         let ext = url.pathExtension.lowercased()
         switch ext {
@@ -702,8 +641,6 @@ private struct ItemRow: View {
     }
 }
 
-// MARK: - UIActivityViewController Wrapper
-
 private struct ShareItem: Identifiable {
     var id: String { url.path }
     let url: URL
@@ -712,7 +649,6 @@ private struct ShareItem: Identifiable {
 private struct AdaptiveTappableRow<Content: View>: View {
     let action: () -> Void
     @ViewBuilder let content: () -> Content
-    
     var body: some View {
         #if !os(tvOS)
         content()

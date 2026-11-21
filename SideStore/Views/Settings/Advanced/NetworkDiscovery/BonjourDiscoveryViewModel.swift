@@ -5,7 +5,6 @@
 //  Created by Magesh K on 24/08/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SwiftUI
 import Combine
@@ -64,8 +63,6 @@ struct DiscoveredAddressItem: Identifiable, Hashable {
 @MainActor
 final class BonjourDiscoveryViewModel: ObservableObject {
     let manager = BonjourDiscoveryManager.shared
-    
-    // Scoped Published State
     @Published var domains: [String] = []
     @Published var serviceTypes: [ServiceTypeInfo] = []
     @Published var instances: [DiscoveredService] = []
@@ -73,21 +70,14 @@ final class BonjourDiscoveryViewModel: ObservableObject {
     @Published var isSearching = false
     @Published var isResolving = false
     @Published var resolveError: String? = nil
-    
-    // Sort & Group Settings
     @Published var domainSortAscending = true
     @Published var domainGroupByFirstLetter = false
-    
     @Published var serviceTypeSortOption: ServiceTypeSortOption = .nameAscending
     @Published var serviceTypeGroupOption: ServiceTypeGroupOption = .none
-    
     @Published var instanceSortOption: ServiceInstanceSortOption = .nameAscending
     @Published var instanceGroupOption: ServiceInstanceGroupOption = .ipVersion
-    
     @Published var sortAddressesV4First = true
-    
     private var cancellables = Set<AnyCancellable>()
-    
     init() {
         self.domains = manager.domains
         self.serviceTypes = manager.serviceTypes
@@ -96,49 +86,39 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         self.isSearching = manager.isSearching
         self.isResolving = manager.isResolving
         self.resolveError = manager.resolveError
-        
         manager.$domains
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .assign(to: &$domains)
-            
         manager.$serviceTypes
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .assign(to: &$serviceTypes)
-            
         manager.$instances
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .assign(to: &$instances)
-            
         manager.$resolvedService
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .assign(to: &$resolvedService)
-            
         manager.$isSearching
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .assign(to: &$isSearching)
-            
         manager.$isResolving
             .receive(on: DispatchQueue.main)
             .removeDuplicates()
             .assign(to: &$isResolving)
-            
         manager.$resolveError
             .receive(on: DispatchQueue.main)
             .assign(to: &$resolveError)
     }
-    
-    // Processed Domains
     var processedDomains: [DomainSection] {
         let sorted = domains.sorted {
             domainSortAscending ? $0.localizedCaseInsensitiveCompare($1) == .orderedAscending
                                 : $0.localizedCaseInsensitiveCompare($1) == .orderedDescending
         }
-        
         if domainGroupByFirstLetter {
             let grouped = Dictionary(grouping: sorted) { domain -> String in
                 String(domain.prefix(1)).uppercased()
@@ -151,8 +131,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             return [DomainSection(id: "all_domains", title: "Browsable Domains", items: sorted)]
         }
     }
-    
-    // Processed Service Types
     var processedServiceTypes: [ServiceTypeSection] {
         let sorted = serviceTypes.sorted { lhs, rhs in
             switch serviceTypeSortOption {
@@ -164,17 +142,14 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                 return lhs.rawType.localizedCaseInsensitiveCompare(rhs.rawType) == .orderedAscending
             }
         }
-        
         switch serviceTypeGroupOption {
         case .none:
             let title = "\(serviceTypes.count) Service\(serviceTypes.count == 1 ? "" : "s") Found"
             return [ServiceTypeSection(id: "all_types", title: title, items: sorted)]
-            
         case .protocolType:
             let tcpItems = sorted.filter { $0.rawType.contains("_tcp") }
             let udpItems = sorted.filter { $0.rawType.contains("_udp") }
             let otherItems = sorted.filter { !$0.rawType.contains("_tcp") && !$0.rawType.contains("_udp") }
-            
             var sections: [ServiceTypeSection] = []
             if !tcpItems.isEmpty {
                 sections.append(ServiceTypeSection(id: "tcp_types", title: "TCP Services (\(tcpItems.count))", items: tcpItems))
@@ -186,11 +161,9 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                 sections.append(ServiceTypeSection(id: "other_types", title: "Other Services (\(otherItems.count))", items: otherItems))
             }
             return sections
-            
         case .category:
             let recognized = sorted.filter { $0.friendlyName != nil }
             let unknown = sorted.filter { $0.friendlyName == nil }
-            
             var sections: [ServiceTypeSection] = []
             if !recognized.isEmpty {
                 sections.append(ServiceTypeSection(id: "recognized_types", title: "Recognized Services (\(recognized.count))", items: recognized))
@@ -199,7 +172,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                 sections.append(ServiceTypeSection(id: "unknown_types", title: "Other / Raw Services (\(unknown.count))", items: unknown))
             }
             return sections
-            
         case .firstLetter:
             let grouped = Dictionary(grouping: sorted) { item -> String in
                 String(item.displayName.prefix(1)).uppercased()
@@ -210,8 +182,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             return keys.map { ServiceTypeSection(id: "group_\($0)", title: "\($0) (\(grouped[$0]?.count ?? 0))", items: grouped[$0] ?? []) }
         }
     }
-    
-    // Processed Service Instances
     var processedInstances: [ServiceInstanceSection] {
         let sorted = instances.sorted { lhs, rhs in
             switch instanceSortOption {
@@ -221,20 +191,15 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedDescending
             }
         }
-        
         switch instanceGroupOption {
         case .none:
             let title = "\(instances.count) Instance\(instances.count == 1 ? "" : "s")"
             return [ServiceInstanceSection(id: "all_instances", title: title, items: sorted)]
-            
         case .ipVersion:
             let grouped = Dictionary(grouping: sorted) { item -> String in
-                // 1. Direct hostPort endpoint check
                 if case .hostPort(let host, _) = item.result.endpoint {
                     return "\(host)".contains(":") ? "IPv6" : "IPv4"
                 }
-                
-                // 2. Check TXT records
                 for record in item.txtRecords {
                     let k = record.key.lowercased()
                     if k.contains("addr") || k.contains("ip") {
@@ -242,18 +207,13 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                         if record.value.contains(".") { return "IPv4" }
                     }
                 }
-                
-                // 3. Name check
                 if item.name.contains(":") { return "IPv6" }
-                
-                // 4. Interface link heuristics from discovery
                 if item.interfaces.contains(where: { $0.type == .loopback || $0.name.lowercased().contains("lo") || $0.name.lowercased().contains("anpi") }) {
                     return "IPv4"
                 }
                 if item.interfaces.count == 1 && (item.interfaces.first?.type == .wifi || item.interfaces.first?.name.lowercased().starts(with: "en") == true) {
                     return "IPv6"
                 }
-                
                 return "IPv4"
             }
             let preferredOrder = ["IPv4", "IPv6", "IPv4 & IPv6"]
@@ -269,7 +229,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             let summary = sections.map { "\($0.title): [\($0.items.map { $0.name }.joined(separator: ", "))]" }.joined(separator: " | ")
             debugLog("[BonjourDiscoveryViewModel] processedInstances (ipVersion): \(summary)")
             return sections
-            
         case .firstLetter:
             let grouped = Dictionary(grouping: sorted) { item -> String in
                 String(item.name.prefix(1)).uppercased()
@@ -280,8 +239,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             return keys.map { ServiceInstanceSection(id: "group_\($0)", title: "\($0) (\(grouped[$0]?.count ?? 0))", items: grouped[$0] ?? []) }
         }
     }
-    
-    // Sorted & Parsed Addresses
     var sortedAddresses: [String] {
         guard let resolved = resolvedService else { return [] }
         return resolved.addresses.sorted { a, b in
@@ -293,7 +250,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             return a.localizedStandardCompare(b) == .orderedAscending
         }
     }
-    
     var resolvedAddressItems: [DiscoveredAddressItem] {
         sortedAddresses.map { raw in
             let tag: String? = {
@@ -322,45 +278,33 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             )
         }
     }
-    
-    // Search Actions
     func startDomainSearch(clearExisting: Bool = false) {
         manager.discoverDomains(clearExisting: clearExisting)
     }
-    
     func startServiceTypeSearch(in domain: String, clearExisting: Bool = false) {
         manager.discoverServiceTypes(in: domain, clearExisting: clearExisting)
     }
-    
     func startInstanceSearch(ofType type: String, in domain: String, clearExisting: Bool = false) {
         manager.discoverInstances(ofType: type, inDomain: domain, clearExisting: clearExisting)
     }
-    
     func refreshDomains() {
         manager.discoverDomains(clearExisting: false)
     }
-    
     func refreshServiceTypes(in domain: String) {
         manager.discoverServiceTypes(in: domain, clearExisting: false)
     }
-    
     func refreshInstances(ofType type: String, in domain: String) {
         manager.discoverInstances(ofType: type, inDomain: domain, clearExisting: false)
     }
-    
     func stopDomainSearch() {
         manager.stopDomainSearch()
     }
-    
     func stopTypeSearch() {
         manager.stopTypeSearch()
     }
-    
     func stopInstanceSearch() {
         manager.stopInstanceSearch()
     }
-    
-    // Auto-Refresh & Manual Refresh Orchestration
     func startDomainAutoRefresh(isAutoRefreshEnabled: Bool, triggerImmediateScan: Bool = false) -> Task<Void, Never>? {
         if domains.isEmpty {
             startDomainSearch(clearExisting: true)
@@ -376,7 +320,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             }
         }
     }
-    
     func performManualDomainRefresh(isAutoRefreshEnabled: Bool, restartAutoRefresh: @escaping () -> Void) async {
         debugLog("[BonjourDiscoveryView] Manual refresh triggered (autoRefresh=\(isAutoRefreshEnabled))")
         if isAutoRefreshEnabled {
@@ -391,7 +334,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         }
         try? await Task.sleep(nanoseconds: 400_000_000)
     }
-    
     func startServiceTypeAutoRefresh(in domain: String, isAutoRefreshEnabled: Bool, triggerImmediateScan: Bool = false) -> Task<Void, Never>? {
         if serviceTypes.isEmpty {
             startServiceTypeSearch(in: domain, clearExisting: true)
@@ -407,7 +349,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             }
         }
     }
-    
     func performManualServiceTypeRefresh(in domain: String, isAutoRefreshEnabled: Bool, restartAutoRefresh: @escaping () -> Void) async {
         debugLog("[ServiceTypesView] Manual refresh triggered for '\(domain)' (autoRefresh=\(isAutoRefreshEnabled))")
         if isAutoRefreshEnabled {
@@ -422,7 +363,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         }
         try? await Task.sleep(nanoseconds: 400_000_000)
     }
-    
     func startInstanceAutoRefresh(ofType type: String, in domain: String, isAutoRefreshEnabled: Bool, triggerImmediateScan: Bool = false) -> Task<Void, Never>? {
         let needsInitialSearch = instances.isEmpty || instances.first?.type != type
         if needsInitialSearch {
@@ -439,7 +379,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             }
         }
     }
-    
     func performManualInstanceRefresh(ofType type: String, in domain: String, isAutoRefreshEnabled: Bool, restartAutoRefresh: @escaping () -> Void) async {
         debugLog("[ServiceInstancesView] Manual refresh triggered for '\(type)' in '\(domain)' (autoRefresh=\(isAutoRefreshEnabled))")
         if isAutoRefreshEnabled {
@@ -454,7 +393,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         }
         try? await Task.sleep(nanoseconds: 400_000_000)
     }
-    
     func startDetailAutoRefresh(for service: DiscoveredService, isAutoRefreshEnabled: Bool, triggerImmediateScan: Bool = false) -> Task<Void, Never>? {
         if resolvedService == nil || triggerImmediateScan {
             resolveService(service)
@@ -468,7 +406,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             }
         }
     }
-    
     func performManualDetailRefresh(for service: DiscoveredService, isAutoRefreshEnabled: Bool, restartAutoRefresh: @escaping () -> Void) async {
         debugLog("[ServiceDetailView] Manual refresh triggered for '\(service.name)' (autoRefresh=\(isAutoRefreshEnabled))")
         if isAutoRefreshEnabled {
@@ -478,18 +415,14 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         }
         try? await Task.sleep(nanoseconds: 400_000_000)
     }
-    
     func resolveService(_ service: DiscoveredService, clearExisting: Bool = false) {
         manager.resolveService(service, clearExisting: clearExisting)
     }
-    
     func stopResolving() {
         manager.stopResolving()
     }
-    
     func copyAllResolvedInfo() -> String? {
         guard let resolved = resolvedService else { return nil }
-        
         var lines: [String] = []
         lines.append("Service: \(resolved.name)")
         lines.append("Type: \(resolved.type)")
@@ -497,7 +430,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         lines.append("Hostname: \(resolved.hostname)")
         lines.append("Port: \(resolved.port)")
         lines.append("")
-        
         if !resolved.addresses.isEmpty {
             lines.append("Addresses:")
             for addr in sortedAddresses {
@@ -505,21 +437,18 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             }
             lines.append("")
         }
-        
         if !resolved.txtRecords.isEmpty {
             lines.append("TXT Records:")
             for record in resolved.txtRecords {
                 lines.append("  \(record.key) = \(record.value)")
             }
         }
-        
         let text = lines.joined(separator: "\n")
         #if !os(tvOS)
         UIPasteboard.general.string = text
         #endif
         return text
     }
-    
     static func portCategory(for port: UInt16) -> String {
         switch port {
         case 0...1023:
@@ -530,7 +459,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             return "Dynamic / Ephemeral Port"
         }
     }
-    
     static func decodeDeviceModel(_ model: String) -> String? {
         let m = model.trimmingCharacters(in: .whitespacesAndNewlines)
         let models: [String: String] = [
@@ -570,7 +498,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         ]
         return models[m]
     }
-    
     func copyAsJSON(service: DiscoveredService, resolved: ResolvedServiceInfo) -> String? {
         var dict: [String: Any] = [
             "name": resolved.name,
@@ -595,7 +522,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         }
         return nil
     }
-    
     func dnsSDRawRecords(resolved: ResolvedServiceInfo) -> [(recordType: String, content: String)] {
         var records: [(recordType: String, content: String)] = []
         let cleanType = resolved.type.trimmingCharacters(in: CharacterSet(charactersIn: "."))
@@ -603,10 +529,8 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         let serviceDomain = "\(cleanType).\(cleanDomain)."
         let fqdn = "\(resolved.name).\(serviceDomain)"
         let hostFqdn = resolved.hostname.hasSuffix(".") ? resolved.hostname : (resolved.hostname.contains(":") || resolved.hostname.filter({ $0 == "." }).count == 3 ? resolved.hostname : "\(resolved.hostname).")
-        
         records.append(("PTR", "\(serviceDomain) 120 IN PTR \(fqdn)"))
         records.append(("SRV", "\(fqdn) 120 IN SRV 0 0 \(resolved.port) \(hostFqdn)"))
-        
         for addr in resolved.addresses {
             if addr.contains(":") {
                 records.append(("AAAA", "\(hostFqdn) 120 IN AAAA \(addr)"))
@@ -614,15 +538,12 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                 records.append(("A", "\(hostFqdn) 120 IN A \(addr)"))
             }
         }
-        
         if !resolved.txtRecords.isEmpty {
             let txtString = resolved.txtRecords.map { "\($0.key)=\($0.value)" }.joined(separator: " ")
             records.append(("TXT", "\(fqdn) 120 IN TXT \"\(txtString)\""))
         }
-        
         return records
     }
-    
     static func nameForInterfaceType(_ type: NWInterface.InterfaceType) -> String {
         switch type {
         case .wifi:             return "Wi-Fi"
@@ -632,13 +553,11 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         default:                return "\(type)"
         }
     }
-    
     func logDetails(for service: DiscoveredService, trigger: String, resolved: ResolvedServiceInfo? = nil) {
         let activeResolved = resolved ?? self.resolvedService
         let isLocal = service.interfaces.contains { $0.type == .loopback }
         let localityStr = isLocal ? "LOCAL DEVICE (This iPhone / iPad — lo0 loopback present)" : "REMOTE DEVICE (Network peer — external only)"
         let friendlyType = BonjourDiscoveryManager.friendlyName(for: service.type) ?? "Unknown Type"
-        
         var lines: [String] = []
         lines.append("===================================================")
         lines.append("[ServiceDetailView] [\(trigger)] Details: '\(service.name)'")
@@ -647,10 +566,8 @@ final class BonjourDiscoveryViewModel: ObservableObject {
         lines.append("• Type:       \(service.type) (\(friendlyType))")
         lines.append("• Domain:     \(service.domain)")
         lines.append("• Locality:   \(localityStr)")
-        
         let ifaceDesc = service.interfaces.map { "\($0.name) (idx: \($0.index), type: \(Self.nameForInterfaceType($0.type)))" }.joined(separator: ", ")
         lines.append("• Interfaces (\(service.interfaces.count)): [\(ifaceDesc.isEmpty ? "none" : ifaceDesc)]")
-        
         if service.txtRecords.isEmpty {
             lines.append("• Browse TXT: (none)")
         } else {
@@ -659,7 +576,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                 lines.append("    - \(record.key) = \(record.value)")
             }
         }
-        
         if let res = activeResolved {
             lines.append("---------------------------------------------------")
             lines.append("• Resolution: RESOLVED")
@@ -690,7 +606,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                     lines.append("    - \(addr) [\(tag)]")
                 }
             }
-            
             if res.txtRecords.isEmpty {
                 lines.append("• Resolved TXT: (none)")
             } else {
@@ -699,7 +614,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                     lines.append("    - \(record.key) = \(record.value)")
                 }
             }
-            
             let modelRecord = res.txtRecords.first(where: { $0.key.lowercased() == "model" })?.value
             let decodedModel = modelRecord != nil ? Self.decodeDeviceModel(modelRecord!) : nil
             let osRecord = res.txtRecords.first(where: { $0.key.lowercased() == "osvers" || $0.key.lowercased() == "os" })?.value
@@ -712,7 +626,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
                     lines.append("    - OS:    \(os)")
                 }
             }
-            
             lines.append("• Usable Endpoints:")
             lines.append("    - Host:Port: \(res.hostname):\(res.port)")
             for addr in res.addresses {
@@ -730,7 +643,6 @@ final class BonjourDiscoveryViewModel: ObservableObject {
             lines.append("• Resolution: RESOLVING (awaiting network response)...")
         }
         lines.append("===================================================")
-        
         let fullOutput = lines.joined(separator: "\n")
         verboseLog(fullOutput)
     }

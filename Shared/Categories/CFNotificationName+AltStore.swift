@@ -1,10 +1,3 @@
-//
-//  CFNotificationName+AltStore.swift
-//  AltStore
-//
-//  Created by Magesh K on 2026-06-28.
-//
-
 import Foundation
 
 public let ALTWiredServerConnectionAvailableRequest = CFNotificationName("io.sidestore.Request.WiredServerConnectionAvailable" as CFString)

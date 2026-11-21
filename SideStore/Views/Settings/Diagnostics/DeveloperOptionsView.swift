@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/2/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import CoreData
 import UniformTypeIdentifiers
@@ -35,7 +34,6 @@ struct DeveloperOptionsView: View {
     @State private var acceptIPv6ConnectionConfig: Bool = UserDefaults.standard.acceptIPv6ConnectionConfig
     @State private var isAutoRetryRemotePairingPortEnabled: Bool = UserDefaults.standard.isAutoRetryRemotePairingPortEnabled
     @State private var tcpProbeTimeoutText: String = ""
-    
     @State private var isExportingDB: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     @State private var showClearRefreshAttemptsConfirmation: Bool = false
@@ -46,17 +44,14 @@ struct DeveloperOptionsView: View {
     @State private var isDumpingProfiles: Bool = false
     @State private var showDumpProfilesAlert: Bool = false
     @State private var dumpProfilesAlertMessage: String = ""
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Section 1: Logging & Diagnostics
                 VStack(alignment: .leading, spacing: 8) {
                     Text("LOGGING & DIAGNOSTICS")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         toggleRow(title: "Disable URL Response Caching", isOn: Binding(
                             get: { responseCachingDisabled },
@@ -65,9 +60,7 @@ struct DeveloperOptionsView: View {
                                 UserDefaults.standard.responseCachingDisabled = newValue
                             }
                         ))
-                        
                         divider
-                        
                         toggleRow(title: "Rotate Logs on Startup", isOn: Binding(
                             get: { isRotateLogsOnStartupEnabled },
                             set: { newValue in
@@ -79,9 +72,7 @@ struct DeveloperOptionsView: View {
                                 }
                             }
                         ))
-                        
                         divider
-                        
                         toggleRow(title: "SuperStore Verbose Logging", isOn: Binding(
                             get: { isSideStoreVerboseLoggingEnabled },
                             set: { newValue in
@@ -90,9 +81,7 @@ struct DeveloperOptionsView: View {
                                 SideStoreLogging.setLogging(newValue)
                             }
                         ))
-                        
                         divider
-                        
                         #if !os(tvOS)
                         let title = "Widget Verbose Logging"
                         #else
@@ -105,9 +94,7 @@ struct DeveloperOptionsView: View {
                                 WidgetDataManager.shared.isVerboseLoggingEnabled = newValue
                             }
                         ))
-                        
                         divider
-                        
                         toggleRow(title: "SideSign Verbose Logging", isOn: Binding(
                             get: { isSideSignVerboseLoggingEnabled },
                             set: { newValue in
@@ -116,9 +103,7 @@ struct DeveloperOptionsView: View {
                                 SideSignLogging.setLogging(newValue)
                             }
                         ))
-                        
                         divider
-                        
                         toggleRow(title: "Minimuxer Verbose Logging", isOn: Binding(
                             get: { isMinimuxerVerboseLoggingEnabled },
                             set: { newValue in
@@ -127,9 +112,7 @@ struct DeveloperOptionsView: View {
                                 minimuxerSetLogging(newValue)
                             }
                         ))
-                        
                         divider
-                        
                         toggleRow(title: "Operations Verbose Logging", isOn: Binding(
                             get: { isVerboseOperationsLoggingEnabled },
                             set: { newValue in
@@ -137,9 +120,7 @@ struct DeveloperOptionsView: View {
                                 UserDefaults.standard.isVerboseOperationsLoggingEnabled = newValue
                             }
                         ))
-                        
                         divider
-                        
                         NavigationLink(destination: OperationsLoggingControlView()) {
                             HStack {
                                 Text("Operations Logging Control")
@@ -157,8 +138,6 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
-                // Section: Widget Options
                 VStack(alignment: .leading, spacing: 8) {
                     #if !os(tvOS)
                     let title = "WIDGET OPTIONS"
@@ -169,7 +148,6 @@ struct DeveloperOptionsView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         SwiftUI.Button(action: { triggerReloadAllWidgets() }) {
                             HStack(spacing: 12) {
@@ -190,15 +168,12 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(action: { triggerRotateWidgetLog() }) {
                             HStack(spacing: 12) {
                                 Image(systemName: "arrow.triangle.2.circlepath")
                                     .font(.system(size: 18, weight: .semibold))
                                     .foregroundColor(.white)
-                                
                                 #if !os(tvOS)
                                 let title = "Rotate Widget Log"
                                 #else
@@ -216,14 +191,11 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
-                // Section 2: Database Options
                 VStack(alignment: .leading, spacing: 8) {
                     Text("DATABASE OPTIONS")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         SwiftUI.Button(action: { exportDatabase() }) {
                             HStack(spacing: 12) {
@@ -243,9 +215,7 @@ struct DeveloperOptionsView: View {
                             .frame(height: 50)
                         }
                         .disabled(isExportingDB)
-                        
                         divider
-                        
                         SwiftUI.Button(action: { showClearRefreshAttemptsConfirmation = true }) {
                             HStack(spacing: 12) {
                                 Image(systemName: "clock.arrow.circlepath")
@@ -259,9 +229,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(action: { showDeleteConfirmation = true }) {
                             HStack(spacing: 12) {
                                 Image(systemName: "trash")
@@ -275,9 +243,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(action: { showClearKeychainConfirmation = true }) {
                             HStack(spacing: 12) {
                                 Image(systemName: "key")
@@ -291,9 +257,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         toggleRow(title: "Wipe Database on Next Start", isOn: Binding(
                             get: { recreateDatabaseOnNextStart },
                             set: { newValue in
@@ -305,14 +269,11 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
-                // Section 3: WireGuard Configuration
                 VStack(alignment: .leading, spacing: 8) {
                     Text("WIREGUARD CONFIGURATION")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         SwiftUI.Button(action: { triggerStartEMProxy() }) {
                             HStack(spacing: 12) {
@@ -327,9 +288,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(action: { triggerStopEMProxy() }) {
                             HStack(spacing: 12) {
                                 Image(systemName: "stop.circle")
@@ -343,9 +302,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         toggleRow(title: "Show WireGuard Settings", isOn: Binding(
                             get: { alwaysShowWireGuardConfig },
                             set: { newValue in
@@ -357,13 +314,11 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
                 VStack(alignment: .leading, spacing: 8) {
                     Text("BACKGROUND SERVICE")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         SwiftUI.Button(action: { triggerStartBackgroundService() }) {
                             HStack(spacing: 12) {
@@ -378,9 +333,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(action: { triggerStopBackgroundService() }) {
                             HStack(spacing: 12) {
                                 Image(systemName: "stop.circle")
@@ -398,22 +351,17 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
-                // Section: Device (TCP) Probe Timeout
                 VStack(alignment: .leading, spacing: 8) {
                     Text("DEVICE (TCP) PROBE TIMEOUT")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         HStack(spacing: 12) {
                             Text("Timeout (ms)")
                                 .font(.system(size: 17, weight: .bold))
                                 .foregroundColor(.white)
-                            
                             Spacer()
-                            
                             TextField("ms", text: $tcpProbeTimeoutText)
                                 .keyboardType(.numberPad)
                                 .multilineTextAlignment(.trailing)
@@ -432,9 +380,7 @@ struct DeveloperOptionsView: View {
                         }
                         .padding(.horizontal, 16)
                         .frame(height: 50)
-                        
                         divider
-                        
                         SwiftUI.Button(action: {
                             let defaultTimeout = AppConstants.Minimuxer.defaultTCPProbeTimeoutMs
                             tcpProbeTimeoutText = String(defaultTimeout)
@@ -456,14 +402,11 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
-                // Section: Connection Config
                 VStack(alignment: .leading, spacing: 8) {
                     Text("CONNECTION CONFIG")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         toggleRow(title: "Accept IPv6 Config", isOn: Binding(
                             get: { acceptIPv6ConnectionConfig },
@@ -472,9 +415,7 @@ struct DeveloperOptionsView: View {
                                 UserDefaults.standard.acceptIPv6ConnectionConfig = newValue
                             }
                         ))
-                        
                         divider
-                        
                         toggleRow(title: "Auto Retry RemotePairing Port", isOn: Binding(
                             get: { isAutoRetryRemotePairingPortEnabled },
                             set: { newValue in
@@ -486,15 +427,12 @@ struct DeveloperOptionsView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
                 #if DEBUG
-                // Section 3: Account Management
                 VStack(alignment: .leading, spacing: 8) {
                     Text("ACCOUNT MANAGEMENT")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         SwiftUI.Button(action: { showImportAccountPicker() }) {
                             HStack(spacing: 12) {
@@ -509,9 +447,7 @@ struct DeveloperOptionsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(action: {
                             if AuthManager.shared.currentAppleID == nil ||
                                AuthManager.shared.password == nil ||
@@ -542,7 +478,6 @@ struct DeveloperOptionsView: View {
                     .cornerRadius(14)
                 }
                 #endif
-                
                 VStack(alignment: .leading, spacing: 8) {
                     Text("PROVISIONING PROFILES")
                         .font(.system(size: 13, weight: .semibold))
@@ -687,7 +622,6 @@ struct DeveloperOptionsView: View {
             tcpProbeTimeoutText = String(minimuxerGetDeviceProbeTimeout())
         }
     }
-    
     private func dumpProvisioningProfiles() async {
         guard let docsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         isDumpingProfiles = true
@@ -702,7 +636,6 @@ struct DeveloperOptionsView: View {
             showDumpProfilesAlert = true
         }
     }
-    
     #if DEBUG
     private func showImportAccountPicker() {
         guard let top = UIApplication.shared.topViewController() else { return }
@@ -745,7 +678,6 @@ struct DeveloperOptionsView: View {
         }
         #endif
     }
-    
     private func exportAccountJSON(password: String) {
         guard let top = UIApplication.shared.topViewController() else { return }
         guard let account = ImportExport.exportAccountJSON(password: password) else {
@@ -753,13 +685,11 @@ struct DeveloperOptionsView: View {
             toastView.show(in: top)
             return
         }
-        
         guard let accountData = try? Foundation.JSONEncoder().encode(account) else {
             let toastView = ToastView(text: NSLocalizedString("Failed to export account data!", comment: ""), detailText: "Account malformed.")
             toastView.show(in: top)
             return
         }
-        
         let tmpPath = FileManager.default.temporaryDirectory.appendingPathComponent("\(account.email).sideconf")
         do {
             try accountData.write(to: tmpPath)
@@ -775,7 +705,6 @@ struct DeveloperOptionsView: View {
         }
     }
     #endif
-    
     private func clearRefreshAttempts() {
         let context = DatabaseManager.shared.persistentContainer.newBackgroundContext()
         context.perform {
@@ -785,7 +714,6 @@ struct DeveloperOptionsView: View {
             try? context.save()
         }
     }
-    
     private func toggleRow(title: String, isOn: Binding<Bool>) -> some View {
         HStack {
             Text(title)
@@ -801,18 +729,15 @@ struct DeveloperOptionsView: View {
         .padding(.vertical, 10)
         .frame(minHeight: 50)
     }
-    
     private var divider: some View {
         Rectangle()
             .fill(Color.settingsDivider)
             .frame(height: 0.5)
             .padding(.horizontal, 16)
     }
-    
     private func exportDatabase() {
         guard !isExportingDB else { return }
         isExportingDB = true
-        
         Task {
             do {
                 let exportedURL = try await CoreDataHelper.exportCoreDataStore()
@@ -829,7 +754,6 @@ struct DeveloperOptionsView: View {
         }
     }
 
-    
     private func triggerStartEMProxy() {
         guard let top = UIApplication.shared.topViewController() else { return }
         Task {
@@ -847,7 +771,6 @@ struct DeveloperOptionsView: View {
             }
         }
     }
-    
     private func triggerStopEMProxy() {
         guard let top = UIApplication.shared.topViewController() else { return }
         Task {
@@ -885,7 +808,6 @@ struct DeveloperOptionsView: View {
         let toastView = ToastView(text: NSLocalizedString("Stopped Background Service", comment: ""), detailText: "Background keepalive service stopped.")
         toastView.show(in: top)
     }
-    
     private func triggerReloadAllWidgets() {
         #if !os(tvOS)
         WidgetCenter.shared.reloadAllTimelines()
@@ -901,7 +823,6 @@ struct DeveloperOptionsView: View {
             toastView.show(in: top)
         }
     }
-    
     private func triggerRotateWidgetLog() {
         guard let top = UIApplication.shared.topViewController() else { return }
         #if !os(tvOS)

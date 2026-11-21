@@ -5,7 +5,6 @@
 //  Created by Magesh K on 13/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import UIKit
 import SideSign
@@ -168,7 +167,6 @@ extension SuffixEnforcedTextField {
         verboseLog("[SuffixEnforcedTextField] shouldChange: current='\(currentText)', range=\(range), string='\(string)', suffix='\(suffix)', isSuffixEnforced=\(isSuffixEnforced), suffixStartIndex=\(suffixStartIndex)")
         guard suffixStartIndex >= 0 else { return true }
 
-        // Full replacement (e.g. Select All + paste or type)
         if range.location == 0 && range.length == currentText.length {
             let cleanBase = InfoPlistParser.sanitizeBundleID(string)
             let finalString = isSuffixEnforced && !suffix.isEmpty
@@ -179,18 +177,15 @@ extension SuffixEnforcedTextField {
             return false
         }
 
-        // Drop any keystroke that touches or encroaches on the persistent suffix
         if isSuffixEnforced && !suffix.isEmpty && range.location + range.length > suffixStartIndex {
             return false
         }
 
-        // Allowed characters for Apple bundle identifier: alphanumeric, hyphen, period
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: ".-"))
         if !string.isEmpty && string.unicodeScalars.contains(where: { !allowed.contains($0) }) {
             return false
         }
 
-        // Prevent typing or inserting consecutive dots
         if string.contains("..") {
             return false
         }

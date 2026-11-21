@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/23/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 final class CollapsingTextView: UITextView
@@ -16,16 +15,13 @@ final class CollapsingTextView: UITextView
             self.setNeedsLayout()
         }
     }
-    
     var maximumNumberOfLines = 2 {
         didSet {
             self.setNeedsLayout()
         }
     }
-    
     var lineSpacing: Double = 2 {
         didSet {
-            
             if #available(iOS 16, *)
             {
                 self.updateText()
@@ -36,36 +32,27 @@ final class CollapsingTextView: UITextView
             }
         }
     }
-    
     override var text: String! {
         didSet {
-            
             guard #available(iOS 16, *) else { return }
             self.updateText()
         }
     }
-    
     let moreButton = UIButton(type: .system)
-    
     override init(frame: CGRect, textContainer: NSTextContainer?)
     {
         super.init(frame: frame, textContainer: textContainer)
-        
         self.initialize()
     }
-    
     required init?(coder: NSCoder)
     {
         super.init(coder: coder)
     }
-    
     override func awakeFromNib()
     {
         super.awakeFromNib()
-        
         self.initialize()
     }
-    
     private func initialize()
     {
         if #available(iOS 16, *)
@@ -76,59 +63,46 @@ final class CollapsingTextView: UITextView
         {
             self.layoutManager.delegate = self
         }
-        
         self.textContainerInset = .zero
         self.textContainer.lineFragmentPadding = 0
         self.textContainer.lineBreakMode = .byTruncatingTail
         self.textContainer.heightTracksTextView = true
         self.textContainer.widthTracksTextView = true
-        
         self.moreButton.setTitle(NSLocalizedString("More", comment: ""), for: .normal)
         self.moreButton.addTarget(self, action: #selector(CollapsingTextView.toggleCollapsed(_:)), for: .primaryActionTriggered)
         self.addSubview(self.moreButton)
-        
         self.setNeedsLayout()
     }
-    
     override func layoutSubviews()
     {
         super.layoutSubviews()
-        
         guard let font = self.font else { return }
-        
         let buttonFont = UIFont.systemFont(ofSize: font.pointSize, weight: .medium)
         self.moreButton.titleLabel?.font = buttonFont
-        
         let buttonY = (font.lineHeight + self.lineSpacing) * CGFloat(self.maximumNumberOfLines - 1)
         let size = self.moreButton.sizeThatFits(CGSize(width: 1000, height: 1000))
-        
         let moreButtonFrame = CGRect(x: self.bounds.width - self.moreButton.bounds.width,
                                      y: buttonY,
                                      width: size.width,
                                      height: font.lineHeight)
         self.moreButton.frame = moreButtonFrame
-        
         if self.isCollapsed
         {
             let boundingSize = self.attributedText.boundingRect(with: CGSize(width: self.textContainer.size.width, height: .infinity), options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
             let maximumCollapsedHeight = font.lineHeight * Double(self.maximumNumberOfLines) + self.lineSpacing * Double(self.maximumNumberOfLines - 1)
-            
             if boundingSize.height.rounded() > maximumCollapsedHeight.rounded()
             {
                 self.textContainer.maximumNumberOfLines = self.maximumNumberOfLines
-                
                 var exclusionFrame = moreButtonFrame
                 exclusionFrame.origin.y += self.moreButton.bounds.midY
-                exclusionFrame.size.width = self.bounds.width // Extra wide to make sure it wraps to next line.
+                exclusionFrame.size.width = self.bounds.width 
                 self.textContainer.exclusionPaths = [UIBezierPath(rect: exclusionFrame)]
-                
                 self.moreButton.isHidden = false
             }
             else
             {
-                self.textContainer.maximumNumberOfLines = 0 // Fixes last line having slightly smaller line spacing.
+                self.textContainer.maximumNumberOfLines = 0 
                 self.textContainer.exclusionPaths = []
-                
                 self.moreButton.isHidden = true
             }
         }
@@ -136,10 +110,8 @@ final class CollapsingTextView: UITextView
         {
             self.textContainer.maximumNumberOfLines = 0
             self.textContainer.exclusionPaths = []
-            
             self.moreButton.isHidden = true
         }
-        
         self.invalidateIntrinsicContentSize()
     }
 }
@@ -150,7 +122,6 @@ private extension CollapsingTextView
     {
         self.isCollapsed.toggle()
     }
-    
     func updateText()
     {
         guard let currentText = self.attributedText else { return }

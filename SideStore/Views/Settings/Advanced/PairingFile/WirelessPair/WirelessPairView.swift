@@ -5,20 +5,15 @@
 //  Created by Magesh K on 04/07/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 
 struct WirelessPairView: View {
     @StateObject private var viewModel = WirelessPairViewModel()
-    
     private let spring = Animation.spring(response: 0.35, dampingFraction: 0.68)
     private let pulse = Animation.interactiveSpring(response: 1.5, dampingFraction: 0.55)
-    
     var body: some View {
         VStack(spacing: 24) {
-            // Pulsing Status Orb
                 ZStack {
-                    // Outer breathing glow
                     Circle()
                         .fill(
                             RadialGradient(
@@ -32,8 +27,6 @@ struct WirelessPairView: View {
                         .scaleEffect(viewModel.isAdvertising ? 1.2 : 1.0)
                         .opacity(viewModel.isAdvertising ? 1.0 : 0.5)
                         .animation(viewModel.isAdvertising ? pulse.repeatForever(autoreverses: true) : .default, value: viewModel.isAdvertising)
-                    
-                    // Secondary pulsing ring
                     Circle()
                         .stroke(viewModel.isAdvertising ? Color.accentColor.opacity(0.3) : Color.gray.opacity(0.2), lineWidth: 2)
                         .frame(width: 140, height: 140)
@@ -41,7 +34,6 @@ struct WirelessPairView: View {
                         .opacity(viewModel.isAdvertising ? 0.8 : 0.0)
                         .animation(viewModel.isAdvertising ? pulse.delay(0.2).repeatForever(autoreverses: true) : .default, value: viewModel.isAdvertising)
 
-                    // Central Orb
                     Circle()
                         .fill(
                             LinearGradient(
@@ -52,7 +44,6 @@ struct WirelessPairView: View {
                         )
                         .frame(width: 90, height: 90)
                         .shadow(color: viewModel.isAdvertising ? Color.accentColor.opacity(0.5) : Color.clear, radius: 15)
-                    
                     Group {
                         if viewModel.isAdvertising {
                             Image(systemName: "antenna.radiowaves.left.and.right")
@@ -68,14 +59,11 @@ struct WirelessPairView: View {
                 .frame(height: 220)
                 .padding(.top, 20)
                 .padding(.bottom, 20)
-                
-                // Status Info
                 VStack(spacing: 8) {
                     Text(viewModel.statusText)
                         .font(.title2)
                         .fontWeight(.bold)
                         .multilineTextAlignment(.center)
-                    
                     if viewModel.serviceID == nil {
                         Text(viewModel.subStatusText)
                             .font(.subheadline)
@@ -85,8 +73,6 @@ struct WirelessPairView: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                
-                // Connection Details Card
                 if let serviceID = viewModel.serviceID, let port = viewModel.port {
                         ConnectionDetailsCard(serviceID: serviceID, port: port)
                             .transition(.scale(scale: 0.95).combined(with: .opacity))
@@ -102,7 +88,6 @@ struct WirelessPairView: View {
                         .padding(.top, 4)
                 }
 
-                // Error Display
                 if let error = viewModel.errorMessage {
                     Text(error)
                         .font(.footnote)
@@ -111,10 +96,7 @@ struct WirelessPairView: View {
                         .padding(.horizontal, 32)
                         .transition(.opacity)
                 }
-                
                 Spacer()
-                
-                // Main Button
                 SwiftUI.Button(action: togglePairing) {
                     HStack {
                         if viewModel.isAdvertising {
@@ -206,7 +188,6 @@ struct WirelessPairView: View {
             }
         }
     }
-    
     private func togglePairing() {
         debugLog("[WirelessPairView] togglePairing tapped (currently isAdvertising=\(viewModel.isAdvertising))")
         withAnimation(spring) {
@@ -218,7 +199,6 @@ struct WirelessPairView: View {
 struct WirelessPairPinDialog: View {
     let pin: String
     let onClose: () -> Void
-    
     var body: some View {
         ZStack(alignment: .topTrailing) {
             VStack(spacing: 16) {
@@ -226,19 +206,16 @@ struct WirelessPairPinDialog: View {
                     .font(.system(size: 44))
                     .foregroundColor(.accentColor)
                     .padding(.top, 24)
-                
                 VStack(spacing: 6) {
                     Text("Pairing Code")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
                     Text("Enter this 6-digit code on the connecting device to complete pairing.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
                 }
-                
                 HStack(spacing: 8) {
                     let chars = Array(pin)
                     ForEach(0..<chars.count, id: \.self) { index in
@@ -260,12 +237,10 @@ struct WirelessPairPinDialog: View {
                     }
                 }
                 .padding(.vertical, 8)
-                
                 Spacer()
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal)
-            
             SwiftUI.Button(action: onClose) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 26, weight: .semibold))
@@ -279,12 +254,10 @@ struct WirelessPairPinDialog: View {
 struct ConnectionDetailsCard: View {
     let serviceID: String
     let port: Int
-    
     var rows: [(label: String, value: String)] {[
         ("Device ID", serviceID),
         ("Port", String(port))
     ]}
-    
     var body: some View {
         VStack(alignment: .leading) {
             HStack{
@@ -300,7 +273,6 @@ struct ConnectionDetailsCard: View {
                     let (label, value) = rows[index]
                     let isFirst = index == 0
                     let isLast = index == rows.count - 1
-                    
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(label)
@@ -314,7 +286,6 @@ struct ConnectionDetailsCard: View {
                         .padding(.vertical, 12)
                         .padding(.horizontal, 16)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        
                         if !isLast {
                             Divider()
                                 .padding(.leading, 16)
@@ -353,11 +324,9 @@ struct ConnectionDetailsCard: View {
     }
 }
 
-// MARK: - Selective Corner Rounding Shape
 private struct RoundedCorner: Shape {
     var radius: CGFloat
     var corners: UIRectCorner
-    
     func path(in rect: CGRect) -> Path {
         let path = UIBezierPath(
             roundedRect: rect,

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 12/09/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 #if !os(tvOS)
 import UIKit
 import SwiftUI
@@ -30,7 +29,6 @@ struct ActivityViewController: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
-
 
 #else
 import UIKit
@@ -62,6 +60,5 @@ struct ActivityViewController: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
-
 
 #endif

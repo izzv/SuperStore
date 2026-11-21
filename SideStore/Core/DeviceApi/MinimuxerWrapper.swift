@@ -4,7 +4,6 @@
 //  Created by Magesh K on 22/02/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import Network
 import Minimuxer
@@ -363,7 +362,6 @@ func fetchUDID(forceLive: Bool = false) async throws -> String {
     #if targetEnvironment(simulator)
     debugLog("[SuperStore] fetchUDID() is no-op on simulator")
     return "00008030-001234567890ABCD"
-    
     #else
     if !forceLive, let cachedUDID = Keychain.shared.deviceUDID, !cachedUDID.isEmpty {
         debugLog("[SuperStore] fetchUDID() returning cached UDID from Keychain: \(cachedUDID)")
@@ -492,7 +490,6 @@ public struct MinimuxerPairedDevice: Codable, Sendable {
     public let name: String
     public let model: String
     public let pairingFilePath: String
-    
     public init(name: String, model: String, pairingFilePath: String) {
         self.name = name
         self.model = model
@@ -502,9 +499,7 @@ public struct MinimuxerPairedDevice: Codable, Sendable {
 
 public final class WirelessPairWrapper {
     public static let shared = WirelessPairWrapper()
-    
     private init() {}
-    
     public var onPinReceived: ((String) -> Void)? {
         get {
             #if !targetEnvironment(simulator)
@@ -519,7 +514,6 @@ public final class WirelessPairWrapper {
             #endif
         }
     }
-    
     public var onReadyToPair: ((String, Int) -> Void)? {
         get {
             #if !targetEnvironment(simulator)
@@ -534,7 +528,6 @@ public final class WirelessPairWrapper {
             #endif
         }
     }
-    
     public var onRequestPin: ((@escaping (String) -> Void) -> Void)? {
         get {
             #if !targetEnvironment(simulator)
@@ -549,7 +542,6 @@ public final class WirelessPairWrapper {
             #endif
         }
     }
-    
     public func start(
         outPath: String,
         resolveFileName: (@Sendable (String, String) -> String)? = nil,
@@ -610,7 +602,6 @@ public final class WirelessPairWrapper {
         completion(.failure(OperationError.invalidParameters("Wireless pairing is not supported on simulator.")))
         #endif
     }
-    
     public func stop() {
         debugLog("[WirelessPairWrapper] stop() invoked")
         #if !targetEnvironment(simulator)

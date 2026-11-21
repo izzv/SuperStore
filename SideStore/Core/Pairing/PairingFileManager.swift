@@ -5,7 +5,6 @@
 //  Created by Magesh K on 17/06/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import UniformTypeIdentifiers
 import MinimuxerCommon
@@ -96,7 +95,6 @@ final class PairingFileManager: NSObject {
         }
         return nil
     }
-    
     @discardableResult
     nonisolated func parse(content: String, preferred: PairingProtocol? = nil) throws -> any PairingFile {
         try PairingFileParser.parse(content: content, preferred: preferred)

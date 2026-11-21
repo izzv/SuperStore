@@ -5,16 +5,13 @@
 //  Created by Magesh K on 6/17/26.
 //  Copyright © 2019 SideStore. All rights reserved.
 //
-
 import Foundation
 import Minimuxer
 import MinimuxerCommon
 
 public extension UserDefaults
 {
-    // Default track for beta updates when beta-updates are enabled
     static let defaultBetaUpdatesTrack: String = ReleaseTrackType.nightly.description
-
 
     @objc var firstLaunch: Date? {
         get { self.object(forKey: #function) as? Date }
@@ -96,7 +93,6 @@ public extension UserDefaults
         get { self.string(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc var isBackgroundRefreshEnabled: Bool {
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
@@ -228,7 +224,6 @@ public extension UserDefaults
         get { self.string(forKey: #function) ?? "TurnOnData" }
         set { self.set(newValue, forKey: #function) }
     }
-    
     var customizeAppExtensions: AppExtensionCustomization {
         get {
             let option = _customizeAppExtensions.flatMap { AppExtensionCustomization(rawValue: $0) } ?? .promptUser
@@ -374,12 +369,10 @@ public extension UserDefaults
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc var legacySideloadedApps: [String]? {
         get { self.stringArray(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc var isLegacyDeactivationSupported: Bool {
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
@@ -388,12 +381,10 @@ public extension UserDefaults
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc var patchedApps: [String]? {
         get { self.stringArray(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc var defaultSourceIDs: [String]? {
         get { self.stringArray(forKey: "defaultSourceIDs") }
         set { self.set(newValue, forKey: "defaultSourceIDs") }
@@ -402,18 +393,14 @@ public extension UserDefaults
         get { self.string(forKey: "defaultServerURL") }
         set { self.set(newValue, forKey: "defaultServerURL") }
     }
-    
     @objc var betaUdpatesTrack: String? {
         get { self.string(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
-    // Including "MacDirtyCow" in name triggers false positives with malware detectors 🤷‍♂️
     @objc var isCowExploitSupported: Bool {
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc var permissionCheckingDisabled: Bool {
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
@@ -464,12 +451,10 @@ public extension UserDefaults
             _preferredAppSorting = newValue.rawValue
         }
     }
-    
     @objc(preferredAppSorting) private var _preferredAppSorting: String? {
         get { self.string(forKey: "preferredAppSorting") }
         set { self.set(newValue, forKey: "preferredAppSorting") }
     }
-    
     @nonobjc var activeAppsLimit: Int? {
         get {
             return self._activeAppsLimit?.intValue
@@ -485,7 +470,6 @@ public extension UserDefaults
             }
         }
     }
-    
     @objc var isCellularRefreshEnabled: Bool {
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
@@ -495,42 +479,30 @@ public extension UserDefaults
         get { self.bool(forKey: #function) }
         set { self.set(newValue, forKey: #function) }
     }
-    
     @objc(activeAppsLimit) private var _activeAppsLimit: NSNumber? {
         get { self.object(forKey: "activeAppsLimit") as? NSNumber }
         set { self.set(newValue, forKey: "activeAppsLimit") }
     }
-    
     class func registerDefaults()
     {
         let ios13_5 = OperatingSystemVersion(majorVersion: 13, minorVersion: 5, patchVersion: 0)
         let isLegacyDeactivationSupported = !ProcessInfo.processInfo.isOperatingSystemAtLeast(ios13_5)
         let activeAppLimitIncludesExtensions = !ProcessInfo.processInfo.isOperatingSystemAtLeast(ios13_5)
-        
         let ios14 = OperatingSystemVersion(majorVersion: 14, minorVersion: 0, patchVersion: 0)
-        
         let ios16 = OperatingSystemVersion(majorVersion: 16, minorVersion: 0, patchVersion: 0)
         let ios16_2 = OperatingSystemVersion(majorVersion: 16, minorVersion: 2, patchVersion: 0)
         let ios15_7_2 = OperatingSystemVersion(majorVersion: 15, minorVersion: 7, patchVersion: 2)
-        
-        // MacDirtyCow supports iOS 14.0 - 15.7.1 OR 16.0 - 16.1.2
         let isMacDirtyCowSupported =
         (ProcessInfo.processInfo.isOperatingSystemAtLeast(ios14) && !ProcessInfo.processInfo.isOperatingSystemAtLeast(ios15_7_2)) ||
         (ProcessInfo.processInfo.isOperatingSystemAtLeast(ios16) && !ProcessInfo.processInfo.isOperatingSystemAtLeast(ios16_2))
-        
         let preferredAppSorting: AppSorting = .default
-        
         let defaults = [
-            // TODO: @mahee96: need to retire since irrelevant in ios 15+
             #keyPath(UserDefaults.isLegacyDeactivationSupported): isLegacyDeactivationSupported,
             #keyPath(UserDefaults.activeAppLimitIncludesExtensions): activeAppLimitIncludesExtensions,
-            
-            // still used on ios 15+
             #keyPath(UserDefaults.isAppLimitDisabled): false,
             #keyPath(UserDefaults.isCowExploitSupported): isMacDirtyCowSupported,
             #keyPath(UserDefaults._preferredAppSorting): preferredAppSorting.rawValue,
 
-            // sidestore actively used
             #keyPath(UserDefaults.minimuxerGatewayBackend): GatewayBackend.idevice.rawValue,
             #keyPath(UserDefaults.keepSigningCertsAfterLogout): true,
             #keyPath(UserDefaults.keepAnisetteDataAfterLogout): true,
@@ -558,7 +530,6 @@ public extension UserDefaults
             #keyPath(UserDefaults.isAutoRetryRemotePairingPortEnabled): true,
             #keyPath(UserDefaults.enableEMPforWireguard): false,
             #keyPath(UserDefaults.skipNonCopyableBackupFiles): true,
-            
             #keyPath(UserDefaults.responseCachingDisabled): false,
             #keyPath(UserDefaults.customizeInfoPlist): false,
             #keyPath(UserDefaults.preferSheetForInfoPlistCustomization): true,
@@ -591,25 +562,18 @@ public extension UserDefaults
 
         ] as [String: Any]
 
-        // TODO: temporarily forcing this to be visible in nightlies, remove this in stable release later
         UserDefaults.standard.isDebugModeEnabled = true
-        
         UserDefaults.standard.register(defaults: defaults)
-        
-        // MDC is unsupported and spareRestore is patched
         if !isMacDirtyCowSupported && ProcessInfo().sparseRestorePatched
         {
-            // Disable isAppLimitDisabled if running iOS version that doesn't support MacDirtyCow.
             UserDefaults.standard.isAppLimitDisabled = false
         }
     }
-    
     static func enableGlobalLogging() {
         let setAnySelector = #selector(UserDefaults.set(_:forKey:) as (UserDefaults) -> (Any?, String) -> Void)
         let setBoolSelector = #selector(UserDefaults.set(_:forKey:) as (UserDefaults) -> (Bool, String) -> Void)
         let setIntSelector = #selector(UserDefaults.set(_:forKey:) as (UserDefaults) -> (Int, String) -> Void)
         let removeSelector = #selector(UserDefaults.removeObject(forKey:))
-        
         let swizzlePairs: [(Selector, Selector)] = [
             (setAnySelector, #selector(swizzled_setObject(_:forKey:))),
             (setBoolSelector, #selector(swizzled_setBool(_:forKey:))),
@@ -623,11 +587,9 @@ public extension UserDefaults
             }
         }
     }
-    
     static func dumpAllSettingsOnBoot() {
         debugLog("=== [UserDefaults] Standard Suite Dump ===")
         dumpDictionary(UserDefaults.standard.dictionaryRepresentation())
-        
         if let appGroup = Bundle.main.altstoreAppGroup,
            let sharedDefaults = WidgetDataManager.sharedDefaults,
            sharedDefaults != UserDefaults.standard 
@@ -636,12 +598,10 @@ public extension UserDefaults
             dumpDictionary(sharedDefaults.dictionaryRepresentation())
         }
     }
-    
     private static func dumpDictionary(_ dict: [String: Any]) {
         let filtered = dict.filter { key, _ in
             !key.hasPrefix("Apple") && !key.hasPrefix("NS") && !key.hasPrefix("PK")
         }
-        
         if JSONSerialization.isValidJSONObject(filtered),
            let data = try? JSONSerialization.data(withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys]),
            let jsonString = String(data: data, encoding: .utf8) {
@@ -652,8 +612,6 @@ public extension UserDefaults
     }
 }
 
-// diag logging hooks without changes to original source 
-// this is to catch any and all userdefault writes
 private extension UserDefaults {
     private func formatValueForLog(_ value: Any?) -> String {
         guard let value = value else { return "nil" }

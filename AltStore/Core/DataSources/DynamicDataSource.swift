@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import CoreData
 
@@ -13,12 +12,10 @@ open class DynamicDataSource<ContentType, CellType: UIView & CellContentCell, Vi
     open var numberOfSectionsHandler: (() -> Int) = { 0 }
     open var numberOfItemsHandler: ((Int) -> Int) = { _ in 0 }
     open var dynamicCellConfigurationHandler: ((CellType, IndexPath) -> Void) = { _, _ in }
-    
     open override var isDynamic: Bool { true }
 
     public override func numberOfSections(in contentView: ViewType) -> Int { numberOfSectionsHandler() }
     public override func contentView(_ contentView: ViewType, numberOfItemsInSection section: Int) -> Int { numberOfItemsHandler(section) }
-    
     public override func item(at indexPath: IndexPath) -> ContentType {
         fatalError("item(at:) should not be called on DynamicDataSource")
     }

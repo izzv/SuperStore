@@ -5,7 +5,6 @@
 //  Created by Magesh K on 3/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import CoreData
@@ -14,10 +13,6 @@ import SideSign
 final class PipelineExecutor: @unchecked Sendable {
     static let shared = PipelineExecutor()
     private init() {}
-    
-    // Executes a flat list of `PipelineExecutionStep` items sequentially.
-    // NOTE: Each pipeline step is an atomic operation unit and CANNOT execute another pipeline step
-    //       nor trigger any standalone steps. Recursive step nesting or sub-pipeline invocation is strictly disallowed.
     @discardableResult
     func executePipeline(
         steps pipelineSteps: [PipelineExecutionStep],
@@ -29,7 +24,6 @@ final class PipelineExecutor: @unchecked Sendable {
         operationProgress: Progress?
     ) async throws -> InstalledApp {
         var finalApp: InstalledApp?
-        
         for pipelineStep in pipelineSteps {
             if let result = try await executeStep(
                 pipelineStep.step,
@@ -43,13 +37,11 @@ final class PipelineExecutor: @unchecked Sendable {
                 finalApp = result
             }
         }
-        
         guard let resultApp = finalApp ?? context.installedApp ?? (operation.app as? InstalledApp) else {
             throw OperationError.invalidParameters("Could not resolve installed app for '\(operation.app.name)'")
         }
         return resultApp
     }
-    
     private func executeStep(
         _ step: PipelineStep,
         context: InstallAppOperationContext,
@@ -61,7 +53,6 @@ final class PipelineExecutor: @unchecked Sendable {
     ) async throws -> InstalledApp? {
         var result: Any? = "()"
         var loggerType: any OperationLogging.Type
-        
         defer {
             logOperationResult(result: result, loggerType: loggerType, operation: step)
         }
@@ -76,13 +67,11 @@ final class PipelineExecutor: @unchecked Sendable {
                                                         context: group.context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .userCustomization:
                 loggerType = UserCustomizationOperation.self
                 let step = try UserCustomizationOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .downloadApp:
                 loggerType = DownloadAppOperation.self
                 let downloadedAppURL = context.temporaryDirectory.appendingPathComponent("App.app")
@@ -93,32 +82,27 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.targetAppBundle = downloadedAppBundle
                 result = downloadedAppBundle
                 return nil
-                
             case .verifyApp:
                 loggerType = VerifyAppOperation.self
                 let step = try VerifyAppOperation(permissionsMode: permissionsMode, context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .cacheApp:
                 loggerType = CacheAppOperation.self
                 let step = try CacheAppOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .stageApp:
                 loggerType = StageAppOperation.self
                 let step = try StageAppOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .removeAppExtensions:
                 loggerType = RemoveAppExtensionsOperation.self
                 let localAppExtensions = (appOperation.app as? ALTApplication)?.appExtensions
                 let step = try RemoveAppExtensionsOperation(context: context, localAppExtensions: localAppExtensions)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .fetchProvisioningProfiles:
                 loggerType = FetchProvisioningProfilesOperation.self
                 let step = try FetchProvisioningProfilesOperation(context: context)
@@ -126,19 +110,16 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.provisioningProfiles = profiles
                 result = profiles
                 return nil
-                
             case .prepareAppExtensionBundleIDs:
                 loggerType = PrepareAppExtensionBundleIDsOperation.self
                 let step = try PrepareAppExtensionBundleIDsOperation(context: context)
                 try await step.execute(parentProgress: progress)
                 return nil
-                
             case .changeAppIcon:
                 loggerType = ChangeAppIconOperation.self
                 let step = try ChangeAppIconOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .resignApp:
                 loggerType = ResignAppOperation.self
                 let step = try ResignAppOperation(context: context)
@@ -146,13 +127,11 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.resignedAppBundle = resignedAppBundle
                 result = resignedAppBundle
                 return nil
-                
             case .exportResignedIPA:
                 loggerType = ExportResignedIpaOperation.self
                 let step = try ExportResignedIpaOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .createIPA:
                 loggerType = CreateIpaOperation.self
                 let step = try CreateIpaOperation(context: context)
@@ -160,13 +139,11 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.ipaURL = ipaURL
                 result = ipaURL
                 return nil
-                
             case .sendApp:
                 loggerType = SendAppOperation.self
                 let step = try SendAppOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .installApp:
                 loggerType = InstallAppOperation.self
                 let step = try InstallAppOperation(context: context, app: appOperation.app)
@@ -177,7 +154,6 @@ final class PipelineExecutor: @unchecked Sendable {
                     UserDefaults.standard.legacySideloadedApps?.remove(at: index)
                 }
                 return installedApp
-                
             case .stageBackupApp:
                 loggerType = StageBackupAppOperation.self
                 let installedApp = appOperation.app as? InstalledApp
@@ -186,7 +162,6 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.installedApp = resultApp
                 result = resultApp
                 return resultApp
-                
             case .refreshApp:
                 loggerType = RefreshAppOperation.self
                 let step = try RefreshAppOperation(context: context)
@@ -194,25 +169,21 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.installedApp = installedApp
                 result = installedApp
                 return installedApp
-                
             case .backupAppData:
                 loggerType = PerformBackupRestoreOperation.self
                 let step = try PerformBackupRestoreOperation(action: .backup, context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .restoreAppData:
                 loggerType = PerformBackupRestoreOperation.self
                 let step = try PerformBackupRestoreOperation(action: .restore, context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .removeBackupData:
                 loggerType = RemoveBackupDataOperation.self
                 let step = try RemoveBackupDataOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .uninstallApp:
                 loggerType = UninstallAppOperation.self
                 let step = try UninstallAppOperation(context: context)
@@ -228,7 +199,6 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.installedApp = installedApp
                 result = installedApp
                 return installedApp
-                
             case .removeApp:
                 loggerType = RemoveAppOperation.self
                 let step = try RemoveAppOperation(context: context)
@@ -236,7 +206,6 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.installedApp = installedApp
                 result = installedApp
                 return installedApp
-                
             case .deactivateApp:
                 loggerType = DeactivateAppOperation.self
                 let app = appOperation.app as? InstalledApp
@@ -245,13 +214,11 @@ final class PipelineExecutor: @unchecked Sendable {
                 context.installedApp = installedApp
                 result = installedApp
                 return installedApp
-                
             case .cleanStagedApp:
                 loggerType = CleanStagedAppOperation.self
                 let step = try CleanStagedAppOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .verifyCertificate:
                 loggerType = VerifyCertificateOperation.self
                 var willResign = true
@@ -259,13 +226,11 @@ final class PipelineExecutor: @unchecked Sendable {
                 let step = try VerifyCertificateOperation(context: context, willResign: willResign)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .updateAppCertificate:
                 loggerType = UpdateAppCertificateOperation.self
                 let step = try UpdateAppCertificateOperation(context: context)
                 result = try await step.execute(parentProgress: progress)
                 return nil
-                
             case .embedSigningCert:
                 loggerType = EmbedSigningCertOperation.self
                 let step = try EmbedSigningCertOperation(context: context)
@@ -295,7 +260,6 @@ final class PipelineExecutor: @unchecked Sendable {
             throw error
         }
     }
-    
     private func logOperationResult(result: Any?, loggerType: any OperationLogging.Type, operation: any OperationStep) {
         if UserDefaults.standard.isVerboseOperationsLoggingEnabled &&
            OperationsLoggingControl.isLoggingEnabled(for: loggerType.self)
@@ -306,7 +270,6 @@ final class PipelineExecutor: @unchecked Sendable {
             [PipelineExecutor] ====> OPERATION: .\(operation) completed with: \(resultStatus) <====
                 • Component: '\(loggerType)'
                 • Result: \(result ?? "nil")
-                
             """
             )
         }

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 2026-06-29.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import SideSign
 
@@ -35,19 +34,15 @@ struct CertificateDetailView: View {
     let certificate: ALTX509Certificate
     let portalMetadata: DeveloperPortalMetadata?
     @ObservedObject var viewModel: CertificatesViewModel
-    
     private var signableCert: ALTCertificate? {
         viewModel.getSignableCertificate(for: certificate.serialNumber)
     }
-    
     init(certificate: ALTX509Certificate, portalMetadata: DeveloperPortalMetadata? = nil, viewModel: CertificatesViewModel) {
         self.certificate = certificate
         self.portalMetadata = portalMetadata
         self.viewModel = viewModel
     }
-    
     @State private var isRedacted = true
-    
     @State private var showPrivateKey = false
     @State private var copiedPrivateKey = false
     @State private var copiedPEM = false
@@ -55,7 +50,6 @@ struct CertificateDetailView: View {
     @State private var copiedIdentifier = false
     @State private var copiedFingerprintSHA1 = false
     @State private var copiedFingerprintSHA256 = false
-    
     var body: some View {
         Form {
             Section {
@@ -103,7 +97,6 @@ struct CertificateDetailView: View {
                     Text("Developer Portal Info")
                 }
             }
-            
             if let certData = certificate.data {
                 let details = parseCertificate(derData: certData)
                 Section {
@@ -115,13 +108,11 @@ struct CertificateDetailView: View {
                 } header: {
                     Text("X.509 Fields")
                 }
-                
                 if let from = details.validFrom, let until = details.validUntil {
                     let stats = computeValidityStats(from: from, until: until)
                     Section {
                         detailRow(title: "Valid From", value: formatDate(from))
                         detailRow(title: "Valid Until", value: formatDate(until))
-                        
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text("Validity Progress")
@@ -132,24 +123,20 @@ struct CertificateDetailView: View {
                             ProgressView(value: stats.progress)
                                 .tint(.accentColor)
                         }
-                        
                         detailRow(title: "Validity Days", value: "Total: \(stats.totalDays), Elapsed: \(stats.elapsedDays), Remaining: \(stats.remainingDays)")
                     } header: {
                         Text("Validity Period")
                     }
                 }
-                
                 Section {
                     detailRow(title: "Public Key", value: details.publicKeyType)
                     detailRow(title: "Signature Algorithm", value: details.signatureAlgorithm)
-                    
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("SHA-1 Fingerprint")
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
                             Spacer()
-                            
                             #if !os(tvOS)
                             SwiftUI.Button {
                                 UIPasteboard.general.string = details.fingerprintSHA1
@@ -175,14 +162,12 @@ struct CertificateDetailView: View {
                             .multilineTextAlignment(.leading)
                     }
                     .padding(.vertical, 4)
-                    
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("SHA-256 Fingerprint")
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
                             Spacer()
-                            
                             #if !os(tvOS)
                             SwiftUI.Button {
                                 UIPasteboard.general.string = details.fingerprintSHA256
@@ -212,10 +197,8 @@ struct CertificateDetailView: View {
                     Text("Signature & Public Key Details")
                 }
             }
-            
             Section {
                 detailRow(title: "Has Private Key", value: signableCert != nil ? "Yes" : "No")
-                
                 if let privateKey = signableCert?.privateKey {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -223,7 +206,6 @@ struct CertificateDetailView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
                             Spacer()
-                            
                             SwiftUI.Button {
                                 showPrivateKey.toggle()
                             } label: {
@@ -231,7 +213,6 @@ struct CertificateDetailView: View {
                                     .foregroundColor(.accentColor)
                             }
                             .buttonStyle(.plain)
-                            
                             #if !os(tvOS)
                             SwiftUI.Button {
                                 UIPasteboard.general.string = privateKey.base64EncodedString()
@@ -247,7 +228,6 @@ struct CertificateDetailView: View {
                             .padding(.leading, 12)
                             #endif
                         }
-                        
                         if showPrivateKey {
                             Text(privateKey.base64EncodedString())
                                 .font(.system(size: 11, design: .monospaced))
@@ -265,7 +245,6 @@ struct CertificateDetailView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                
                 if let certData = certificate.data {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -273,7 +252,6 @@ struct CertificateDetailView: View {
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
                             Spacer()
-                            
                             #if !os(tvOS)
                             SwiftUI.Button {
                                 let pem = String(data: certData, encoding: .utf8) ?? certData.base64EncodedString()
@@ -289,7 +267,6 @@ struct CertificateDetailView: View {
                             .buttonStyle(.plain)
                             #endif
                         }
-                        
                         ScrollView(.horizontal, showsIndicators: true) {
                             Text(String(data: certData, encoding: .utf8) ?? certData.base64EncodedString())
                                 .font(.system(size: 11, design: .monospaced))
@@ -320,21 +297,18 @@ struct CertificateDetailView: View {
             }
         }
     }
-    
     private func redactableValue(_ value: String, sensitive: Bool = true) -> String {
         if sensitive && isRedacted {
             return "••••••••"
         }
         return value
     }
-    
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .medium
         return formatter.string(from: date)
     }
-    
     private func detailRow(title: String, value: String) -> some View {
         HStack {
             Text(title)
@@ -350,7 +324,6 @@ struct CertificateDetailView: View {
                 #endif
         }
     }
-    
     private func detailRowWithCopy(title: String, value: String, isCopied: Binding<Bool>) -> some View {
         HStack {
             Text(title)
@@ -364,7 +337,6 @@ struct CertificateDetailView: View {
                 #if !os(tvOS)
                 .textSelection(.enabled)
                 #endif
-            
             #if !os(tvOS)
             if value != "N/A" && !value.isEmpty && value != "••••••••" {
                 SwiftUI.Button {

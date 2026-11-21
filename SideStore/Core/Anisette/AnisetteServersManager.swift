@@ -5,7 +5,6 @@
 //  Created by Magesh K on 28/07/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public struct AnisetteServerItem: Codable, Identifiable, Hashable {
@@ -53,8 +52,6 @@ public actor AnisetteServersManager {
 
     private init() {}
 
-    // MARK: - Local Persistence & In-Memory Caching
-
     public func loadLocalServers() -> [AnisetteServerItem] {
         if let cached = inMemoryServersCache {
             return cached
@@ -62,7 +59,6 @@ public actor AnisetteServersManager {
 
         let fileManager = FileManager.default
 
-        // If user-facing file was deleted by user, restore from private internal mirror backup
         if !fileManager.fileExists(atPath: userFacingFileURL.path) && fileManager.fileExists(atPath: privateBackupFileURL.path) {
             try? fileManager.copyItem(at: privateBackupFileURL, to: userFacingFileURL)
             debugLog("[AnisetteServersManager] User-facing file was missing. Successfully restored from private mirror backup.")
@@ -99,9 +95,7 @@ public actor AnisetteServersManager {
         let encoder = Foundation.JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         if let data = try? encoder.encode(items) {
-            // 1. Write to user-facing Documents directory
             try? data.write(to: userFacingFileURL, options: .atomic)
-            // 2. Mirror write to internal Application Support backup directory
             try? data.write(to: privateBackupFileURL, options: .atomic)
         }
 
@@ -116,8 +110,6 @@ public actor AnisetteServersManager {
         let servers = loadLocalServers()
         return servers.filter { !$0.isHidden }.map(\.address)
     }
-
-    // MARK: - Offline File Mode State Keys
 
     private let isOfflineModeKey = "AnisetteServersManager.isOfflineMode"
     private let importedFileNameKey = "AnisetteServersManager.importedFileName"
@@ -171,7 +163,6 @@ public actor AnisetteServersManager {
 
         let importedItems = parsedServers.map { AnisetteServerItem(name: $0.name, address: $0.address, isHidden: false) }
         saveLocalServers(importedItems)
-        // Save raw imported file backup for Reset feature
         try? data.write(to: rawImportedBackupFileURL, options: .atomic)
         self.isOfflineMode = true
         self.importedFileName = filename
@@ -267,8 +258,6 @@ public actor AnisetteServersManager {
         UserDefaults.standard.menuAnisetteList = AnisetteServersManager.defaultSource
     }
 
-    // MARK: - Remote Fetching & Public Internet Check
-
     func fetchRemoteServers(serverSource: String) async throws -> [Server] {
         var aniServers: [Server] = []
 
@@ -329,8 +318,6 @@ public actor AnisetteServersManager {
         }
     }
 
-    // MARK: - Smart Syncing
-
     @discardableResult
     public func syncWithRemote(sourceURLString: String? = nil, forceRemote: Bool = false) async throws -> [AnisetteServerItem] {
         if isOfflineMode && !forceRemote {
@@ -353,7 +340,6 @@ public actor AnisetteServersManager {
         var mergedItems: [AnisetteServerItem] = []
         var remainingRemote = remoteServers
 
-        // 1. Preserve local user preferences (ordering and hidden status) for existing servers
         for local in localItems {
             if let remoteIndex = remainingRemote.firstIndex(where: { $0.address == local.address }) {
                 let remote = remainingRemote.remove(at: remoteIndex)
@@ -363,7 +349,6 @@ public actor AnisetteServersManager {
             }
         }
 
-        // 2. Append newly added remote servers
         for newRemote in remainingRemote {
             mergedItems.append(AnisetteServerItem(name: newRemote.name, address: newRemote.address, isHidden: false))
         }
@@ -372,9 +357,6 @@ public actor AnisetteServersManager {
         return mergedItems
     }
 
-    // MARK: - Triggered Syncs
-
-    /// Kicks off background sync on app boot if > 24 hours ago OR if previous sync failed/interrupted
     public func performDailySyncIfNeeded() async {
         if isOfflineMode {
             return
@@ -399,8 +381,6 @@ public actor AnisetteServersManager {
         }
     }
 
-    /// Triggered when FetchAnisetteDataOperation encounters no working server.
-    /// Rate-limited to once per 15 minutes and ignores duplicate requests while syncing.
     public func syncOnFailureIfNeeded() async {
         if isOfflineMode {
             return
@@ -430,29 +410,23 @@ public actor AnisetteServersManager {
     }
 }
 
-// MARK: - Private AnisetteServersManager Domain Persistence Extension
-
 private extension AnisetteServersManager {
     var storedOfflineMode: Bool {
         get { UserDefaults.standard.bool(forKey: isOfflineModeKey) }
         set { UserDefaults.standard.set(newValue, forKey: isOfflineModeKey) }
     }
-    
     var storedImportedFileName: String? {
         get { UserDefaults.standard.string(forKey: importedFileNameKey) }
         set { UserDefaults.standard.set(newValue, forKey: importedFileNameKey) }
     }
-    
     var lastDailySyncTimestamp: Double {
         get { UserDefaults.standard.double(forKey: lastDailySyncKey) }
         set { UserDefaults.standard.set(newValue, forKey: lastDailySyncKey) }
     }
-    
     var lastDailySyncWasSuccessful: Bool {
         get { UserDefaults.standard.bool(forKey: lastDailySyncSuccessKey) }
         set { UserDefaults.standard.set(newValue, forKey: lastDailySyncSuccessKey) }
     }
-    
     var lastFailureSyncTimestamp: Double {
         get { UserDefaults.standard.double(forKey: lastFailureSyncKey) }
         set { UserDefaults.standard.set(newValue, forKey: lastFailureSyncKey) }

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 4/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public let commonServiceTypesToBrowse: [String] = [
@@ -151,7 +150,6 @@ public let commonKnownServiceTypes: [String: String] = [
 ]
 
 public extension String {
-    // Strips the network interface scope suffix (e.g. "%en0", "%pdp_ip0") from an IP address or hostname.
     var strippingInterfaceScope: String {
         if let percentIndex = self.firstIndex(of: "%") {
             return String(self[..<percentIndex])
@@ -159,4 +157,3 @@ public extension String {
         return self
     }
 }
-

@@ -19,19 +19,15 @@ class ConsoleLogViewModel: ObservableObject {
     @Published var logLines: [String] = []
     @Published var activeSource: LogSource = .console
     @Published var importedURL: URL? = nil
-    
     @Published var searchTerm: String = ""
     @Published var currentSearchIndex: Int = 0
-    @Published var searchResults: [Int] = []  // Stores indices of matching lines
-    
+    @Published var searchResults: [Int] = []  
     private let safeSizeLimit: UInt64 = 15 * 1024 * 1024
-    
     private var fileWatcher: DispatchSourceFileSystemObject?
     let consoleLogURL: URL
     let widgetLogURL: URL
     private var currentSecurityScopedURL: URL?
     private var lastReadOffset: UInt64 = 0
-    
     var activeLogURL: URL {
         switch activeSource {
         case .console:
@@ -42,7 +38,6 @@ class ConsoleLogViewModel: ObservableObject {
             return url
         }
     }
-    
     var activeHeaderTitle: String {
         switch activeSource {
         case .console:
@@ -53,38 +48,29 @@ class ConsoleLogViewModel: ObservableObject {
             return url.lastPathComponent
         }
     }
-    
     init(logURL: URL) {
         self.consoleLogURL = logURL
-        
         self.widgetLogURL = WidgetLogManager.widgetLogURL
             ?? FileManager.default.temporaryDirectory.appendingPathComponent("widget.log")
-        
-        startFileWatcher() // Start monitoring the initial log file for changes
-        
+        startFileWatcher() 
         Task {
             await reloadLogData(isInitial: true)
         }
     }
-    
     func setSource(_ source: LogSource) {
         guard activeSource != source else { return }
         activeSource = source
         resetAndReload()
     }
-    
     func importLog(from url: URL) {
-        // Access security-scoped resource if needed
         if url.startAccessingSecurityScopedResource() {
             currentSecurityScopedURL?.stopAccessingSecurityScopedResource()
             currentSecurityScopedURL = url
         }
-        
         self.importedURL = url
         self.activeSource = .imported(url: url)
         resetAndReload()
     }
-    
     func clearImportedLog() {
         if case .imported = activeSource {
             activeSource = .console
@@ -94,7 +80,6 @@ class ConsoleLogViewModel: ObservableObject {
         importedURL = nil
         resetAndReload()
     }
-    
     private func resetAndReload() {
         fileWatcher?.cancel()
         fileWatcher = nil
@@ -103,13 +88,11 @@ class ConsoleLogViewModel: ObservableObject {
         searchTerm = ""
         searchResults = []
         currentSearchIndex = 0
-        
         startFileWatcher()
         Task {
             await reloadLogData(isInitial: true)
         }
     }
-    
     private func startFileWatcher() {
         let targetURL = activeLogURL
         let fileDescriptor = open(targetURL.path, O_RDONLY)
@@ -117,7 +100,6 @@ class ConsoleLogViewModel: ObservableObject {
             debugLog("Unable to open file for reading at \(targetURL.path)")
             return
         }
-        
         let queue = DispatchQueue(label: "com.myapp.backgroundQueue", qos: .background)
         fileWatcher = DispatchSource.makeFileSystemObjectSource(fileDescriptor: fileDescriptor, eventMask: .write, queue: queue)
         fileWatcher?.setEventHandler { [weak self] in
@@ -130,19 +112,15 @@ class ConsoleLogViewModel: ObservableObject {
         }
         fileWatcher?.resume()
     }
-    
     private func reloadLogData(isInitial: Bool) async {
         let targetURL = self.activeLogURL
         let lastReadOffset = self.lastReadOffset
         let safeSizeLimit = self.safeSizeLimit
-        
         let result = await Task.detached(priority: .userInitiated) { () -> (lines: [String], newOffset: UInt64, isReset: Bool)? in
             do {
                 let fileHandle = try FileHandle(forReadingFrom: targetURL)
                 defer { try? fileHandle.close() }
-                
                 let currentSize = try fileHandle.seekToEnd()
-                
                 if currentSize > safeSizeLimit && isInitial {
                     let startOffset = currentSize - safeSizeLimit
                     try fileHandle.seek(toOffset: startOffset)
@@ -155,7 +133,6 @@ class ConsoleLogViewModel: ObservableObject {
                         return (formattedLines, currentSize, true)
                     }
                 }
-                
                 if isInitial || currentSize < lastReadOffset {
                     try fileHandle.seek(toOffset: 0)
                     if let data = try fileHandle.readToEnd() {
@@ -176,9 +153,7 @@ class ConsoleLogViewModel: ObservableObject {
             }
             return nil
         }.value
-        
         guard let result = result else { return }
-        
         self.lastReadOffset = result.newOffset
         if result.isReset {
             self.logLines = result.lines
@@ -186,37 +161,30 @@ class ConsoleLogViewModel: ObservableObject {
             self.logLines.append(contentsOf: result.lines)
         }
     }
-    
     deinit {
         fileWatcher?.cancel()
         currentSecurityScopedURL?.stopAccessingSecurityScopedResource()
     }
-    
     func performSearch() {
         searchResults = logLines.enumerated()
             .filter { $0.element.localizedCaseInsensitiveContains(searchTerm) }
             .map { $0.offset }
     }
-    
     func nextSearchResult() {
         guard !searchResults.isEmpty else { return }
         currentSearchIndex = (currentSearchIndex + 1) % searchResults.count
     }
-    
     func previousSearchResult() {
         guard !searchResults.isEmpty else { return }
         currentSearchIndex = (currentSearchIndex - 1 + searchResults.count) % searchResults.count
     }
 }
 
-
 public struct ConsoleLogView: View {
-    
     @ObservedObject var viewModel: ConsoleLogViewModel
-    @State private var scrollToBottom: Bool = false  // State variable to trigger scroll
+    @State private var scrollToBottom: Bool = false  
     @State private var searchBarState: Bool = false
     @FocusState private var isSearchFieldFocused: Bool
-    
     @State private var searchText: String = ""
     @State private var scrollToIndex: Int?
     @State private var showTimestamp: Bool = false
@@ -228,7 +196,6 @@ public struct ConsoleLogView: View {
     #if os(tvOS)
     @State private var showTvMenu: Bool = false
     #endif
-    
     private let resultHighlightColor = Color.orange
     private let resultHighlightOpacity = 0.5
     private let otherResultsColor = Color.yellow
@@ -237,18 +204,14 @@ public struct ConsoleLogView: View {
     init(logURL: URL) {
         self.viewModel = ConsoleLogViewModel(logURL: logURL)
     }
-    
     public var body: some View {
        VStack {
-           
-           // Custom Header Bar (similar to QuickLook's preview screen)
            HStack(spacing: 12) {
                Text(viewModel.activeHeaderTitle)
                    .font(.system(size: 22, weight: .semibold))
                    .foregroundColor(.white)
                    .lineLimit(1)
                Spacer()
-               
                if(!searchBarState){
                    SwiftUI.Button(action: {
                        searchBarState.toggle()
@@ -266,7 +229,6 @@ public struct ConsoleLogView: View {
                         .foregroundColor(.white)
                         .imageScale(.medium)
                 }
-                
                 SwiftUI.Button(action: {
                     fontSize = min(30, fontSize + 1)
                 }) {
@@ -274,7 +236,6 @@ public struct ConsoleLogView: View {
                         .foregroundColor(.white)
                         .imageScale(.medium)
                 }
-                
                 SwiftUI.Button(action: {
                     showTimestamp.toggle()
                 }) {
@@ -296,7 +257,6 @@ public struct ConsoleLogView: View {
                         .foregroundColor(.white)
                         .font(.system(size: 19))
                 }
-                
                 #if !os(tvOS)
                 Menu {
                     SwiftUI.Button(action: {
@@ -309,7 +269,6 @@ public struct ConsoleLogView: View {
                             }
                         }
                     }
-                    
                     SwiftUI.Button(action: {
                         viewModel.setSource(.widget)
                     }) {
@@ -320,7 +279,6 @@ public struct ConsoleLogView: View {
                             }
                         }
                     }
-                    
                     if let importedURL = viewModel.importedURL {
                         SwiftUI.Button(action: {
                             viewModel.setSource(.imported(url: importedURL))
@@ -333,9 +291,7 @@ public struct ConsoleLogView: View {
                             }
                         }
                     }
-                    
                     Divider()
-                    
                     if viewModel.importedURL == nil {
                         SwiftUI.Button(action: {
                             showFileImporter = true
@@ -377,7 +333,6 @@ public struct ConsoleLogView: View {
            )
 
            if(searchBarState){
-               // Search bar
               HStack {
                   Image(systemName: "magnifyingglass")
                       .foregroundColor(.gray)
@@ -392,11 +347,9 @@ public struct ConsoleLogView: View {
                            viewModel.performSearch()
                        }
                        #if !os(tvOS)
-                       .keyboardShortcut("f", modifiers: .command) // Focus search field
+                       .keyboardShortcut("f", modifiers: .command) 
                        #endif
-                   
                    if !searchText.isEmpty {
-                       // Search navigation buttons
                        SwiftUI.Button(action: {
                            viewModel.previousSearchResult()
                            scrollToIndex = viewModel.searchResults[viewModel.currentSearchIndex]
@@ -407,7 +360,6 @@ public struct ConsoleLogView: View {
                        .keyboardShortcut(.return, modifiers: [.command, .shift])
                        #endif
                        .disabled(viewModel.searchResults.isEmpty)
-                       
                        SwiftUI.Button(action: {
                            viewModel.nextSearchResult()
                            scrollToIndex = viewModel.searchResults[viewModel.currentSearchIndex]
@@ -419,12 +371,10 @@ public struct ConsoleLogView: View {
                        #endif
                        .disabled(viewModel.searchResults.isEmpty)
 
-                       // Results counter
                        Text("\(viewModel.currentSearchIndex + 1)/\(viewModel.searchResults.count)")
                            .foregroundColor(.gray)
                            .font(.caption)
                    }
-                  
                   SwiftUI.Button(action: {
                       searchBarState.toggle()
                   }) {
@@ -434,9 +384,6 @@ public struct ConsoleLogView: View {
               .padding(.horizontal, 15)
            }
 
-           
-
-           // Main Log Display (scrollable area)
             ScrollView(.vertical) {
                 ScrollViewReader { proxy in
                     LazyVStack(alignment: .leading, spacing: 4) {
@@ -480,7 +427,7 @@ public struct ConsoleLogView: View {
                 }
             }
         }
-        .background(Color.black)  // Set background color to mimic QL's dark theme
+        .background(Color.black)  
         .edgesIgnoringSafeArea(.all)
         #if !os(tvOS)
         .sheet(isPresented: $showShareSheet) {
@@ -577,7 +524,6 @@ public struct ConsoleLogView: View {
     }
 }
 
-// Helper extension for safe array access
 extension Array {
     subscript(safe index: Index) -> Element? {
         indices.contains(index) ? self[index] : nil

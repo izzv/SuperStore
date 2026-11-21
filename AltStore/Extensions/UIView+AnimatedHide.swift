@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 public extension UIView {
@@ -14,11 +13,8 @@ public extension UIView {
             self.isHidden = hidden
             return
         }
-        
         guard self.isHidden != hidden else { return }
-        
         let originalAlpha = self.alpha
-        
         if hidden {
             UIView.animate(withDuration: 0.4, animations: {
                 self.alpha = 0.0

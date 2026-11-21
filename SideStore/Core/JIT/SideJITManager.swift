@@ -5,14 +5,11 @@
 //  Created by Magesh K on 14/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import UIKit
 
 public final class SideJITManager {
     public static let shared = SideJITManager()
-    
     private init() {}
-    
     public func resolveServerURL() async -> String {
         if let userInput = UserDefaults.standard.textInputSideJITServerurl, !userInput.isEmpty {
             debugLog("[SideJITManager] resolveServerURL: user override specified '\(userInput)'")
@@ -23,7 +20,6 @@ public final class SideJITManager {
             debugLog("[SideJITManager] resolveServerURL: using raw user override '\(userInput)'")
             return userInput
         }
-        
         debugLog("[SideJITManager] resolveServerURL: attempting Bonjour auto-discovery for type='\(AppConstants.SideJIT.bonjourServiceType)', prefix='\(AppConstants.SideJIT.bonjourServiceName)' (timeout: \(AppConstants.SideJIT.timeout)s)")
         if let resolved = await BonjourDiscoveryManager.resolveFirstService(
             ofType: AppConstants.SideJIT.bonjourServiceType,
@@ -36,21 +32,17 @@ public final class SideJITManager {
             return url
         }
         debugLog("[SideJITManager] resolveServerURL: Bonjour discovery did not return any service within timeout")
-        
         debugLog("[SideJITManager] resolveServerURL: trying fallback address '\(AppConstants.SideJIT.defaultServerURL)'")
         if let fallback = await resolveAddressIfNeeded(AppConstants.SideJIT.defaultServerURL) {
             debugLog("[SideJITManager] resolveServerURL: fallback resolved to '\(fallback)'")
             return fallback
         }
-        
         debugLog("[SideJITManager] resolveServerURL: returning default server URL '\(AppConstants.SideJIT.defaultServerURL)'")
         return AppConstants.SideJIT.defaultServerURL
     }
-    
     private func resolveAddressIfNeeded(_ input: String) async -> String? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        
         let urlString = trimmed.contains("://") ? trimmed : "http://\(trimmed)"
         guard let url = URL(string: urlString), let host = url.host else {
             debugLog("[SideJITManager] resolveAddressIfNeeded: unable to parse URL from '\(trimmed)'")
@@ -58,8 +50,6 @@ public final class SideJITManager {
         }
         let port = url.port ?? 8080
         debugLog("[SideJITManager] resolveAddressIfNeeded: parsing host='\(host)', port=\(port)")
-        
-        // 1. Direct IP address (strict IPv4 / IPv6 validation via POSIX inet_pton)
         var sin = sockaddr_in()
         var sin6 = sockaddr_in6()
         let cleanHost = host.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
@@ -69,15 +59,12 @@ public final class SideJITManager {
             debugLog("[SideJITManager] resolveAddressIfNeeded: direct IP matched (\(isIPv4 ? "IPv4" : "IPv6")) -> http://\(host):\(port)")
             return "http://\(host):\(port)"
         }
-        
-        // 2. DNS-SD Bonjour Service Descriptor (e.g. sidejitserver._http._tcp.local or _http._tcp)
         if host.contains("._tcp") || host.contains("._udp") {
             let parts = host.components(separatedBy: "._")
             let namePrefix = parts.first ?? ""
             let serviceType = parts.count > 1 ? "_\(parts.dropFirst().joined(separator: "._"))" : AppConstants.SideJIT.bonjourServiceType
             let cleanType = serviceType.replacingOccurrences(of: ".local", with: "")
             debugLog("[SideJITManager] resolveAddressIfNeeded: DNS-SD descriptor -> searching type='\(cleanType)', prefix='\(namePrefix)'")
-            
             if let resolved = await BonjourDiscoveryManager.resolveFirstService(
                 ofType: cleanType.isEmpty ? AppConstants.SideJIT.bonjourServiceType : cleanType,
                 namePrefix: namePrefix == cleanType ? "" : namePrefix,
@@ -91,8 +78,6 @@ public final class SideJITManager {
             }
             debugLog("[SideJITManager] resolveAddressIfNeeded: DNS-SD resolution timed out for descriptor '\(host)'")
         }
-        
-        // 3. Local hostname (.local)
         if host.hasSuffix(".local") {
             debugLog("[SideJITManager] resolveAddressIfNeeded: resolving .local hostname '\(host)' via getaddrinfo")
             let ips = BonjourDiscoveryManager.resolveHostToIPs(host)
@@ -103,11 +88,9 @@ public final class SideJITManager {
                 return resolvedURL
             }
         }
-        
         debugLog("[SideJITManager] resolveAddressIfNeeded: default raw host -> http://\(host):\(port)")
         return "http://\(host):\(port)"
     }
-    
     public func askForNetwork() async {
         let SJSURL = await resolveServerURL()
         guard let url = URL(string: "\(SJSURL)/re/") else {
@@ -118,7 +101,6 @@ public final class SideJITManager {
         do {
             var request = URLRequest(url: url)
             request.timeoutInterval = AppConstants.SideJIT.timeout
-            
             try await withThrowingTaskGroup(of: Void.self) { group in
                 group.addTask {
                     let (_, response) = try await URLSession.shared.data(for: request)
@@ -146,7 +128,6 @@ public final class SideJITManager {
         var request = URLRequest(url: url)
         request.timeoutInterval = AppConstants.SideJIT.timeout
         debugLog("[SideJITManager] isSideJITServerDetected: testing detection at \(url)")
-        
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
                 let (_, response) = try await URLSession.shared.data(for: request)
@@ -163,7 +144,6 @@ public final class SideJITManager {
     }
 }
 
-// MARK: - UI Extension
 extension SideJITManager {
     @MainActor
     public func presentJITPrompt(presentingVC: UIViewController) {

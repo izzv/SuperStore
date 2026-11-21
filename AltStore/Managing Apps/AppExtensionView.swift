@@ -5,16 +5,13 @@
 //  Created by June P on 8/17/24.
 //  Copyright © 2024 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import SideSign
 
 struct AppExtensionView: View {
     var extensions: Set<ALTApplication>
     @State var selection: [ALTApplication] = []
-        
     var completion: (_ selection: [ALTApplication]) -> Void
-    
     var body: some View {
         NavigationView {
             List {
@@ -58,15 +55,11 @@ struct MultipleSelectionRow: View {
 }
 
 class AppExtensionViewHostingController: UIHostingController<AppExtensionView> {
-    
-    
     var completion: Optional<(_ selection: [ALTApplication]) -> Void>?
-    
     required init(extensions: Set<ALTApplication>, completion: @escaping (_ selection: [ALTApplication]) -> Void) {
         self.completion = completion
         super.init(rootView: AppExtensionView(extensions: extensions, completion: completion))
     }
-    
     @MainActor
     required dynamic init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)

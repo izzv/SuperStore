@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 3/15/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Combine
 
@@ -16,26 +15,19 @@ extension SourceDetailViewController
     private class ViewModel: ObservableObject
     {
         let source: Source
-        
         @Published
         var isSourceAdded: Bool? = nil
-        
         @Published
         var isAddingSource: Bool = false
-        
         init(source: Source)
         {
             self.source = source
-            
             let sourceID = source.identifier
-            
             let addedPublisher = NotificationCenter.default.publisher(for: AppManager.didAddSourceNotification, object: nil)
             let removedPublisher = NotificationCenter.default.publisher(for: AppManager.didRemoveSourceNotification, object: nil)
-            
             Publishers.Merge(addedPublisher, removedPublisher)
                 .filter { notification -> Bool in
                     guard let source = notification.object as? Source, let context = source.managedObjectContext else { return false }
-                    
                     let updatedSourceID = context.performAndWait { source.identifier }
                     return sourceID == updatedSourceID
                 }
@@ -50,7 +42,6 @@ extension SourceDetailViewController
                 .filter { $0 != nil }
                 .receive(on: RunLoop.main)
                 .assign(to: &self.$isSourceAdded)
-            
             self.isSourceAdded = source.isPersisted
         }
     }
@@ -59,37 +50,27 @@ extension SourceDetailViewController
 class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, SourceDetailContentViewController>
 {
     @Managed private(set) var source: Source
-    
     var addedSourceHandler: ((Source) -> Void)?
-    
     private let viewModel: ViewModel
-    
     private var previousBounds: CGRect?
     private var cancellables = Set<AnyCancellable>()
     private var widthConstraint: NSLayoutConstraint?
-    
     init?(source: Source, coder: NSCoder)
     {
         self.source = source
         self.viewModel = ViewModel(source: source)
-        
         super.init(coder: coder)
-        
         self.title = source.name
         self.tintColor = source.effectiveTintColor
     }
-    
     required init?(coder: NSCoder)
     {
         fatalError("init(coder:) has not been implemented")
     }
-    
     override func viewDidLoad()
     {
         super.viewDidLoad()
-        
         self.navigationBarButton.addTarget(self, action: #selector(SourceDetailViewController.addSource), for: .primaryActionTriggered)
-        
         if let iconURL = self.source.effectiveIconURL
         {
             Task { [weak self] in
@@ -97,7 +78,6 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
                 self.navigationBarIconView.image = try? await ImagePipeline.shared.image(for: iconURL)
             }
         }
-        
         if let headerURL = self.source.effectiveHeaderImageURL
         {
             Task { [weak self] in
@@ -105,38 +85,28 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
                 self.backgroundImageView.image = try? await ImagePipeline.shared.image(for: headerURL)
             }
         }
-        
         self.update()
         self.preparePipeline()
     }
-    
     override func viewDidLayoutSubviews()
     {
         let inset = 15.0
         let headerHeight = self.headerView.fittedHeight(forWidth: self.view.bounds.width - inset * 2)
-        
         if self.headerView.frame.size.height != headerHeight
         {
             self.headerView.frame.size.height = headerHeight
         }
-        
         super.viewDidLayoutSubviews()
-        
         self.navigationBarIconView.layer.cornerRadius = self.navigationBarIconView.bounds.midY
     }
-    
-    //MARK: Override
-    
     override func makeContentViewController() -> SourceDetailContentViewController
     {
         guard let storyboard = self.storyboard else { fatalError("SourceDetailViewController must be initialized via UIStoryboard.") }
-        
         let contentViewController = storyboard.instantiateViewController(identifier: "sourceDetailContentViewController") { coder in
             SourceDetailContentViewController(source: self.source, coder: coder)
         }
         return contentViewController
     }
-    
     override func makeHeaderView() -> SourceHeaderView
     {
         let sourceAboutView = SourceHeaderView(frame: CGRect(x: 0, y: 0, width: 375, height: 200))
@@ -144,16 +114,12 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
         sourceAboutView.websiteButton.addTarget(self, action: #selector(SourceDetailViewController.showWebsite), for: .primaryActionTriggered)
         return sourceAboutView
     }
-    
     override func update()
     {
         super.update()
-        
         if self.source.identifier == Source.altStoreIdentifier
         {
-            // Users can't remove default AltStore source, so hide buttons.
             self.navigationBarButton.isHidden = true
-            
             #if !os(tvOS)
             if #available(iOS 16, *)
             {
@@ -163,54 +129,44 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
         }
         else
         {
-            // Update isIndicatingActivity first to ensure later updates are applied correctly.
             self.navigationBarButton.isIndicatingActivity = self.viewModel.isAddingSource
-            
             let title: String
-            
             switch self.viewModel.isSourceAdded
             {
             case true?:
                 title = NSLocalizedString("REMOVE", comment: "")
                 self.navigationBarButton.tintColor = self.source.effectiveTintColor?.adjustedForDisplay ?? .altPrimary
                 self.navigationBarButton.isHidden = false
-                
                 #if !os(tvOS)
                 if #available(iOS 16, *)
                 {
                     self.navigationItem.rightBarButtonItem?.isHidden = false
                 }
                 #endif
-                
             case false?:
                 title = NSLocalizedString("ADD", comment: "")
                 self.navigationBarButton.tintColor = self.source.effectiveTintColor?.adjustedForDisplay ?? .altPrimary
                 self.navigationBarButton.isHidden = false
-                
                 #if !os(tvOS)
                 if #available(iOS 16, *)
                 {
                     self.navigationItem.rightBarButtonItem?.isHidden = false
                 }
                 #endif
-                
             case nil:
                 title = ""
                 self.navigationBarButton.isHidden = true
             }
-            
             if title != self.navigationBarButton.title(for: .normal) && !self.navigationBarButton.isIndicatingActivity
             {
                 self.navigationBarButton.setTitle(title, for: .normal)
                 self.navigationBarButton.sizeToFit()
                 self.navigationBarButton.invalidateIntrinsicContentSize()
                 self.navigationBarButton.superview?.invalidateIntrinsicContentSize()
-                
                 let barButtonItem = self.navigationItem.rightBarButtonItem
                 self.navigationItem.rightBarButtonItem = nil
                 self.navigationItem.rightBarButtonItem = barButtonItem
             }
-            
             let currentSizeWidth = max(PillButton.minimumSize.width, self.navigationBarButton.intrinsicContentSize.width)
             let targetWidth = currentSizeWidth + 2
             if let existingConstraint = self.widthConstraint
@@ -224,20 +180,14 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
                 constraint.isActive = true
                 self.widthConstraint = constraint
             }
-            
             self.view.setNeedsLayout()
         }
     }
-    
-    //MARK: Actions
-    
     @objc private func addSource()
     {
         self.viewModel.isAddingSource = true
-        
         Task {
             var errorTitle = NSLocalizedString("Unable to Add Source", comment: "")
-            
             do
             {
                 let isAdded = try await self.source.isAdded()
@@ -249,7 +199,6 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
                 else
                 {
                     try await AppManager.shared.add(self.source, presentingViewController: self)
-                    
                     self.addedSourceHandler?(self.source)
                 }
             }
@@ -258,11 +207,9 @@ class SourceDetailViewController: HeaderContentViewController<SourceHeaderView, 
             {
                 await self.presentAlert(title: errorTitle, message: error.localizedDescription)
             }
-            
             self.viewModel.isAddingSource = false
         }
     }
-    
     @objc private func showWebsite()
     {
         guard let websiteURL = self.source.websiteURL else { return }
@@ -280,12 +227,9 @@ private extension SourceDetailViewController
                 self?.update()
             }
             .store(in: &self.cancellables)
-        
-        // Adding or removing a source while viewing source details is currently broken,
-        // so for now we just dismiss the view whenever the source is added or removed.
         self.viewModel.$isSourceAdded
             .compactMap { $0 }
-            .dropFirst() // Ignore first non-nil value.
+            .dropFirst() 
             .removeDuplicates()
             .receive(on: RunLoop.main)
             .sink { [weak self] isAdded in
@@ -300,13 +244,11 @@ private extension SourceDetailViewController
             }
             .store(in: &self.cancellables)
     }
-    
     func didAddSource()
     {
         guard let presentingViewController = self.navigationController?.presentingViewController else { return }
         presentingViewController.dismiss(animated: true)
     }
-    
     func didRemoveSource()
     {
         self.navigationController?.popToRootViewController(animated: true)

@@ -5,23 +5,16 @@
 //  Created by Riley Testut on 9/14/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 import WidgetKit
 import SwiftUI
 
 struct AppDetailWidget: Widget
 {
     private let kind: String = "AppDetail"
-    
     init() {
         debugLog("[AppDetailWidget] Initialized widget kind: AppDetail")
     }
-    
     public var body: some WidgetConfiguration {
-        // On iOS 16+ use AppIntentConfiguration — it correctly supports
-        // containerBackground and contentMarginsDisabled(), unlike the legacy
-        // IntentConfiguration which breaks on iOS 17+ with the
-        // "Please adopt containerBackground" error.
         if #available(iOSApplicationExtension 17, *)
         {
             return AppIntentConfiguration(
@@ -38,7 +31,6 @@ struct AppDetailWidget: Widget
         }
         else
         {
-            // Legacy path for iOS 15.
             return IntentConfiguration(
                 kind: kind,
                 intent: ViewAppIntent.self,
@@ -58,21 +50,17 @@ private struct AppDetailWidgetView: View
     let apps: [AppSnapshot]
     let date: Date
     let isPlaceholder: Bool
-    
     var body: some View {
         Group {
             if let app = apps.first
             {
                 let daysRemaining = app.expirationDate.numberOfCalendarDays(since: date)
-                    
                 GeometryReader { (geometry) in
                     Group {
                         VStack(alignment: .leading) {
                             VStack(alignment: .leading, spacing: 5) {
                                 let imageHeight = geometry.size.height * 0.4
-                                
                                 AppIconView(icon: app.icon, imageHeight: imageHeight)
-                                
                                 Text(app.name.uppercased())
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundColor(.white)
@@ -81,9 +69,7 @@ private struct AppDetailWidgetView: View
                             }
                             .fixedSize(horizontal: false, vertical: true)
                             .widgetAccentableIfAvailable()
-                            
                             Spacer(minLength: 0)
-                            
                             HStack(alignment: .center) {
                                 let expirationText: Text = {
                                     switch daysRemaining
@@ -93,12 +79,10 @@ private struct AppDetailWidgetView: View
                                     default: return Text("\(daysRemaining) days")
                                     }
                                 }()
-                                
                                 (
                                     Text("Expires in\n")
                                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                                         .foregroundColor(Color.white.opacity(0.45)) +
-                                    
                                     expirationText
                                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                                         .foregroundColor(.white)
@@ -106,9 +90,7 @@ private struct AppDetailWidgetView: View
                                 .lineLimit(2)
                                 .lineSpacing(1.0)
                                 .minimumScaleFactor(0.5)
-                                
                                 Spacer()
-                                
                                 if daysRemaining >= 0
                                 {
                                     Countdown(startDate: app.refreshedDate,
@@ -163,26 +145,17 @@ private struct AppDetailWidgetView: View
         let defaultIcon = UIImage(named: "SideStore") ?? UIImage(systemName: "app.fill")!
         let icon = icon ?? defaultIcon
         let tintColor = tintColor ?? .gray
-        
         let imageHeight = 60 as CGFloat
         let saturation = 1.8
         let blurRadius = 5 as CGFloat
         let tintOpacity = 0.45
-        
-        // 1024x1024 images are not supported by previews but supported by device
-        // so we scale the image to 97% so as to reduce its actual size but not too much
-        // to somewhere below value, acceptable by previews ie < 1042x948
         let scalingFactor = 0.97
-        
         let resizedSize = CGSize(
             width:  icon.size.width * scalingFactor,
             height: icon.size.height * scalingFactor
         )
-            
         let resizedIcon = icon.resizing(to: resizedSize) ?? icon
-        
         return ZStack(alignment: .topTrailing) {
-            // Blurred Image
             GeometryReader { geometry in
                 ZStack {
                     Image(uiImage: resizedIcon)
@@ -192,12 +165,10 @@ private struct AppDetailWidgetView: View
                         .saturation(saturation)
                         .blur(radius: blurRadius, opaque: true)
                         .scaleEffect(geometry.size.width / imageHeight, anchor: .center)
-                    
                     Color(tintColor)
                         .opacity(tintOpacity)
                 }
             }
-            
             Image("Badge")
                 .resizable()
                 .frame(width: 26, height: 26)
@@ -206,10 +177,6 @@ private struct AppDetailWidgetView: View
     }
 }
 
-// In tinted/clear mode: luminanceToAlpha converts pixel brightness → opacity so
-// the system can overlay the accent colour. Must come BEFORE the mask so the
-// squircle corners are clipped after conversion (reverse order = corner bleed).
-// widgetAccentable() opts the result into the accent group.
 private struct AppIconView: View
 {
     let icon: UIImage?
@@ -235,9 +202,7 @@ private struct AppIconView: View
     let (altstore, _, _, longAltStore, _, _) = AppSnapshot.makePreviewSnapshots()
     AppsEntry<Void>(date: Date(), apps: [altstore])
     AppsEntry<Void>(date: Date(), apps: [longAltStore])
-    
     AppsEntry<Void>(date: expiredDate, apps: [altstore])
-    
     AppsEntry<Void>(date: Date(), apps: [])
     AppsEntry<Void>(date: Date(), apps: [], isPlaceholder: true)
 }

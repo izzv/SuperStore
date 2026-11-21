@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/10/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 
@@ -52,7 +51,6 @@ class ImportAccountAlertViewController: UIViewController {
 }
 
 class ImportAccountAlertController: UIAlertController {
-    
     static func make(
         data: Data,
         checksum: String,
@@ -65,7 +63,6 @@ class ImportAccountAlertController: UIAlertController {
         )
         let alertVC = ImportAccountAlertViewController()
         alert.setValue(alertVC, forKey: "contentViewController")
-        
         let importAction = UIAlertAction(title: NSLocalizedString("Import", comment: ""), style: .default) { [weak presentingViewController, weak alertVC] _ in
             guard let presentingVC = presentingViewController,
                   let password = alertVC?.passwordTextField.text,
@@ -89,11 +86,9 @@ class ImportAccountAlertController: UIAlertController {
                 }
             }
         }
-        
         let cancelAction = UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel)
         alert.addAction(importAction)
         alert.addAction(cancelAction)
-        
         return alert
     }
 }

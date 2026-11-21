@@ -5,7 +5,6 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 import UserNotifications
 import Foundation
 
@@ -50,18 +49,15 @@ final class ScheduleExpirationWarningNotificationOperation: BaseStandaloneOperat
         #if !os(tvOS)
         let range = endProgress - startProgress
         let count = milestones.count
-        
         for (index, milestone) in milestones.enumerated() {
             if range > 0 {
                 let percent = startProgress + Int64(Double(index + 1) / Double(count) * Double(range))
                 self.setProgress(percent)
             }
-            
             let identifier = "\(AppManager.expirationWarningNotificationID).\(milestone.id)"
             let targetDate = expirationDate.addingTimeInterval(-milestone.timeBeforeExp)
             let triggerInterval = targetDate.timeIntervalSince(now)
 
-            // Skip milestones that are already in the past
             guard triggerInterval > 0 else { continue }
 
             let content = UNMutableNotificationContent()

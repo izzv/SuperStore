@@ -5,14 +5,12 @@
 //  Created by Riley Testut on 5/30/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 import Foundation
 import CodeSignKit
 
 private let appGroupsLock = NSLock()
 private nonisolated(unsafe) var appGroupsCache: [URL: (modDate: Date?, groups: [String])] = [:]
 
-// @livecontainer
 private extension Bundle {
     @objc dynamic static let activeBundle: Bundle = Bundle.main
     @objc dynamic static let storeAppBundleIdentifier = "com.superstore.SuperStore"
@@ -34,9 +32,7 @@ public extension Bundle
         public static let activeBundleIdentifier: String = activeBundle.bundleIdentifier!
         public static let storeAppBundleIdentifier = Bundle.storeAppBundleIdentifier
         public static let appbundleIdentifier = Bundle.appbundleIdentifier
- 
         public static let certificateID = "ALTCertificateID"
-     
         public static let urlTypes = "CFBundleURLTypes"
         public static let exportedUTIs = "UTExportedTypeDeclarations"
         public static let backgroundModes = "UIBackgroundModes"
@@ -49,17 +45,14 @@ public extension Bundle
         let infoPlistURL = self.bundleURL.appendingPathComponent("Info.plist")
         return infoPlistURL
     }
-    
     var provisioningProfileURL: URL {
         let provisioningProfileURL = self.bundleURL.appendingPathComponent("embedded.mobileprovision")
         return provisioningProfileURL
     }
-    
     var certificateURL: URL {
         let certificateURL = self.bundleURL.appendingPathComponent("ALTCertificate.p12")
         return certificateURL
     }
-    
     var altstorePlistURL: URL {
         let altstorePlistURL = self.bundleURL.appendingPathComponent("AltStore.plist")
         return altstorePlistURL
@@ -68,7 +61,6 @@ public extension Bundle
 
 public extension Bundle
 {
-    // @livecontainer
     @objc dynamic static let baseAltStoreAppGroupID = "group." + Bundle.Info.appbundleIdentifier
 
     var appGroups: [String] {
@@ -95,23 +87,18 @@ public extension Bundle
             return groups
         }
     }
-    
-    // @livecontainer
     @objc dynamic var altstoreAppGroup: String? {
         let appGroup = self.appGroups.first { $0.contains(Bundle.baseAltStoreAppGroupID) }
         return appGroup
     }
-    
 }
 
 public extension String {
     var isAltStoreAppID: Bool {
         let activeID   = Bundle.Info.activeBundleIdentifier
         let altstoreID = Bundle.Info.appbundleIdentifier
-        
         let matchesActiveBundle   = !activeID.isEmpty && self.contains(activeID)
         let matchesAltStoreBundle = !altstoreID.isEmpty && self.contains(altstoreID)
-        
         return matchesActiveBundle || matchesAltStoreBundle
     }
 }

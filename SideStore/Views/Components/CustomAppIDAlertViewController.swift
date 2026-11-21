@@ -5,7 +5,6 @@
 //  Created by Magesh K on 28/08/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import SideSign
@@ -15,11 +14,9 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
     let label = UILabel()
     weak var textField: UITextField?
     var teamID: String = ""
-    
     var suffix: String {
         teamID.isEmpty ? "" : ".\(teamID)"
     }
-    
     var isChecked: Bool = true {
         didSet {
             updateButtonImage()
@@ -27,9 +24,7 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
             onToggle?(isChecked)
         }
     }
-    
     var onToggle: ((Bool) -> Void)?
-    
     init(isChecked: Bool = true, teamID: String = "", textField: UITextField? = nil) {
         self.isChecked = isChecked
         self.teamID = teamID
@@ -40,12 +35,10 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
             attach(to: tf, teamID: teamID)
         }
     }
-    
     required init?(coder: NSCoder) {
         super.init(coder: coder)
         setup()
     }
-    
     func attach(to textField: UITextField, teamID: String) {
         verboseLog("[AppendTeamIDCheckboxView] attach: teamID='\(teamID)', initial textField.text='\(textField.text ?? "")'")
         self.textField = textField
@@ -73,7 +66,6 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
         }
         verboseLog("[AppendTeamIDCheckboxView] updateTextFieldSuffix result: tf.text='\(tf.text ?? "")'")
     }
-    
     func cleanBaseID() -> String {
         guard let text = textField?.text?.trimmingCharacters(in: .whitespacesAndNewlines) else { return "" }
         let rawBase: String
@@ -99,20 +91,17 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
         verboseLog("[AppendTeamIDCheckboxView] shouldChange allowed=\(allowed), resultingText='\(textField.text ?? "")'")
         return allowed
     }
-    
     func textFieldShouldClear(_ textField: UITextField) -> Bool {
         guard isChecked && !suffix.isEmpty else { return true }
         textField.text = suffix
         return false
     }
-    
     private func updateButtonImage() {
         let configuration = UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)
         let imageName = isChecked ? "checkmark.circle.fill" : "circle"
         let image = UIImage(systemName: imageName, withConfiguration: configuration)
         checkboxButton.setImage(image, for: .normal)
     }
-    
     private func setup() {
         checkboxButton.tintColor = .systemBlue
         checkboxButton.imageView?.contentMode = .scaleAspectFit
@@ -124,20 +113,17 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
             checkboxButton.heightAnchor.constraint(equalToConstant: 22)
         ])
         checkboxButton.addTarget(self, action: #selector(toggleCheckbox), for: .touchUpInside)
-        
         label.text = NSLocalizedString("Append Team ID", comment: "")
         label.font = .systemFont(ofSize: 14, weight: .regular)
         label.textColor = .label
         label.isUserInteractionEnabled = true
         let tap = UITapGestureRecognizer(target: self, action: #selector(toggleCheckbox))
         label.addGestureRecognizer(tap)
-        
         let stack = UIStackView(arrangedSubviews: [checkboxButton, label])
         stack.axis = .horizontal
         stack.spacing = 8
         stack.alignment = .center
         stack.translatesAutoresizingMaskIntoConstraints = false
-        
         addSubview(stack)
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: topAnchor),
@@ -145,10 +131,8 @@ class AppendTeamIDCheckboxView: UIView, UITextFieldDelegate {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
-        
         updateButtonImage()
     }
-    
     @objc func toggleCheckbox() {
         isChecked.toggle()
     }

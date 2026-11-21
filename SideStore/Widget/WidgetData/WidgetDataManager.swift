@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/13/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import UIKit
 #if !os(tvOS)
@@ -137,4 +136,3 @@ public extension WidgetDataManager {
         }
     }
 }
-

@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/26/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -14,7 +13,6 @@ public protocol AppProtocol
     var name: String { get }
     var bundleIdentifier: String { get }
     var url: URL? { get }
-    
     var storeApp: StoreApp? { get }
 }
 
@@ -24,7 +22,6 @@ public struct AnyApp: AppProtocol
     public var bundleIdentifier: String
     public var url: URL?
     public var storeApp: StoreApp?
-    
     public init(name: String, bundleIdentifier: String, url: URL?, storeApp: StoreApp?)
     {
         self.name = name
@@ -32,7 +29,6 @@ public struct AnyApp: AppProtocol
         self.url = url
         self.storeApp = storeApp
     }
-    
     public init(from app: AppProtocol, name: String? = nil, bundleId: String? = nil, url: URL? = nil, storeApp: StoreApp? = nil) {
         self.name = name ?? app.name
         self.bundleIdentifier = bundleId ?? app.bundleIdentifier
@@ -46,7 +42,6 @@ extension ALTApplication: AppProtocol
     public var url: URL? {
         return self.fileURL
     }
-    
     public var storeApp: StoreApp? {
         return nil
     }
@@ -57,7 +52,6 @@ extension StoreApp: AppProtocol
     public var url: URL? {
         return self.latestAvailableVersion?.downloadURL
     }
-    
     public var storeApp: StoreApp? {
         return self
     }
@@ -75,15 +69,12 @@ extension AppVersion: AppProtocol
     public var name: String {
         return self.app?.name ?? self.bundleIdentifier
     }
-    
     public var bundleIdentifier: String {
         return self.appBundleID
     }
-    
     public var url: URL? {
         return self.downloadURL
     }
-    
     public var storeApp: StoreApp? {
         return self.app
     }

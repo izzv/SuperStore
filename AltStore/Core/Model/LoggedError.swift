@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 9/6/22.
 //  Copyright © 2022 Riley Testut. All rights reserved.
 //
-
 import CoreData
 
 extension LoggedError
@@ -28,56 +27,41 @@ extension LoggedError
 @objc(LoggedError)
 public class LoggedError: BaseEntity
 {
-    /* Properties */
     @NSManaged public private(set) var date: Date
-    
     @nonobjc public var operation: Operation? {
         guard let rawOperation = self._operation else { return nil }
-        
         let operation = Operation(rawValue: rawOperation)
         return operation
     }
     @NSManaged @objc(operation) private var _operation: String?
-    
     @NSManaged public private(set) var domain: String
     @NSManaged public private(set) var code: Int32
     @NSManaged public private(set) var userInfo: [String: Any]
-    
     @NSManaged public private(set) var appName: String
     @NSManaged public private(set) var appBundleID: String
-    
-    /* Relationships */
     @NSManaged public private(set) var storeApp: StoreApp?
     @NSManaged public private(set) var installedApp: InstalledApp?
-    
     private static let dateFormatter: DateFormatter = {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .long
         dateFormatter.timeStyle = .none
         return dateFormatter
     }()
-    
     private override init(entity: NSEntityDescription, insertInto context: NSManagedObjectContext?)
     {
         super.init(entity: entity, insertInto: context)
     }
-    
     public init(error: Error, app: AppProtocol, date: Date = Date(), operation: Operation? = nil, context: NSManagedObjectContext)
     {
         super.init(entity: LoggedError.entity(), insertInto: context)
-        
         self.date = date
         self._operation = operation?.rawValue
-        
         let nsError = error as NSError
-        
         self.domain = nsError.domain
         self.code = Int32(nsError.code)
         self.userInfo = nsError.userInfo
-        
         self.appName = app.name
         self.appBundleID = app.bundleIdentifier
-        
         switch app
         {
         case let storeApp as StoreApp: self.storeApp = storeApp
@@ -91,7 +75,6 @@ public class LoggedError: BaseEntity
             {
                 self.storeApp = appVersion.app
             }
-        
         default: break
         }
     }
@@ -100,22 +83,18 @@ public class LoggedError: BaseEntity
 public extension LoggedError
 {
     var app: AppProtocol {
-        // `as AppProtocol` needed to fix "cannot convert AnyApp to StoreApp" compiler error with Xcode 14.
         let app = self.installedApp ?? self.storeApp ?? AnyApp(name: self.appName, bundleIdentifier: self.appBundleID, url: nil, storeApp: nil) as AppProtocol
         return app
     }
-    
     var error: NSError {
         let nsError = NSError(domain: self.domain, code: Int(self.code), userInfo: self.userInfo)
         return nsError
     }
-    
     @objc
     var localizedDateString: String {
         let localizedDateString = LoggedError.dateFormatter.string(from: self.date)
         return localizedDateString
     }
-    
     var localizedFailure: String? {
         guard let operation = self.operation else { return nil }
         switch operation

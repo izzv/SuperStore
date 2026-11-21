@@ -5,13 +5,10 @@
 //  Created by Riley Testut on 6/20/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
-
 import Foundation
 import CoreData
 import Network
 import SideSign
-
 
 enum AlternateIconMode {
     case preserve
@@ -99,13 +96,11 @@ class OperationContext: WeightedOperationContext
             debugLog("[OperationContext] Failed to consume weight for step '\(step)' from index \(currentIndex)")
             throw OperationError.invalidParameters("Missing progress weight for step '\(step)' in steps list")
         }
-        
         let item = stepItems[index]
         guard item.maxReuse > 0 else {
             debugLog("[OperationContext] Invalid maxReuse (\(item.maxReuse)) for step '\(step)'")
             throw OperationError.invalidParameters("Invalid maxReuse (\(item.maxReuse)) for step '\(step)' in steps list")
         }
-        
         let remaining: Int
         if let existing = remainingReuses[index] {
             remaining = existing
@@ -113,12 +108,10 @@ class OperationContext: WeightedOperationContext
             remaining = item.maxReuse
             remainingReuses[index] = remaining
         }
-        
         if remaining > 1 {
             remainingReuses[index] = remaining - 1
             return item.weight
         } else {
-            // remaining is 1. Clear it completely from the map and advance currentIndex.
             remainingReuses[index] = nil
             currentIndex = index + 1
             purgeCompletedProgressSlots()
@@ -130,7 +123,6 @@ class OperationContext: WeightedOperationContext
         guard let index = findIndex(for: step) else { return false }
         let item = stepItems[index]
         guard item.resetProgress else { return false }
-        
         let slot: Progress
         if let existing = stepProgressSlots[index] {
             slot = existing
@@ -139,7 +131,6 @@ class OperationContext: WeightedOperationContext
             parentProgress.addChild(slot, withPendingUnitCount: item.weight)
             stepProgressSlots[index] = slot
         }
-        
         slot.completedUnitCount = 0
         slot.addChild(childProgress, withPendingUnitCount: childProgress.totalUnitCount)
         try consumeWeight(for: step)
@@ -311,7 +302,6 @@ class InstallAppOperationContext: PipelineOperationContext
     var appBundleFingerprint: String?
     var releaseTrack: ReleaseTrack?
     var additionalEntitlements: [ALTEntitlement: any Sendable] = [:]
-    
     var beginInstallationHandler: ((InstalledApp) -> Void)?
 
     var alternateIconMode: AlternateIconMode = .preserve
@@ -330,7 +320,6 @@ class InstallAppOperationContext: PipelineOperationContext
         }
     }
 
-    // Non-nil when installing from a source.
     @AsyncManaged
     var appVersion: AppVersion?
 

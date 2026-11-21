@@ -5,18 +5,15 @@
 //  Created by Magesh K on 2026-07-02.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import SideSign
 
-// MARK: - Tree Node Model
 struct PlistNode: Identifiable {
     let id = UUID()
     let key: String
     let value: String?
     let typeInfo: String
     let children: [PlistNode]?
-    
     static func parse(key: String, value: Any) -> PlistNode {
         if let dict = value as? [String: any Sendable] {
             let sortedChildren = dict.keys.sorted().map { parse(key: $0, value: dict[$0]!) }
@@ -50,25 +47,19 @@ struct PlistNode: Identifiable {
     }
 }
 
-// MARK: - InfoPlist Mode Enum
 enum InfoPlistMode: String, CaseIterable, Identifiable {
     case semantic = "Semantic"
     case tree = "Tree"
     case rawJSON = "Raw JSON"
     case rawXML = "Raw XML"
-    
     var id: String { self.rawValue }
 }
 
-// MARK: - Container View
 struct InfoPlistContainerView: View {
     let plist: [String: any Sendable]
     var title: String = "Info.plist"
     var plistURL: URL? = nil
-    
     @State private var selectedMode: InfoPlistMode
-    
-    // Parent level cache to persist raw output between tab switches
     @State private var xmlString: String = ""
     @State private var jsonString: String = ""
     #if !os(tvOS)
@@ -88,7 +79,6 @@ struct InfoPlistContainerView: View {
             parser.minimumOSVersion != nil
         _selectedMode = State(initialValue: hasAppMetadata ? .semantic : .tree)
     }
-    
     private var shareURL: URL? {
         if let plistURL = plistURL, FileManager.default.fileExists(atPath: plistURL.path) {
             return plistURL
@@ -102,7 +92,6 @@ struct InfoPlistContainerView: View {
         }
         return nil
     }
-    
     var body: some View {
         VStack(spacing: 0) {
             Picker("Visualization Mode", selection: $selectedMode) {
@@ -117,9 +106,7 @@ struct InfoPlistContainerView: View {
             #else
             .background(Color.clear)
             #endif
-            
             Divider()
-            
             Group {
                 switch selectedMode {
                 case .tree:
@@ -161,12 +148,9 @@ struct InfoPlistContainerView: View {
     }
 }
 
-// MARK: - Mode 1: Tree View
 struct InfoPlistTreeView: View {
     let plist: [String: any Sendable]
-    
     @State private var searchQuery = ""
-    
     var rootNodes: [PlistNode] {
         let nodes = plist.keys.sorted().map { PlistNode.parse(key: $0, value: plist[$0]!) }
         if searchQuery.isEmpty {
@@ -174,7 +158,6 @@ struct InfoPlistTreeView: View {
         }
         return filterNodes(nodes, query: searchQuery)
     }
-    
     var body: some View {
         List {
             ForEach(rootNodes) { node in
@@ -188,7 +171,6 @@ struct InfoPlistTreeView: View {
         #endif
         .searchable(text: $searchQuery, prompt: "Search keys")
     }
-    
     private func filterNodes(_ nodes: [PlistNode], query: String) -> [PlistNode] {
         return nodes.compactMap { node in
             if node.key.localizedCaseInsensitiveContains(query) {
@@ -207,9 +189,7 @@ struct InfoPlistTreeView: View {
 
 struct PlistNodeRow: View {
     let node: PlistNode
-    
     @State private var isCopied = false
-    
     var body: some View {
         #if !os(tvOS)
         if let children = node.children {
@@ -250,7 +230,6 @@ struct PlistNodeRow: View {
         }
         #endif
     }
-    
     private var leafRow: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
@@ -266,7 +245,6 @@ struct PlistNodeRow: View {
                 }
             }
             Spacer()
-            
             #if !os(tvOS)
             SwiftUI.Button {
                 let textToCopy = node.value ?? ""
@@ -306,21 +284,16 @@ struct PlistNodeRow: View {
     }
 }
 
-// MARK: - Mode 1.5: Raw XML View
 struct InfoPlistRawXMLView: View {
     let plist: [String: any Sendable]
-    
     @State private var isCopied = false
     @State private var isWrapped = true
-    
     @Binding var xmlString: String
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Spacer()
-                    
                     SwiftUI.Button {
                         withAnimation {
                             isWrapped.toggle()
@@ -330,7 +303,6 @@ struct InfoPlistRawXMLView: View {
                             .font(.footnote)
                     }
                     .buttonStyle(.bordered)
-                    
                     #if !os(tvOS)
                     SwiftUI.Button {
                         UIPasteboard.general.string = xmlString
@@ -352,7 +324,6 @@ struct InfoPlistRawXMLView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                
                 if isWrapped {
                     Text(xmlString)
                         .font(.system(size: 11, design: .monospaced))
@@ -387,7 +358,6 @@ struct InfoPlistRawXMLView: View {
             }
         }
     }
-    
     private func generateXMLString(from plist: [String: any Sendable]) -> String {
         guard let data = try? PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0),
               let string = String(data: data, encoding: .utf8) else {
@@ -397,21 +367,16 @@ struct InfoPlistRawXMLView: View {
     }
 }
 
-// MARK: - Mode 2: Raw JSON View
 struct InfoPlistRawView: View {
     let plist: [String: any Sendable]
-    
     @State private var isCopied = false
     @State private var isWrapped = true
-    
     @Binding var jsonString: String
-    
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Spacer()
-                    
                     SwiftUI.Button {
                         withAnimation {
                             isWrapped.toggle()
@@ -421,7 +386,6 @@ struct InfoPlistRawView: View {
                             .font(.footnote)
                     }
                     .buttonStyle(.bordered)
-                    
                     #if !os(tvOS)
                     SwiftUI.Button {
                         UIPasteboard.general.string = jsonString
@@ -443,7 +407,6 @@ struct InfoPlistRawView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top)
-                
                 if isWrapped {
                     Text(jsonString)
                         .font(.system(size: 11, design: .monospaced))
@@ -478,7 +441,6 @@ struct InfoPlistRawView: View {
             }
         }
     }
-    
     static func jsonSanitize(_ value: Any) -> Any {
         if let data = value as? Data {
             return data.base64EncodedString()
@@ -498,7 +460,6 @@ struct InfoPlistRawView: View {
             return "\(value)"
         }
     }
-    
     private func generateJSONString(from plist: [String: any Sendable]) -> String {
         let sanitized = Self.jsonSanitize(plist)
         guard JSONSerialization.isValidJSONObject(sanitized),
@@ -510,17 +471,13 @@ struct InfoPlistRawView: View {
     }
 }
 
-// MARK: - Mode 3: Semantic View
 struct InfoPlistSemanticView: View {
     let plist: [String: any Sendable]
-    
     @State private var searchQuery = ""
-    
     private var parser: InfoPlistParser {
         InfoPlistParser(dictionary: plist)
     }
 
-    // Core App Metadata
     var appName: String {
         return parser.displayName ?? parser.bundleName ?? "N/A"
     }
@@ -533,32 +490,24 @@ struct InfoPlistSemanticView: View {
     var minOS: String {
         return parser.minimumOSVersion ?? "N/A"
     }
-    
-    // Categorized Groups
     var privacyPermissions: [String: String] {
         return parser.privacyPermissions
     }
-    
     var customURLSchemes: [String] {
         return parser.customURLSchemes
     }
-    
     var backgroundModes: [String] {
         return parser.backgroundModes
     }
-    
     var queriedSchemes: [String] {
         return parser.queriedURLSchemes
     }
-    
-    // Custom/Uncategorized keys
     var customKeys: [String: any Sendable] {
         let categorized: Set<String> = [
             "CFBundleDisplayName", "CFBundleName", "CFBundleIdentifier",
             "CFBundleShortVersionString", "CFBundleVersion", "MinimumOSVersion",
             "CFBundleURLTypes", "UIBackgroundModes", "LSApplicationQueriesSchemes"
         ]
-        
         var dict = [String: any Sendable]()
         for key in plist.keys {
             if categorized.contains(key) { continue }
@@ -567,7 +516,6 @@ struct InfoPlistSemanticView: View {
         }
         return dict
     }
-    
     var filteredCustomKeys: [String] {
         let keys = customKeys.keys.sorted()
         if searchQuery.isEmpty {
@@ -575,7 +523,6 @@ struct InfoPlistSemanticView: View {
         }
         return keys.filter { $0.localizedCaseInsensitiveContains(searchQuery) }
     }
-    
     private var hasAppMetadata: Bool {
         parser.displayName != nil ||
         parser.bundleName != nil ||
@@ -584,10 +531,8 @@ struct InfoPlistSemanticView: View {
         parser.rawDictionary["CFBundleVersion"] != nil ||
         parser.minimumOSVersion != nil
     }
-    
     var body: some View {
         List {
-            // General Info — only show if app metadata is actually present in plist
             if hasAppMetadata {
                 Section(header: Text("General Info")) {
                     SemanticValueRow(label: "App Name", value: appName)
@@ -596,8 +541,6 @@ struct InfoPlistSemanticView: View {
                     SemanticValueRow(label: "Minimum OS", value: minOS)
                 }
             }
-            
-            // Privacy Permissions Card
             if !privacyPermissions.isEmpty {
                 Section(header: Text("Privacy Permissions (\(privacyPermissions.count))")) {
                     ForEach(privacyPermissions.keys.sorted(), id: \.self) { key in
@@ -605,8 +548,6 @@ struct InfoPlistSemanticView: View {
                     }
                 }
             }
-            
-            // Custom URL Schemes Card
             if !customURLSchemes.isEmpty {
                 Section(header: Text("Custom URL Schemes")) {
                     ForEach(customURLSchemes, id: \.self) { scheme in
@@ -614,8 +555,6 @@ struct InfoPlistSemanticView: View {
                     }
                 }
             }
-            
-            // Background Modes Card
             if !backgroundModes.isEmpty {
                 Section(header: Text("Background Modes")) {
                     ForEach(backgroundModes, id: \.self) { mode in
@@ -630,8 +569,6 @@ struct InfoPlistSemanticView: View {
                     }
                 }
             }
-            
-            // Queried URL Schemes Card
             if !queriedSchemes.isEmpty {
                 Section(header: Text("Queries Schemes")) {
                     ForEach(queriedSchemes, id: \.self) { scheme in
@@ -643,14 +580,11 @@ struct InfoPlistSemanticView: View {
                     }
                 }
             }
-            
-            // Other Custom/Advanced Keys
             Section(header: Text("Advanced / Custom Keys")) {
                 SearchBarView(text: $searchQuery)
                     .listRowInsets(EdgeInsets())
                     .padding(.horizontal)
                     .padding(.vertical, 8)
-                
                 ForEach(filteredCustomKeys, id: \.self) { key in
                     let val = customKeys[key] ?? ""
                     CopyableValueRow(key: key, value: val)
@@ -663,7 +597,6 @@ struct InfoPlistSemanticView: View {
         .listStyle(GroupedListStyle())
         #endif
     }
-    
     private func getBackgroundModeIcon(_ mode: String) -> String {
         switch mode {
         case "audio": return "music.note"
@@ -681,11 +614,9 @@ struct InfoPlistSemanticView: View {
     }
 }
 
-// MARK: - Localized Semantic Value Row
 struct SemanticValueRow: View {
     let label: String
     let value: String
-    
     var body: some View {
         HStack {
             Text(label)
@@ -710,11 +641,9 @@ struct SemanticValueRow: View {
     }
 }
 
-// MARK: - Localized Description Row
 struct LocalCopyableDescriptionRow: View {
     let key: String
     let value: String
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(key)
@@ -745,10 +674,8 @@ struct LocalCopyableDescriptionRow: View {
     }
 }
 
-// MARK: - Localized Value Only Row
 struct LocalCopyableValueOnlyRow: View {
     let value: String
-    
     var body: some View {
         HStack {
             Text(value)
@@ -767,18 +694,15 @@ struct LocalCopyableValueOnlyRow: View {
     }
 }
 
-// MARK: - Localized Copyable Value Row
 struct CopyableValueRow: View {
     let key: String
     let value: Any
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(key)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .bold()
-            
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(formatValue(value))
                     .font(.subheadline)
@@ -803,7 +727,6 @@ struct CopyableValueRow: View {
             }
         }
     }
-    
     private func formatValue(_ val: Any) -> String {
         let sanitized = InfoPlistRawView.jsonSanitize(val)
         if JSONSerialization.isValidJSONObject(sanitized) {
@@ -834,18 +757,14 @@ struct CopyableValueRow: View {
     }
 }
 
-// MARK: - Search Bar Helper View
 struct SearchBarView: View {
     @Binding var text: String
-    
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
-            
             TextField("Search keys", text: $text)
                 .textFieldStyle(PlainTextFieldStyle())
-                
             if !text.isEmpty {
                 SwiftUI.Button(action: {
                     self.text = ""

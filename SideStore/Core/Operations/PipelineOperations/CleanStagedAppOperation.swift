@@ -5,12 +5,10 @@
 //  Created by Magesh K on 31/7/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 
 final class CleanStagedAppOperation: BasePipelineOperation<InstallAppOperationContext, Void>, @unchecked Sendable {
-    
     override func execute(parentProgress: Progress?) async throws {
         let startTime = CFAbsoluteTimeGetCurrent()
         debugLog("[CleanStagedAppOperation] execute() started")
@@ -20,10 +18,8 @@ final class CleanStagedAppOperation: BasePipelineOperation<InstallAppOperationCo
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
         self.setProgress(10)
-        
         let tempDir = self.context.temporaryDirectory
         debugLog("[CleanStagedAppOperation] Removing temporary staged app directory: \(tempDir)")
-        
         if FileManager.default.fileExists(atPath: tempDir.path) {
             self.setProgress(40)
             do {

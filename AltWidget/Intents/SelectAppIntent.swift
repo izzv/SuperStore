@@ -1,24 +1,13 @@
-//
-//  ViewAppIntent.swift
-//  AltWidgetExtension
-//
-//  Replaces the legacy SiriKit ViewAppIntent (ViewApp.intentdefinition) with a
-//  modern AppIntents-based intent. Required because IntentConfiguration does not
-//  support containerBackground on iOS 17+, causing the blank-widget bug.
-//
-
 import AppIntents
 import WidgetKit
 
-// Represents one installed app in the picker list.
 @available(iOS 17.0, *)
 struct InstalledAppEntity: AppEntity
 {
-    // Disambiguates from the AppEntity name used in AppIntents framework.
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Installed App"
     static var defaultQuery = InstalledAppQuery()
 
-    var id: String // bundle identifier
+    var id: String 
     var name: String
 
     var displayRepresentation: DisplayRepresentation {
@@ -57,6 +46,5 @@ struct SelectAppIntent: WidgetConfigurationIntent
     @Parameter(title: "App")
     var app: InstalledAppEntity?
 
-    // WidgetConfigurationIntent requires perform() — no-op for configuration intents.
     func perform() async throws -> some IntentResult { .result() }
 }

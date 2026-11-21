@@ -5,8 +5,6 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
-
 import Foundation
 import CoreData
 import SideSign
@@ -44,7 +42,6 @@ final class UserCustomizationOperation: BasePipelineOperation<InstallAppOperatio
                 throw OperationError.invalidParameters("Active developer team identifier is missing.")
             }
 
-            // Fetch installed apps to detect existing installations by authoritative bundle ID
             let installedApps: [InstalledApp] = context.dbBackgroundContext.performAndWait {
                 let request = InstalledApp.fetchRequest()
                 return (try? context.dbBackgroundContext.fetch(request)) ?? []
@@ -113,7 +110,6 @@ final class UserCustomizationOperation: BasePipelineOperation<InstallAppOperatio
                 context.customInfoPlistByBundleID[key] = plist
             }
 
-            // Dynamically link existing installed app if bundle ID matches
             let effectiveCustomID = customID ?? initialBundleID
             let resolvedID = result.appendTeamID && !teamID.isEmpty ? "\(effectiveCustomID).\(teamID)" : effectiveCustomID
             if let matchingApp = installedApps.first(where: { $0.bundleIdentifier == resolvedID }) {
@@ -126,11 +122,9 @@ final class UserCustomizationOperation: BasePipelineOperation<InstallAppOperatio
         } else if UserDefaults.standard.customizeAppId {
             let initialBundleID = context.targetBundleIdentifier
             self.setProgress(40)
-            
             guard let result = try await handler.resolveBundleIDOverride(initialBundleID: initialBundleID) else {
                 throw OperationError.cancelled
             }
-            
             context.appendTeamID = result.appendTeamID
             if result.customID != context.bundleIdentifier {
                 context.customBundleIdentifier = result.customID

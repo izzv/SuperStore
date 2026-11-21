@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/6/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 #if !os(tvOS)
 @preconcurrency import UIKit
 import Foundation
@@ -13,31 +12,19 @@ import Foundation
 final class IntentHandler: NSObject, RefreshAllIntentHandling
 {
     private let queue = DispatchQueue(label: "io.sidestore.IntentHandler")
-    
     private var completionHandlers = [RefreshAllIntent: (RefreshAllIntentResponse) -> Void]()
     private var queuedResponses = [RefreshAllIntent: RefreshAllIntentResponse]()
-    
     private var operations = [RefreshAllIntent: BackgroundRefreshAppsOperation]()
-    
     func confirm(intent: RefreshAllIntent, completion: @escaping (RefreshAllIntentResponse) -> Void)
     {
-        // Refreshing apps usually, but not always, completes within alotted time.
-        // As a workaround, we'll start refreshing apps in confirm() so we can
-        // take advantage of some extra time before starting handle() timeout timer.
 
         self.completionHandlers[intent] = { (response) in
             if response.code != .ready
             {
-                // Operation finished before confirmation "timeout".
-                // Cache response to return it when handle() is called.
                 self.queuedResponses[intent] = response
             }
-            
             completion(RefreshAllIntentResponse(code: .ready, userActivity: nil))
         }
-        
-        // Give ourselves 9 extra seconds before starting handle() timeout timer.
-        // 10 seconds or longer results in timeout regardless.
         self.queue.asyncAfter(deadline: .now() + 8.0) {
             Task {
                 if await isMinimuxerReady().isSuccess {
@@ -47,7 +34,6 @@ final class IntentHandler: NSObject, RefreshAllIntentHandling
                 }
             }
         }
-        
         Task<Void, Never>.detached(priority: .userInitiated) {
             do
             {
@@ -61,11 +47,9 @@ final class IntentHandler: NSObject, RefreshAllIntentHandling
             }
         }
     }
-    
     func handle(intent: RefreshAllIntent, completion: @escaping (RefreshAllIntentResponse) -> Void)
     {
         self.completionHandlers[intent] = { (response) in
-            // Ignore .ready response from confirm() timeout.
             guard response.code != .ready else { return }
             completion(response)
         }
@@ -80,8 +64,6 @@ final class IntentHandler: NSObject, RefreshAllIntentHandling
             self.queue.asyncAfter(deadline: .now() + 7.0) {
                 if let operation = self.operations[intent]
                 {
-                    // We took too long to finish and return the final result,
-                    // so we'll now present a normal notification when finished.
                     operation.presentsFinishedNotification = true
                     Task {
                         if await isMinimuxerReady().isSuccess {
@@ -91,7 +73,6 @@ final class IntentHandler: NSObject, RefreshAllIntentHandling
                         }
                     }
                 }
-                
                 self.finish(intent, response: RefreshAllIntentResponse(code: .inProgress, userActivity: nil))
             }
         }
@@ -110,7 +91,6 @@ private extension IntentHandler
             }
             else if response.code != .ready && response.code != .inProgress
             {
-                // Queue response in case refreshing finishes after confirm() but before handle().
                 self.queuedResponses[intent] = response
                 DispatchQueue.main.async {
                     UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
@@ -118,23 +98,19 @@ private extension IntentHandler
             }
         }
     }
-    
     func refreshApps(intent: RefreshAllIntent)
     {
-        
         let context = DatabaseManager.shared.persistentContainer.newBackgroundContext()
         let installedApps = InstalledApp.fetchAppsForRefreshingAll(in: context)
         let operation = try? AppManager.shared.backgroundRefresh(installedApps, presentsNotifications: false) { (result) in
             do
             {
                 let results = try result.get()
-                
                 for (_, result) in results
                 {
                     guard case let .failure(error) = result else { continue }
                     throw error
                 }
-                
                 self.finish(intent, response: RefreshAllIntentResponse(code: .success, userActivity: nil))
                 UIApplication.shared.perform(#selector(NSXPCConnection.suspend))
             }
@@ -148,10 +124,8 @@ private extension IntentHandler
                 debugLog("Failed to refresh apps in background. \(error)")
                 self.finish(intent, response: RefreshAllIntentResponse.failure(localizedDescription: error.localizedFailureReason ?? error.localizedDescription))
             }
-            
             self.operations[intent] = nil
         }
-        
         self.operations[intent] = operation
     }
 }

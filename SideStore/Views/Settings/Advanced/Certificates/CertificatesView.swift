@@ -5,23 +5,19 @@
 //  Created by Magesh K on 2026-06-29.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import SideSign
 import UniformTypeIdentifiers
 
 struct CertificatesView: View {
     weak var presentingViewController: UIViewController?
-    
     @StateObject private var viewModel = CertificatesViewModel()
-    
     private var allowedImportTypes: [UTType] {
         ["p12", "pfx", "pkcs12", "der", "cer", "crt", "pem"].compactMap { UTType(filenameExtension: $0) }
     }
     private var allowedKeyImportTypes: [UTType] {
         ["key", "pem", "der"].compactMap { UTType(filenameExtension: $0) }
     }
-    
     @State private var showCreateSheet            = false
     @State private var showFileImporter           = false
     @State private var showRevokeConfirmation     = false
@@ -31,20 +27,16 @@ struct CertificatesView: View {
     @State private var showClearKeyConfirmation   = false
     @State private var hasInitialLoaded           = false
     @State private var hasCopiedActiveSerial      = false
-    
     @State private var exportPasswordInput   = ""
     @State private var fileImportMode: FileImportMode       = .certificate
     @State private var keyTextImportItem: KeyTextImportItem? = nil
     @State private var privateKeyTextInput   = ""
-    
     @State private var deleteLocalOnRevoke: Bool = true
-    
     @State private var certificateToRevoke:      ALTX509Certificate? = nil
     @State private var certificateToDelete:      ALTX509Certificate? = nil
     @State private var certificateToExport:      ALTX509Certificate? = nil
     @State private var certificateToAddKeyFor:   ALTX509Certificate? = nil
     @State private var certificateToClearKeyFor: ALTX509Certificate? = nil
-    
     var body: some View {
         ZStack {
             List {
@@ -91,7 +83,6 @@ struct CertificatesView: View {
                         Image(systemName: viewModel.isGlobalHideActive ? "eye.slash" : "eye")
                     }
                     .accessibilityLabel("Toggle Hide Sensitive Information")
-                    
                     SwiftUI.Button {
                         showCreateSheet = true
                     } label: {
@@ -99,7 +90,6 @@ struct CertificatesView: View {
                     }
                     .accessibilityLabel("Create Certificate")
                     .disabled(viewModel.team == nil)
-                    
                     SwiftUI.Button {
                         importCertificatesAction()
                     } label: {
@@ -113,7 +103,6 @@ struct CertificatesView: View {
                 hasInitialLoaded = true
                 viewModel.loadCertificates(presentingViewController: nil)
             }
-            
             if viewModel.isLoading { LoadingOverlay() }
         }
         .alert("Error", isPresented: $viewModel.showErrorAlert) {
@@ -263,7 +252,6 @@ struct CertificatesView: View {
             }
         }
     }
-    
     private func pushDetailView(for cert: ALTX509Certificate) {
         let metadata = DeveloperPortalMetadata(
             identifier: cert.identifier,
@@ -295,30 +283,23 @@ struct CertificatesView: View {
         #endif
         presentingViewController?.navigationController?.pushViewController(detailVC, animated: true)
     }
-    
     private func presentRevokeAlert(for cert: ALTX509Certificate) {
         let contentVC = RevokeAlertViewController()
-        
         let alertController = UIAlertController(
             title: NSLocalizedString("Revoke Certificate", comment: ""),
             message: NSLocalizedString("Are you sure you want to revoke this certificate? This will permanently delete the certificate on Apple's servers.", comment: ""),
             preferredStyle: .alert
         )
-        
         alertController.setValue(contentVC, forKey: "contentViewController")
-        
         let cancelAction = UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel, handler: nil)
         let revokeAction = UIAlertAction(title: NSLocalizedString("Revoke", comment: ""), style: .destructive) { _ in
             let keepLocal = contentVC.isKeepLocalChecked
             viewModel.revokeCertificate(cert, keepLocal: keepLocal, presentingViewController: presentingViewController)
         }
-        
         alertController.addAction(cancelAction)
         alertController.addAction(revokeAction)
-        
         presentingViewController?.present(alertController, animated: true)
     }
-    
     private func importPrivateKeyAction(for cert: ALTX509Certificate) {
         certificateToAddKeyFor = cert
         fileImportMode = .privateKey
@@ -342,7 +323,6 @@ struct CertificatesView: View {
         }
         #endif
     }
-    
     private func importCertificatesAction() {
         fileImportMode = .certificate
         #if !os(tvOS)

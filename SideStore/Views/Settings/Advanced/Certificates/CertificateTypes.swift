@@ -5,7 +5,6 @@
 //  Created by Magesh K on 2026-07-03.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SideSign
 
 enum SortOption: String, CaseIterable, Identifiable {

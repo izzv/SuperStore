@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 10/10/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 import RegexBuilder
 
 @available(iOS 16, tvOS 16, *)
@@ -16,15 +15,10 @@ public extension Regex where Output == (Substring, Substring)
             Optionally {
                 "NS"
             }
-            
-            // Capture permission "name"
             Capture {
                 OneOrMore(.anyGraphemeCluster)
             }
-            
             "UsageDescription"
-            
-            // Optional suffix
             Optionally(OneOrMore(.anyGraphemeCluster))
         }
     }

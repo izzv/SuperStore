@@ -5,7 +5,6 @@
 //  Created by Magesh K on 13/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import UIKit
 import SideSign
@@ -419,7 +418,6 @@ public struct InfoPlistCustomizationCoreView: View {
         guard newID != selectedTargetID else { return }
         hideKeyboard()
 
-        // 1. Commit outgoing draft into its container
         targetStates[selectedTargetID] = TargetState(
             bundleID: bundleID,
             previousValidBundleID: previousValidBundleID,
@@ -433,10 +431,8 @@ public struct InfoPlistCustomizationCoreView: View {
             rawEntries: rawEntries
         )
 
-        // 2. Switch selected target ID
         selectedTargetID = newID
 
-        // 3. Load incoming target draft container
         let incoming: TargetState
         if let existing = targetStates[newID] {
             incoming = existing

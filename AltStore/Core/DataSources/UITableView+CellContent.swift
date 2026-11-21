@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 extension UITableView: CellContentUpdateableView, CellContentTransactionUpdateable {

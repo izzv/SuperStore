@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 9/1/21.
 //  Copyright © 2021 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import AudioToolbox
 import CoreHaptics
@@ -35,7 +34,6 @@ extension UIDevice
     func vibrate(pattern: VibrationPattern)
     {
         guard self.isVibrationSupported else { return }
-        
         switch pattern
         {
         case .success: AudioServicesPlaySystemSound(.tryAgain)

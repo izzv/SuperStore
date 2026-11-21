@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/3/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 
@@ -28,23 +27,19 @@ class PaddedSecureTextField: UITextField {
 class ExportAccountAlertViewController: UIViewController {
     let passwordTextField = PaddedSecureTextField()
     let includePasswordButton = UIButton(type: .system)
-    
     var isIncludePasswordChecked: Bool = false {
         didSet {
             updateButtonImage()
         }
     }
-    
     private func updateButtonImage() {
         let configuration = UIImage.SymbolConfiguration(pointSize: 18, weight: .regular)
         let imageName = isIncludePasswordChecked ? "checkmark.circle.fill" : "circle"
         let image = UIImage(systemName: imageName, withConfiguration: configuration)
         includePasswordButton.setImage(image, for: .normal)
     }
-    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
         passwordTextField.isSecureTextEntry = true
         passwordTextField.placeholder = NSLocalizedString("File Password", comment: "")
         passwordTextField.borderStyle = .none
@@ -58,12 +53,10 @@ class ExportAccountAlertViewController: UIViewController {
         passwordTextField.font = .systemFont(ofSize: 16)
         passwordTextField.autocapitalizationType = .none
         passwordTextField.autocorrectionType = .no
-        
         NSLayoutConstraint.activate([
             passwordTextField.heightAnchor.constraint(equalToConstant: 44),
             passwordTextField.widthAnchor.constraint(equalToConstant: 240)
         ])
-        
         includePasswordButton.tintColor = .systemBlue
         includePasswordButton.imageView?.contentMode = .scaleAspectFit
         includePasswordButton.setContentHuggingPriority(.required, for: .horizontal)
@@ -74,7 +67,6 @@ class ExportAccountAlertViewController: UIViewController {
         ])
         includePasswordButton.addTarget(self, action: #selector(toggleIncludePassword), for: .touchUpInside)
         updateButtonImage()
-        
         let label = UILabel()
         label.text = NSLocalizedString("Include Account Password", comment: "")
         label.font = .systemFont(ofSize: 15)
@@ -82,20 +74,16 @@ class ExportAccountAlertViewController: UIViewController {
         label.isUserInteractionEnabled = true
         let tap = UITapGestureRecognizer(target: self, action: #selector(toggleIncludePassword))
         label.addGestureRecognizer(tap)
-        
         let checkboxStack = UIStackView(arrangedSubviews: [includePasswordButton, label])
         checkboxStack.axis = .horizontal
         checkboxStack.spacing = 8
         checkboxStack.alignment = .center
-        
         let mainStack = UIStackView(arrangedSubviews: [passwordTextField, checkboxStack])
         mainStack.axis = .vertical
         mainStack.spacing = 14
         mainStack.alignment = .center
         mainStack.translatesAutoresizingMaskIntoConstraints = false
-        
         view.addSubview(mainStack)
-        
         NSLayoutConstraint.activate([
             mainStack.topAnchor.constraint(equalTo: view.topAnchor, constant: 8),
             mainStack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -8),
@@ -103,10 +91,8 @@ class ExportAccountAlertViewController: UIViewController {
             mainStack.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 8),
             mainStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -8)
         ])
-        
         self.preferredContentSize = CGSize(width: 270, height: 96)
     }
-    
     @objc func toggleIncludePassword() {
         isIncludePasswordChecked.toggle()
     }

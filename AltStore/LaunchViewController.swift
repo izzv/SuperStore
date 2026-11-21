@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/30/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 import SideSign
@@ -64,8 +63,6 @@ final class LaunchViewController: UIViewController {
         guard !didFinishLaunching else { return }
         startTime = Date()
         splashViewModel.updateStatus(NSLocalizedString("Starting…", comment: ""))
-        
-        // spin off the startup sequence concurrently
         Task.detached { [weak self] in
             await self?.runLaunchSequence()
         }
@@ -99,12 +96,10 @@ final class LaunchViewController: UIViewController {
         let alert = UIAlertController(title: "Error launching SuperStore", message: msg, preferredStyle: .alert)
         self.present(alert, animated: true)
     }
-    
     func detectAndImportAccountFile() {
         let accountFileURL = FileManager.default.documentsDirectory.appendingPathComponent(AppConstants.accountConfigurationFileName)
         guard FileManager.default.fileExists(atPath: accountFileURL.path) else { return }
         guard let data = try? Data(contentsOf: accountFileURL) else { return }
-        
         let checksum = SHA256.hash(data: data).compactMap { String(format: "%02x", $0) }.joined()
         guard checksum != UserDefaults.standard.acctFileChecksum else {
             debugLog("[LaunchViewController] Skipping import for \(accountFileURL.lastPathComponent): checksum unchanged.")
@@ -174,17 +169,14 @@ final class LaunchViewController: UIViewController {
         #endif
 
         didFinishLaunching = true
-        
         splashViewModel.updateStatus(NSLocalizedString("Loading apps…", comment: ""))
         await AppManager.shared.reconcileInstalledApps()
         splashViewModel.updateStatus(NSLocalizedString("Updating sources…", comment: ""))
         AppManager.shared.updateAllSources { result in
             guard case .failure(let error) = result else { return }
             debugLog("Failed to update sources on launch. \(error.localizedDescription)")
-            
             let errorDesc = ErrorProcessing(.fullError).getDescription(error: error as NSError)
             debugLog("Failed to update sources on launch. \(errorDesc)")
-            
             let toastView = ToastView(text: NSLocalizedString("Some sources were unable to load", comment: ""), detailText: nil)
             toastView.addTarget(self.destinationViewController, action: #selector(TabBarController.presentSources), for: .touchUpInside)
             toastView.show(in: self.destinationViewController!.selectedViewController ?? self.destinationViewController!)
@@ -205,7 +197,6 @@ final class LaunchViewController: UIViewController {
 
         embed(child: destinationVC)
 
-        // Set initial alpha for fade-in
         destinationVC.view.alpha = 0
 
         UIView.transition(with: view, duration: 0.3, options: .transitionCrossDissolve) { [self] in
@@ -222,13 +213,11 @@ final class LaunchViewController: UIViewController {
                 child.removeFromParent()
             }
             self.destinationViewController = destinationVC
-            
             Task.detached { @MainActor [weak self] in
                 guard let self = self else { return }
                 if AppBootManager.shared.needsPairingPrompt {
                     await AppBootManager.shared.promptForPairing(on: self)
                 }
-                
                 if AppBootManager.shared.needsSideJITPrompt {
                     SideJITManager.shared.presentJITPrompt(presentingVC: self)
                 }

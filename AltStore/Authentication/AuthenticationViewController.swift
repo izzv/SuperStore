@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 9/5/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 import SideSign
@@ -14,24 +13,17 @@ final class AuthenticationViewController: UIViewController
 {
     var authenticationHandler: ((String, String, @escaping (Result<(ALTAccount, ALTAppleAPISession), Error>) -> Void) -> Void)?
     var completionHandler: (((ALTAccount, ALTAppleAPISession, String)?) -> Void)?
-    
     private weak var toastView: ToastView?
-    
     @IBOutlet private var appleIDTextField: UITextField!
     @IBOutlet private var passwordTextField: UITextField!
     @IBOutlet private var signInButton: UIButton!
-    
     @IBOutlet private var appleIDBackgroundView: UIView!
     @IBOutlet private var passwordBackgroundView: UIView!
-    
     @IBOutlet private var scrollView: UIScrollView!
     @IBOutlet private var contentStackView: UIStackView!
-    
     override func viewDidLoad()
     {
         super.viewDidLoad()
-        
-        // fetch anisette servers asap when loading Auth Screen (if list is empty)
         Task {
             if await AnisetteServersManager.shared.getActiveServerURLs().isEmpty {
                 let sourceURL = UserDefaults.standard.menuAnisetteList
@@ -43,10 +35,8 @@ final class AuthenticationViewController: UIViewController
                 }
             }
         }
-        
         self.signInButton.activityIndicatorView.style = .medium
         self.signInButton.activityIndicatorView.color = .white
-        
         for view in [self.appleIDBackgroundView!, self.passwordBackgroundView!, self.signInButton!]
         {
             #if !os(tvOS)
@@ -85,20 +75,16 @@ final class AuthenticationViewController: UIViewController
         {
             self.contentStackView.spacing = 20
         }
-        
         self.appleIDTextField.delegate = self
         self.passwordTextField.delegate = self
 
         NotificationCenter.default.addObserver(self, selector: #selector(AuthenticationViewController.textFieldDidChangeText(_:)), name: UITextField.textDidChangeNotification, object: self.appleIDTextField)
         NotificationCenter.default.addObserver(self, selector: #selector(AuthenticationViewController.textFieldDidChangeText(_:)), name: UITextField.textDidChangeNotification, object: self.passwordTextField)
-        
         self.update()
     }
-    
     override func viewDidDisappear(_ animated: Bool)
     {
         super.viewDidDisappear(animated)
-        
         self.signInButton.isIndicatingActivity = false
         self.toastView?.dismiss()
     }
@@ -142,14 +128,12 @@ private extension AuthenticationViewController
             self.signInButton.alpha = 0.6
         }
     }
-    
     func validate() -> (String, String)?
     {
         guard
             let emailAddress = self.appleIDTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines), !emailAddress.isEmpty,
             let password = self.passwordTextField.text?.trimmingCharacters(in: .whitespacesAndNewlines), !password.isEmpty
         else { return nil }
-        
         return (emailAddress, password)
     }
 }
@@ -159,12 +143,9 @@ private extension AuthenticationViewController
     @IBAction func authenticate()
     {
         guard let (emailAddress, password) = self.validate() else { return }
-        
         self.appleIDTextField.resignFirstResponder()
         self.passwordTextField.resignFirstResponder()
-        
         self.signInButton.isIndicatingActivity = true
-        
         self.authenticationHandler?(emailAddress, password) { (result) in
             switch result
             {
@@ -190,10 +171,8 @@ private extension AuthenticationViewController
                     toastView.textLabel.textColor = .altPrimary
                     toastView.detailTextLabel.textColor = .altPrimary
                     self.toastView = toastView
-                    
                     self.signInButton.isIndicatingActivity = false
                 }
-                
             case .success((let account, let session)):
                 DispatchQueue.main.async {
                     UIView.performWithoutAnimation {
@@ -207,13 +186,11 @@ private extension AuthenticationViewController
                 }
                 self.completionHandler?((account, session, password))
             }
-            
             DispatchQueue.main.async {
                 self.scrollView.setContentOffset(CGPoint(x: 0, y: -self.view.safeAreaInsets.top), animated: true)
             }
         }
     }
-    
     @IBAction func cancel(_ sender: UIBarButtonItem)
     {
         self.dismiss(animated: true) { [weak self] in
@@ -232,9 +209,7 @@ extension AuthenticationViewController: UITextFieldDelegate
         case self.passwordTextField: self.authenticate()
         default: break
         }
-        
         self.update()
-        
         return false
     }
 
@@ -252,12 +227,9 @@ extension AuthenticationViewController: UITextFieldDelegate
         }
         return true
     }
-    
     func textFieldDidBeginEditing(_ textField: UITextField)
     {
         guard UIScreen.main.isExtraCompactHeight else { return }
-        
-        // Position all the controls within visible frame.
         var contentOffset = self.scrollView.contentOffset
         contentOffset.y = 44
         self.scrollView.setContentOffset(contentOffset, animated: true)
@@ -276,7 +248,6 @@ extension AuthenticationViewController
     {
         self.appleIDTextField.becomeFirstResponder()
     }
-    
     @objc private func focusPassword()
     {
         self.passwordTextField.becomeFirstResponder()

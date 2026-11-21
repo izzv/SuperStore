@@ -5,7 +5,6 @@
 //  Created by Magesh K on 11/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import UniformTypeIdentifiers
 import SideSign
@@ -31,7 +30,7 @@ class SideSignConfigurationViewModel: ObservableObject {
     @Published var developerServicesUserAgent: String = ""
 
     @Published var isLoading: Bool = false
-    @Published var viewMode: Int = 0 // 0 = Interactive, 1 = Raw JSON
+    @Published var viewMode: Int = 0 
     @Published var rawEditableJSON: String = ""
 
     init() {
@@ -189,7 +188,6 @@ struct SideSignConfigurationView: View {
                 .padding(.top, 4)
 
                 if viewModel.viewMode == 0 {
-                    // SECTION 1: GRANDSLAM AUTH (gsa.apple.com)
                     VStack(alignment: .leading, spacing: 8) {
                         sectionHeader("GRANDSLAM AUTH (GSA)")
 
@@ -233,7 +231,6 @@ struct SideSignConfigurationView: View {
                         .cornerRadius(14)
                     }
 
-                    // SECTION 2: APPLE AUTH (idmsa.apple.com)
                     VStack(alignment: .leading, spacing: 8) {
                         sectionHeader("APPLE AUTH (IDMSA)")
 
@@ -260,7 +257,6 @@ struct SideSignConfigurationView: View {
                         .cornerRadius(14)
                     }
 
-                    // SECTION 3: DEVELOPER SERVICES (developerservices2.apple.com)
                     VStack(alignment: .leading, spacing: 8) {
                         sectionHeader("DEVELOPER SERVICES")
 
@@ -303,7 +299,6 @@ struct SideSignConfigurationView: View {
                         .cornerRadius(14)
                     }
 
-                    // SAVE OVERRIDES BUTTON
                     SwiftUI.Button {
                         Task {
                             await viewModel.save()
@@ -321,7 +316,6 @@ struct SideSignConfigurationView: View {
                         .cornerRadius(14)
                     }
                 } else {
-                    // RAW JSON VIEW
                     VStack(alignment: .leading, spacing: 8) {
                         sectionHeader("RAW CONFIGURATION JSON")
 
@@ -358,7 +352,6 @@ struct SideSignConfigurationView: View {
                     }
                 }
 
-                // SECTION: ACTIONS
                 VStack(alignment: .leading, spacing: 8) {
                     sectionHeader("ACTIONS")
 

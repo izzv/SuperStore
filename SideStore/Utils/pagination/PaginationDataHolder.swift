@@ -5,11 +5,9 @@
 //  Created by Magesh K on 09/01/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public class PaginationDataHolder {
-    
     public let itemsPerPage: UInt
     public private(set) var currentPageindex: UInt
 
@@ -17,18 +15,15 @@ public class PaginationDataHolder {
         self.itemsPerPage = itemsPerPage
         self.currentPageindex = startPageIndex
     }
-    
     init(other: PaginationDataHolder) {
         self.itemsPerPage = other.itemsPerPage
         self.currentPageindex = other.currentPageindex
     }
-    
     public enum PageLimitResult{
         case null
         case empty
         case current
     }
-    
     private func updatePageIndexForDirection(_ direction: Direction, itemsCount: Int) -> Bool {
 
         var targetPageIndex = Int(currentPageindex)
@@ -40,13 +35,11 @@ public class PaginationDataHolder {
         case .down:
             targetPageIndex += 1
         }
-        
         let isUpdateValid = (targetPageIndex >= 0 && targetPageIndex < availablePages)
 
         if isUpdateValid{
             self.currentPageindex = UInt(targetPageIndex)
         }
-        
         return isUpdateValid
     }
 
@@ -62,26 +55,20 @@ public class PaginationDataHolder {
         if updatePageIndexForDirection(direction, itemsCount: inItems.count){
             return currentPage(inItems: inItems)
         }
-        
         switch whenUnavailable {
             case .null:
-                return nil                              // null was requested
+                return nil                              
             case .empty:
-                return []                               // empty list was requested
+                return []                               
             case .current:
-                return currentPage(inItems: inItems)    // Stay on the current page and return the same items
+                return currentPage(inItems: inItems)    
         }
     }
 
     public func currentPage<T>(inItems items: [T]) -> [T] {
         let count = UInt(items.count)
-        
         if(count == 0) { return items }
-        
-        // since we operate on any input items list at any time,
-        // we set currentPageIndex as last availablePage if out of bounds
         let availablePages = UInt(ceil(Double(count) / Double(itemsPerPage)))
-        
         self.currentPageindex = min(availablePages-1, currentPageindex)
 
         let startIndex = currentPageindex * itemsPerPage

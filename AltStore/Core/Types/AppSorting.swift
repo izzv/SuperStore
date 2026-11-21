@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 11/14/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 import Foundation
 
 public enum AppSorting: String, CaseIterable
@@ -14,7 +13,6 @@ public enum AppSorting: String, CaseIterable
     case name
     case developer
     case lastUpdated
-    
     public var localizedName: String {
         switch self
         {
@@ -24,7 +22,6 @@ public enum AppSorting: String, CaseIterable
         case .lastUpdated: return NSLocalizedString("Last Updated", comment: "")
         }
     }
-    
     public var isAscending: Bool {
         switch self
         {

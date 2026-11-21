@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/29/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 import Foundation
 import CoreData
 @preconcurrency import UIKit
@@ -22,7 +21,6 @@ extension AppManager
     static let didAddSourceNotification = Notification.Name("io.sidestore.AppManager.didAddSource")
     static let didRemoveSourceNotification = Notification.Name("io.sidestore.AppManager.didRemoveSource")
     static let willInstallAppFromNewSourceNotification = Notification.Name("io.sidestore.AppManager.willInstallAppFromNewSource")
-    
     static let expirationWarningNotificationID = "sidestore-expiration-warning"
     static let enableJITResultNotificationID = "sidestore-enable-jit"
 }
@@ -41,18 +39,12 @@ final class AppManager: ObservableObject, @unchecked Sendable
     }()
 
     @Published
-    private(set) var updateSourcesResult: Result<Void, Error>? // nil == loading
-    
+    private(set) var updateSourcesResult: Result<Void, Error>? 
     @Published private var installationProgress = [String: Progress]()
     @Published private var refreshProgress = [String: Progress]()
     private var cancellables: Set<AnyCancellable> = []
-    
     private let progressLock = NSLock()
-    
     private init() {
-        /// Every time refreshProgress is changed, update all InstalledApps in memory
-        /// so that app.isRefreshing == refreshProgress.keys.contains(app.bundleID)
-        ///
         self.$refreshProgress
             .receive(on: RunLoop.main)
             .map(\.keys)
@@ -140,8 +132,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         }
         #endif
     }
-    
-
 
     func appsToDeactivate(for installedApp: InstalledApp) -> [InstalledApp]? {
         guard !UserDefaults.standard.isAppLimitDisabled,
@@ -159,7 +149,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         guard installedApp.requiredActiveSlots > availableActiveApps else { return nil }
         return activeApps.filter { $0.bundleIdentifier != StoreApp.altstoreAppID }
     }
-    
     func clearAppCache(completion: @escaping (Result<Void, Error>) -> Void)
     {
         Task.detached {
@@ -186,7 +175,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
             }
         }
     }
-    
     func fetchSources() async throws -> (Set<Source>, NSManagedObjectContext)
     {
         try await withCheckedThrowingContinuation { continuation in
@@ -195,58 +183,44 @@ final class AppManager: ObservableObject, @unchecked Sendable
             }
         }
     }
-    
     func add(@AsyncManaged _ source: Source,
              message: String? = NSLocalizedString("Make sure to only add sources that you trust.", comment: ""),
              presentingViewController: UIViewController) async throws
     {
         let (sourceName, sourceURL) = await $source.perform { ($0.name, $0.sourceURL) }
-        
         let context = DatabaseManager.shared.persistentContainer.newBackgroundContext()
-        async let fetchedSource = try await self.fetchSource(sourceURL: sourceURL, managedObjectContext: context) // Fetch source async while showing alert.
+        async let fetchedSource = try await self.fetchSource(sourceURL: sourceURL, managedObjectContext: context) 
 
         let title = String(format: NSLocalizedString("Would you like to add the source “%@”?", comment: ""), sourceName)
         let action = await UIAlertAction(title: NSLocalizedString("Add Source", comment: ""), style: .default)
         try await presentingViewController.presentConfirmationAlert(title: title, message: message ?? "", primaryAction: action)
 
-        // Wait for fetch to finish before saving context to make
-        // sure there isn't already a source with this identifier.
         let sourceExists = try await fetchedSource.isAdded()
-        
-        // This is just a sanity check, so pass nil for existingSource to keep code simple.
         guard !sourceExists else { throw SourceError.duplicate(source, existingSource: nil) }
-        
         try await context.performAsync {
             try context.save()
         }
-        
         NotificationCenter.default.post(name: AppManager.didAddSourceNotification, object: source)
     }
-    
     func remove(@AsyncManaged _ source: Source, presentingViewController: UIViewController) async throws
     {
         let (sourceName, sourceID) = await $source.perform { ($0.name, $0.identifier) }
         guard sourceID != Source.altStoreIdentifier else {
             throw OperationError.forbidden(failureReason: NSLocalizedString("The default SuperStore source cannot be removed.", comment: ""))
         }
-        
         let title = String(format: NSLocalizedString("Are you sure you want to remove the source “%@”?", comment: ""), sourceName)
         let message = NSLocalizedString("Any apps you've installed from this source will remain, but they'll no longer receive any app updates.", comment: "")
         let action = await UIAlertAction(title: NSLocalizedString("Remove Source", comment: ""), style: .destructive)
         try await presentingViewController.presentConfirmationAlert(title: title, message: message, primaryAction: action)
-        
         let context = DatabaseManager.shared.persistentContainer.newBackgroundContext()
         try await context.performAsync {
             let predicate = NSPredicate(format: "%K == %@", #keyPath(Source.identifier), sourceID)
-            guard let source = Source.first(satisfying: predicate, in: context) else { return } // Doesn't exist == success.
-            
+            guard let source = Source.first(satisfying: predicate, in: context) else { return } 
             context.delete(source)
             try context.save()
         }
-        
         NotificationCenter.default.post(name: AppManager.didRemoveSourceNotification, object: source)
     }
-    
     @discardableResult
     func fetchSource(sourceURL: URL,
                      managedObjectContext: NSManagedObjectContext,
@@ -264,26 +238,20 @@ final class AppManager: ObservableObject, @unchecked Sendable
         }
         return fetchSourceOperation
     }
-    
     func fetchSources(completionHandler: @escaping (Result<(Set<Source>, NSManagedObjectContext), FetchSourcesError>) -> Void)
     {
         Task.detached(priority: .utility) {
             let managedObjectContext = DatabaseManager.shared.persistentContainer.newBackgroundContext()
-            
             var sourceData = [(objectID: NSManagedObjectID, sourceURL: URL)]()
-            
             managedObjectContext.performAndWait {
                 let sources = Source.all(in: managedObjectContext)
                 sourceData = sources.map { ($0.objectID, $0.sourceURL) }
             }
-            
             guard !sourceData.isEmpty else {
                 completionHandler(.failure(.init(OperationError.noSources)))
                 return
             }
-            
             var taskResults = [(NSManagedObjectID, Result<NSManagedObjectID, Error>)]()
-            
             await withTaskGroup(of: (NSManagedObjectID, Result<NSManagedObjectID, Error>).self) { taskGroup in
                 for data in sourceData {
                     taskGroup.addTask {
@@ -291,7 +259,7 @@ final class AppManager: ObservableObject, @unchecked Sendable
                             let context = StandaloneOperationContext(steps: [], dbBackgroundContext: managedObjectContext)
                             let fetchSourceOperation = try FetchSourceOperation(sourceURL: data.sourceURL, context: context)
                             let fetchedSource = try await fetchSourceOperation.execute()
-                            return (data.objectID, .success(fetchedSource.objectID)) // objectID is thread-safe
+                            return (data.objectID, .success(fetchedSource.objectID)) 
                         } catch {
                             return (data.objectID, .failure(error))
                         }
@@ -301,12 +269,9 @@ final class AppManager: ObservableObject, @unchecked Sendable
                     taskResults.append(result)
                 }
             }
-            
-            
             await managedObjectContext.perform {
                 var fetchedSources = Set<Source>()
                 var errors = [Source: Error]()
-                
                 for (objectID, result) in taskResults {
                     let source = managedObjectContext.object(with: objectID) as! Source
                     switch result {
@@ -319,7 +284,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
                         source.error = error.sanitizedForSerialization()
                     }
                 }
-                
                 do {
                     if managedObjectContext.hasChanges {
                         try managedObjectContext.save()
@@ -327,7 +291,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
                 } catch {
                     debugLog("Failed to save managedObjectContext in fetchSources: \(error.localizedDescription)")
                 }
-                
                 if !errors.isEmpty {
                     let sourcesSet = Set(sourceData.compactMap { managedObjectContext.object(with: $0.objectID) as? Source })
                     completionHandler(.failure(.init(sources: sourcesSet, errors: errors, context: managedObjectContext)))
@@ -338,7 +301,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
             }
         }
     }
-    
     func syncAppIDs(completionHandler: @escaping (Result<Void, Error>) -> Void)
     {
         guard AuthManager.shared.isAuthenticated else {
@@ -346,13 +308,11 @@ final class AppManager: ObservableObject, @unchecked Sendable
             completionHandler(.failure(OperationError.notAuthenticated))
             return
         }
-        
         Task.detached(priority: .utility) {
             do {
                 let managedObjectContext = self.getValidDbContext()
                 let context = StandaloneOperationContext(steps: .syncAppIDs, dbBackgroundContext: managedObjectContext)
                 try await AuthManager.shared.getAuthenticatedSession()
-                
                 let syncAppIDsOperation = try SyncAppIDsOperation(context: context)
                 try await syncAppIDsOperation.execute()
                 completionHandler(.success(()))
@@ -361,7 +321,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
             }
         }
     }
-    
     @discardableResult
     func updateKnownSources(completionHandler: @escaping (Result<([KnownSource], [KnownSource]), Error>) -> Void) -> UpdateKnownSourcesOperation
     {
@@ -376,24 +335,19 @@ final class AppManager: ObservableObject, @unchecked Sendable
         }
         return updateKnownSourcesOperation
     }
-    
     func updateAllSources(completion: @escaping (Result<Void, Error>) -> Void)
     {
         self.updateSourcesResult = nil
-        
         self.fetchSources() { (result) in
             do
             {
-                // Check if the result is failure and rethrow
                 if case .failure(let error) = result {
-                    throw error  // Rethrow the error
+                    throw error  
                 }
-                
                 do
                 {
                     let (_, context) = try result.get()
                     try context.save()
-                    
                     DispatchQueue.main.async {
                         self.updateSourcesResult = .success(())
                         completion(.success(()))
@@ -407,13 +361,11 @@ final class AppManager: ObservableObject, @unchecked Sendable
                 catch let mergeError as MergeError
                 {
                     guard let sourceID = mergeError.sourceID else { throw mergeError }
-                    
                     let sanitizedError = (mergeError as NSError).sanitizedForSerialization()
                     DatabaseManager.shared.persistentContainer.performBackgroundTask { context in
                         do
                         {
                             guard let source = Source.first(satisfying: NSPredicate(format: "%K == %@", #keyPath(Source.identifier), sourceID), in: context) else { return }
-                            
                             source.error = sanitizedError
                             try context.save()
                         }
@@ -422,7 +374,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
                             debugLog("Failed to assign error \(sanitizedError.localizedErrorCode) to source \(sourceID). \(error.localizedDescription)")
                         }
                     }
-                    
                     throw mergeError
                 }
             }
@@ -432,7 +383,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
                 {
                     error = error.withLocalizedTitle(NSLocalizedString("Unable to Refresh Store", comment: ""))
                 }
-                
                 DispatchQueue.main.async {
                     self.updateSourcesResult = .failure(error)
                     completion(.failure(error))
@@ -519,7 +469,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
             return (bundleIdentifier, appName)
         }
     }
-    
     @discardableResult
     func update(_ installedApp: InstalledApp,
                 to version: AppVersion? = nil,
@@ -545,7 +494,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         )
         return group.progress
     }
-    
     @discardableResult
     func refresh(_ installedApps: [InstalledApp],
                  presentingViewController: UIViewController?,
@@ -554,7 +502,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
     {
         debugLog("[AppManager] refresh() called for apps: \(installedApps.map { $0.bundleIdentifier })")
         let pipelineHandler = self.makePipelineHandler(presentingViewController: presentingViewController)
-        
         let actualGroup: RefreshGroup
         if let group = group {
             actualGroup = group
@@ -562,7 +509,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
             let context = self.getValidDbContext(dbContext)
             actualGroup = RefreshGroup(dbContext: context)
         }
-        
         actualGroup.activeTask = Task.detached {
             do {
                 try await self.pipelineRunner.perform(installedApps.map { .refresh($0) }, handler: pipelineHandler, group: actualGroup)
@@ -572,10 +518,8 @@ final class AppManager: ObservableObject, @unchecked Sendable
                 actualGroup.completionHandler?(results)
             }
         }
-        
         return actualGroup
     }
-    
     func activate(_ installedApp: InstalledApp, presentingViewController: UIViewController?, completionHandler: @escaping (Result<InstalledApp, Error>) -> Void)
     {
         debugLog("[AppManager] activate() called for app: \(installedApp.bundleIdentifier)")
@@ -583,7 +527,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         self.pipelineRunner.performSingleOperation(.activate(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     func deactivate(_ installedApp: InstalledApp, presentingViewController: UIViewController?, completionHandler: @escaping (Result<InstalledApp, Error>) -> Void)
     {
         debugLog("[AppManager] deactivate() called for app: \(installedApp.bundleIdentifier)")
@@ -591,7 +534,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         self.pipelineRunner.performSingleOperation(.deactivate(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     func deleteApp(_ installedApp: InstalledApp, presentingViewController: UIViewController?, completionHandler: @escaping (Result<InstalledApp, Error>) -> Void)
     {
         debugLog("[AppManager] deleteApp() called for app: \(installedApp.bundleIdentifier)")
@@ -599,7 +541,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         self.pipelineRunner.performSingleOperation(.deleteApp(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     @discardableResult
     func reinstall(_ installedApp: InstalledApp,
                   presentingViewController: UIViewController?,
@@ -610,7 +551,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         return self.pipelineRunner.performSingleOperation(.reinstall(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     @discardableResult
     func resign(_ installedApp: InstalledApp,
                 alternateIconMode: AlternateIconMode = .preserve,
@@ -622,7 +562,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         return self.pipelineRunner.performSingleOperation(.resign(installedApp, alternateIconMode: alternateIconMode), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     func backup(_ installedApp: InstalledApp, presentingViewController: UIViewController?, completionHandler: @escaping (Result<InstalledApp, Error>) -> Void)
     {
         debugLog("[AppManager] backup() called for app: \(installedApp.bundleIdentifier)")
@@ -630,7 +569,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         self.pipelineRunner.performSingleOperation(.backup(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     func restore(_ installedApp: InstalledApp, presentingViewController: UIViewController?, completionHandler: @escaping (Result<InstalledApp, Error>) -> Void)
     {
         debugLog("[AppManager] restore() called for app: \(installedApp.bundleIdentifier)")
@@ -638,7 +576,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         self.pipelineRunner.performSingleOperation(.restore(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     func removeApp(_ installedApp: InstalledApp, presentingViewController: UIViewController? = nil, completionHandler: @escaping (Result<Void, Error>) -> Void)
     {
         debugLog("[AppManager] removeApp() called for app: \(installedApp.bundleIdentifier)")
@@ -646,12 +583,10 @@ final class AppManager: ObservableObject, @unchecked Sendable
         let dbContext = self.getValidDbContext()
         self.pipelineRunner.performVoidOperation(.removeApp(installedApp), handler: pipelineHandler, dbContext: dbContext, completionHandler: completionHandler)
     }
-    
     func removeDeactivatedApp(_ installedApp: InstalledApp, completionHandler: @escaping (Result<Void, Error>) -> Void)
     {
         self.removeApp(installedApp, completionHandler: completionHandler)
     }
-    
     func enableJIT(for installedApp: InstalledApp, completionHandler: @escaping (Result<Void, Error>) -> Void)
     {
         Task.detached {
@@ -691,7 +626,6 @@ final class AppManager: ObservableObject, @unchecked Sendable
         Task.detached {
             do {
                 backgroundRefreshAppsOperation.presentsFinishedNotification = presentsNotifications
-                
                 let result = try await backgroundRefreshAppsOperation.execute()
                 completionHandler(.success(result))
             } catch {
@@ -726,9 +660,7 @@ extension AppManager {
 }
 typealias InstallTarget = AppManager.InstallTarget
 
-// MARK: - PipelineRunner Protocol Conformances
 extension AppManager: PipelineProgress, PipelineExecutionContext, PipelineErrorLogger {
-    
     private func makePipelineHandler(presentingViewController: UIViewController?) -> PipelineExecutionHandler {
         return PipelineHandler(
             isResignActive: presentingViewController is ResignAltStoreViewController,
@@ -742,53 +674,41 @@ extension AppManager: PipelineProgress, PipelineExecutionContext, PipelineErrorL
         context ?? DatabaseManager.shared.persistentContainer.newBackgroundContext()
     }
 
-
-    
-
     func installationProgress(for app: AppProtocol) -> Progress?
     {
         return self.progressLock.withLock {
             self.installationProgress[app.bundleIdentifier]
         }
     }
-    
     func refreshProgress(for app: AppProtocol) -> Progress?
     {
         return self.progressLock.withLock {
             let bundleID = app.bundleIdentifier
-            
             guard let progress = self.refreshProgress[bundleID] ?? self.installationProgress[bundleID] else {
                 return nil
             }
-            
             guard !progress.isCancelled else {
                 self.refreshProgress[bundleID] = nil
                 self.installationProgress[bundleID] = nil
                 return nil
             }
-            
             return progress
         }
     }
-    
     func isActivelyManagingApp(withBundleID bundleID: String) -> Bool
     {
         let isActivelyManaging = self.installationProgress.keys.contains(bundleID) || self.refreshProgress.keys.contains(bundleID)
         return isActivelyManaging
     }
-    
     var isActivelyManagingAnyApp: Bool
     {
         return self.progressLock.withLock {
             !self.installationProgress.isEmpty || !self.refreshProgress.isEmpty
         }
     }
-    
     func progress(for operation: AppOperation) -> Progress?
     {
-        // Access outside critical section to avoid deadlock due to `bundleIdentifier` potentially calling performAndWait() on main thread.
         let bundleID = operation.bundleIdentifier
-        
         return self.progressLock.withLock {
             switch operation
             {
@@ -799,10 +719,8 @@ extension AppManager: PipelineProgress, PipelineExecutionContext, PipelineErrorL
             }
         }
     }
-    
     func set(_ progress: Progress?, for operation: AppOperation)
     {
-        // Access outside critical section to avoid deadlock due to `bundleIdentifier` potentially calling performAndWait() on main thread.
         let bundleID = operation.bundleIdentifier
         let operationName = String(describing: operation.loggedErrorOperation)
 
@@ -817,7 +735,6 @@ extension AppManager: PipelineProgress, PipelineExecutionContext, PipelineErrorL
             debugLog("[AppManager] setProgress: \(progress.map { "\($0)" } ?? "nil") for operation: .\(operationName), totalUnitCount: \(progress?.totalUnitCount ?? 0)")
         }
     }
-    
     func getMappedError(for operation: AppOperation, error: Error) -> Error {
         var appName: String!
         if let app = operation.app as? (NSManagedObject & AppProtocol) {
@@ -847,22 +764,19 @@ extension AppManager: PipelineProgress, PipelineExecutionContext, PipelineErrorL
             case .resign:     localizedTitle = String(format: NSLocalizedString("Failed to Resign %@",         comment: ""), appName)
             case .removeApp, .removeDeactivatedApp: localizedTitle = String(format: NSLocalizedString("Failed to Remove %@", comment: ""), appName)
         }
-        
         let nsError = error as NSError
         let mappedError = nsError.withLocalizedTitle(localizedTitle)
         return mappedError
     }
-    
     func log(_ error: Error, operation: LoggedError.Operation, app: AppProtocol)
     {
         switch error
         {
-            case is CancellationError: return // Don't log CancellationErrors
+            case is CancellationError: return 
             case let nsError as NSError where nsError.domain == CancellationError()._domain: return
             default: break
         }
 
-        // Sanitize NSError on same thread before performing background task.
         let sanitizedError = (error as NSError).sanitizedForSerialization()
 
         DatabaseManager.shared.persistentContainer.performBackgroundTask { context in
@@ -893,5 +807,3 @@ extension AppManager: PipelineProgress, PipelineExecutionContext, PipelineErrorL
     }
 
 }
-
-

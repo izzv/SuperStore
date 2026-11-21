@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 8/27/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 import Foundation
 import CoreData
 
@@ -14,12 +13,9 @@ extension AppManager
     struct FetchSourcesError: LocalizedError, CustomNSError, @unchecked Sendable
     {
         var primaryError: Error?
-        
         var sources: Set<Source>?
         var errors = [Source: Error]()
-        
         var managedObjectContext: NSManagedObjectContext?
-        
         var localizedTitle: String? {
             var localizedTitle: String?
             self.managedObjectContext?.performAndWait {
@@ -46,7 +42,6 @@ extension AppManager
             else
             {
                 var localizedDescription: String?
-                
                 self.managedObjectContext?.performAndWait {
                     if self.sources?.count == 1
                     {
@@ -62,11 +57,9 @@ extension AppManager
                         localizedDescription = String(format: NSLocalizedString("Could not refresh %@ sources.", comment: ""), NSNumber(value: self.errors.count))
                     }
                 }
-                
                 return localizedDescription
             }
         }
-        
         var recoverySuggestion: String? {
             if let error = self.primaryError as NSError?
             {
@@ -81,7 +74,6 @@ extension AppManager
                 return NSLocalizedString("Tap to view source errors.", comment: "")
             }
         }
-        
         var errorUserInfo: [String : Any] {
             let errors = Array(self.errors.values)
             var userInfo = [String: Any]()
@@ -92,12 +84,10 @@ extension AppManager
             }
             return userInfo
         }
-        
         init(_ error: Error)
         {
             self.primaryError = error
         }
-        
         init(sources: Set<Source>, errors: [Source: Error], context: NSManagedObjectContext)
         {
             self.sources = sources

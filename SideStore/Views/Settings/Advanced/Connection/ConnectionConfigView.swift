@@ -5,7 +5,6 @@
 //  Created by Magesh K on 02/03/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Combine
 import Minimuxer
@@ -27,13 +26,11 @@ struct AnimatedCheckmarkView: View {
             Circle()
                 .stroke(Color.green.opacity(0.2), lineWidth: 4)
                 .frame(width: 70, height: 70)
-            
             Circle()
                 .trim(from: 0.0, to: outerCircleTrim)
                 .stroke(Color.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                 .frame(width: 70, height: 70)
                 .rotationEffect(.degrees(-90))
-            
             Path { path in
                 path.move(to: CGPoint(x: 21, y: 35))
                 path.addLine(to: CGPoint(x: 30, y: 44))
@@ -95,7 +92,6 @@ struct ConnectionConfigView: View {
                             }
                         }
                     }
-                    
                     Section {
                         networkConfigRow(
                             label: "Device IP",
@@ -202,7 +198,6 @@ struct ConnectionConfigView: View {
             } message: {
                 Text(validationError ?? "Please check your configuration settings.")
             }
-            
             if showConfirmDialog {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
@@ -211,15 +206,12 @@ struct ConnectionConfigView: View {
                         showConfirmDialog = false
                     }
                     #endif
-                
                 VStack(spacing: 24) {
                     AnimatedCheckmarkView()
                         .padding(.top, 10)
-                    
                     Text("Changes saved")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
-                    
                     SwiftUI.Button(action: {
                         showConfirmDialog = false
                     }) {
@@ -344,7 +336,6 @@ struct ConnectionConfigView: View {
         await bindConnectionConfig()
         showConfirmDialog = true
     }
-    
     private func dismiss() {
         presentationMode.wrappedValue.dismiss()
     }

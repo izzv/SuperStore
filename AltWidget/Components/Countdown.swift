@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/6/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 import SwiftUI
 import WidgetKit
 
@@ -14,31 +13,23 @@ struct Countdown: View
     var startDate: Date?
     var endDate: Date?
     var currentDate: Date = Date()
-    
     var strokeWidth: Double = 4.0
-    
     @Environment(\.font) private var font
-    
     private var numberOfDays: Int {
         guard let date = self.endDate else { return 0 }
-        
         let numberOfDays = date.numberOfCalendarDays(since: self.currentDate)
-        return max(numberOfDays, 0) // Never show negative values.
+        return max(numberOfDays, 0) 
     }
-    
     private var fractionComplete: CGFloat {
         guard let startDate = self.startDate, let endDate = self.endDate else { return 1.0 }
-        
         let totalNumberOfDays = endDate.numberOfCalendarDays(since: startDate)
         let fractionComplete = CGFloat(self.numberOfDays) / CGFloat(totalNumberOfDays)
         return fractionComplete
     }
-        
     @ViewBuilder
     private func overlay(progress: CGFloat) -> some View
     {
         let strokeStyle = StrokeStyle(lineWidth: self.strokeWidth, lineCap: .round, lineJoin: .round)
-        
         if self.numberOfDays > 9 || self.numberOfDays < 0 {
             Capsule(style: .continuous)
                 .trim(from: 0.0, to: progress)
@@ -51,7 +42,6 @@ struct Countdown: View
                 .stroke(style: strokeStyle)
         }
     }
-    
     var body: some View {
         Text("\(numberOfDays)")
             .font((font ?? .title).monospacedDigit())
@@ -63,7 +53,6 @@ struct Countdown: View
                 ZStack {
                     overlay(progress: 1.0)
                         .opacity(0.3)
-                    
                     overlay(progress: fractionComplete)
                 }
             )

@@ -5,13 +5,11 @@
 //  Created by Magesh K on 2026-06-29.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import SideSign
 
 public class DeveloperPortalProxy {
     public static let shared: DeveloperPortalProxy = DeveloperPortalProxyWithAuth()
-    
     public static var currentDeviceType: ALTDeviceType {
         #if os(tvOS)
         return .tv
@@ -23,9 +21,7 @@ public class DeveloperPortalProxy {
         return UIDevice.current.userInterfaceIdiom == .pad ? .ipad : .iphone
         #endif
     }
-    
     fileprivate init() {}
-    
     private func getSession() async throws -> ALTAppleAPISession {
         try await AuthManager.shared.getAuthenticatedSession()
     }
@@ -34,38 +30,32 @@ public class DeveloperPortalProxy {
         if let team { return team }
         return try await AuthManager.shared.getAuthenticatedTeam()
     }
-    
     public func fetchTeams(for account: ALTAccount) async throws -> [ALTTeam] {
         let session = try await self.getSession()
         return try await ALTAppleAPI.shared.fetchTeams(for: account, session: session)
     }
-    
     public func fetchCertificates(team: ALTTeam? = nil) async throws -> [ALTX509Certificate] {
         let session = try await self.getSession()
         let team = try await self.getTeam(team)
         return try await ALTAppleAPI.shared.fetchCertificates(for: team, session: session)
     }
-    
     @discardableResult
     public func createCertificate(machineName: String, type: CertificateType = .development, team: ALTTeam? = nil) async throws -> ALTCertificate {
         let session = try await self.getSession()
         let team = try await self.getTeam(team)
         return try await ALTAppleAPI.shared.addCertificate(machineName: machineName, type: type, to: team, session: session)
     }
-    
     @discardableResult
     public func revokeCertificate(_ certificate: ALTX509Certificate, team: ALTTeam? = nil) async throws -> Bool {
         let session = try await self.getSession()
         let team = try await self.getTeam(team)
         return try await ALTAppleAPI.shared.revokeCertificate(certificate, for: team, session: session)
     }
-    
     public func fetchDevices(for team: ALTTeam? = nil, types: ALTDeviceType = .all) async throws -> [ALTDevice] {
         let session = try await self.getSession()
         let team = try await self.getTeam(team)
         return try await ALTAppleAPI.shared.fetchDevices(for: team, types: types, session: session)
     }
-    
     @discardableResult
     public func registerDevice(name: String, identifier: String, type: ALTDeviceType = DeveloperPortalProxy.currentDeviceType, team: ALTTeam? = nil) async throws -> ALTDevice {
         let session = try await self.getSession()

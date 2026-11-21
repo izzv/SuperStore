@@ -5,13 +5,11 @@
 //  Created by Riley Testut on 10/2/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 @_exported import OSLog
 
 public extension Logger
 {
-    static let altstoreSubsystem = "com.rileytestut.AltStore" // Hardcoded because Bundle.main.bundleIdentifier is different for every user
-    
+    static let altstoreSubsystem = "com.rileytestut.AltStore" 
     static let main = Logger(subsystem: altstoreSubsystem, category: "Main")
     static let sideload = Logger(subsystem: altstoreSubsystem, category: "Sideload")
     static let altjit = Logger(subsystem: altstoreSubsystem, category: "AltJIT")

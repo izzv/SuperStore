@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 6/19/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 import UserNotifications
 import UIKit
 import Foundation
@@ -15,13 +14,11 @@ import SideSign
 
 final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContext, InstalledApp>, @unchecked Sendable {
     let storeApp: StoreApp?
-    
     init(context: InstallAppOperationContext, app: any AppProtocol) throws {
         self.storeApp = app as? StoreApp
         try super.init(context: context)
         self.progress.totalUnitCount = 100
     }
-    
     override func execute(parentProgress: Progress?) async throws -> InstalledApp {
         let startTime = CFAbsoluteTimeGetCurrent()
         debugLog("[InstallAppOperation] execute() started")
@@ -30,11 +27,9 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             debugLog("[InstallAppOperation] execute() took: \(String(format: "%.3fs", elapsed))")
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
-        
         defer {
             self.removeRefreshedIPA()
         }
-        
         guard
             let certificate = context.targetSigningCertificate,
             let resignedAppBundle = context.resignedAppBundle,
@@ -53,9 +48,7 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
 
         @Managed var appVersion = context.appVersion
         let storeBuildVersion = $appVersion.buildVersion
-        
         let backgroundContext = self.context.dbBackgroundContext
-        
         self.setProgress(10)
         let authTeam = try await AuthManager.shared.getAuthenticatedTeam()
         do {
@@ -75,10 +68,8 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             throw error
         }
     }
-    
     private func removeRefreshedIPA() {
         guard let fileURL = self.context.installedApp?.refreshedIPAURL else { return }
-        
         if FileManager.default.fileExists(atPath: fileURL.path) {
             do {
                 try FileManager.default.removeItem(at: fileURL)
@@ -88,7 +79,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             }
         }
     }
-    
     private func installApp(in backgroundContext: NSManagedObjectContext,
                             certificate: ALTCertificate,
                             resignedAppBundle: ALTApplication,
@@ -99,7 +89,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
         let (installedApp, isDifferentSideStore, bundleID, isSelfReinstall, isSideBackup) = try await backgroundContext.perform {
             let utis = resignedAppBundle.infoPlist[Bundle.Info.exportedUTIs] as? [[String: Any]]
             let isSideBackup = utis?.first?["UTTypeDescription"] as? String == "SuperStore Backup App"
-            
             if isSideBackup {
                 let installedApp = try self.context.installedApp.flatMap { app in
                     backgroundContext.object(with: app.objectID) as? InstalledApp
@@ -113,7 +102,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                 return (installedApp, false, self.context.targetBundleIdentifier, false, true)
             }
 
-            /* App */
             let installedApp = try self.fetchOrCreateApp(
                 in: backgroundContext,
                 certificate: certificate,
@@ -121,7 +109,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                 storeBuildVersion: storeBuildVersion,
                 authTeam: authTeam
             )
-            
             let isDifferentSideStore = Self.isDifferentSideStoreContainer(installedApp, resignedAppBundle)
             if isDifferentSideStore {
                 self.debugLog("""
@@ -130,10 +117,8 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                     - Active Container Bundle ID: '\(installedApp.resignedBundleIdentifier)'
                     Reason: A different bundle ID installs SuperStore as a new app container which initializes its own database upon launch.
                             Hence we do not perist current change to prevent corruption of current sidestore's database entry.
-                    
                 """)
             } else {
-                /* App Extensions */
                 let installedExtensions = try self.fetchOrCreateExtensions(
                     for: resignedAppBundle,
                     installedApp: installedApp,
@@ -147,8 +132,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                     in: backgroundContext
                 )
             }
-            
-            // This preserves our data in a serilized format that will be restored at boot onyl if installtion actually completed indicated by embedded provision uuid being different.
             let isSelfReinstall = !isDifferentSideStore &&
                                    installedApp.storeApp?.bundleIdentifier.range(of: Bundle.Info.appbundleIdentifier) != nil
             if isSelfReinstall {
@@ -157,15 +140,10 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                    let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) 
                 {
                     let jsonURL = containerURL.appendingPathComponent("StagedSelfReinstall.json")
-                    
-                    // Update refreshedDate inside the transient model context
                     installedApp.refreshedDate = Date()
-                    
-                    // Serialize the entire InstalledApp entity with all its composition relations
                     if let stagedData = installedApp.serialize(format: .json),
                        var dict = (try? JSONSerialization.jsonObject(with: stagedData, options: [])) as? [String: Any] {
                         dict["lastBundlePath"] = Bundle.main.bundlePath
-                        
                         if let finalData = try? JSONSerialization.data(withJSONObject: dict, options: [.prettyPrinted, .sortedKeys]) {
                             try? finalData.write(to: jsonURL)
                             self.debugLog("[InstallAppOperation] Wrote recursively serialized staged self-reinstall metadata to JSON: \(jsonURL.path)")
@@ -173,37 +151,26 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                     }
                 }
             }
-            
             return (installedApp, isDifferentSideStore, self.context.targetBundleIdentifier, isSelfReinstall, false)
         }
-        
         self.setProgress(30)
-        
-        // Self-reinstall background suspension
         if isSelfReinstall {
             self.handleSelfReinstallation(for: installedApp)
         }
-        
-        // Phase 2: App installation
         if UserDefaults.standard.preferResignedIPA {
             try await installIPA(bundleID)
         } else {
             try await installAppBundle(bundleID, appName: resignedAppBundle.fileURL.lastPathComponent)
         }
-        
         self.setProgress(90)
-        
-        // Phase 3: Post-install CoreData write — update refreshedDate
         if !isDifferentSideStore && !isSelfReinstall && !isSideBackup {
             await backgroundContext.perform {
                 installedApp.refreshedDate = Date()
             }
         }
-        
         self.setProgress(100)
         return installedApp
     }
-    
     private static func isDifferentSideStoreContainer(_ installedApp: InstalledApp, _ resignedAppBundle: ALTApplication) -> Bool {
         return ((installedApp.bundleIdentifier == StoreApp.altstoreAppID) || resignedAppBundle.isAltStoreApp) &&
                 (resignedAppBundle.bundleIdentifier != installedApp.resignedBundleIdentifier)
@@ -218,7 +185,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
         guard let appBundleFingerprint = self.context.appBundleFingerprint else {
             throw OperationError.invalidParameters("InstallAppOperation: context.appBundleFingerprint is nil. CacheAppOperation must guarantee a fingerprint reference.")
         }
-        
         let target = self.context.targetBundleIdentifier
         let predicate = NSPredicate(
             format: "(%K == %@) OR (%K == %@)",
@@ -253,18 +219,14 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             if let storeApp {
                 let storeAppInContext = backgroundContext.object(with: storeApp.objectID) as? StoreApp
                 installedApp.storeApp = storeAppInContext
-                
                 if let contextTrack = self.context.releaseTrack {
-                    // 1. If we downloaded a version with a known release track, overwrite the track record
                     installedApp.releaseTrack = contextTrack
                 } else if installedApp.releaseTrack == nil {
-                    // 2. Backward compatibility: if track was empty, initialize it with the store's active track
                     if let trackEntity = storeAppInContext?.latestSupportedVersion?.releaseTrack {
                         installedApp.releaseTrack = trackEntity
                     }
                 }
             }
-            // update alternate icon
             switch context.alternateIconMode {
                 case .set(let alternateIconURL):
                     guard FileManager.default.fileExists(atPath: alternateIconURL.path) else { break }
@@ -310,23 +272,19 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
         )
 
         var installedExtensions = Set<InstalledExtension>()
-        
         for resignedAppExtensionBundle in resignedAppBundle.appExtensions {
             let filename = resignedAppExtensionBundle.fileURL.lastPathComponent
             guard let originalExtension = originalExtensionsByFilename[filename] else {
                 throw OperationError.invalidParameters("InstallAppOperation: extension '\(filename)' not found in targetAppBundle.")
             }
-            
             let targetParentBundleID = context.targetBundleIdentifier
             let resignedParentBundleID = resignedAppBundle.bundleIdentifier
-            
             let originalAppExBundleID = originalExtension.bundleIdentifier
             let resignedBundleID = resignedAppExtensionBundle.bundleIdentifier
             var customAppExBundleID: String? = nil
             if context.customBundleIdentifier != nil {
                 customAppExBundleID = resignedBundleID.replacingOccurrences(of: resignedParentBundleID, with: targetParentBundleID)
             }
-            
             self.debugLog("""
             [InstallAppOperation] Extension Bundle Mapping:
               • targetParentBundleID   : \(targetParentBundleID)
@@ -335,7 +293,6 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
               • customAppExBundleID    : \(customAppExBundleID ?? "nil")
               • resignedAppExBundleID  : \(resignedBundleID)
             """)
-            
             let installedExtension = try installedApp.appExtensions
                                             .first(where: { $0.resignedBundleIdentifier == resignedBundleID })
                                         ?? InstalledExtension(
@@ -358,21 +315,14 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
         if let sideloadedAppsLimit = UserDefaults.standard.activeAppsLimit,
                provisioningProfiles.contains(where: { $1.isFreeProvisioningProfile == true })
         {
-            // When installing these new profiles, AltServer will remove all non-active profiles to ensure we remain under limit.
             let fetchRequest = InstalledApp.activeAppsFetchRequest()
             fetchRequest.includesPendingChanges = false
-            
-            // Only free-cert-signed apps count against the free limit
             var activeApps = InstalledApp.fetch(fetchRequest, in: backgroundContext)
                                          .filter { ($0.team?.type ?? .unknown) == .free }
-            
             if !activeApps.contains(installedApp) {
                 let activeAppsCount = activeApps.map { $0.requiredActiveSlots }.reduce(0, +)
-                
                 let availableActiveApps = max(sideloadedAppsLimit - activeAppsCount, 0)
                 if installedApp.requiredActiveSlots <= availableActiveApps {
-                    // This app has not been explicitly activated, but there are enough slots available,
-                    // so implicitly activate it.
                     installedApp.isActive = true
                     activeApps.append(installedApp)
                 } else {
@@ -383,17 +333,14 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
             installedApp.isActive = true
         }
     }
-        
     private func suspendToHomeScreen() async {
         let handler = self.context.handler.installAppHandler
         await handler.suspendToHomeScreen()
     }
 
     private func handleSelfReinstallation(for installedApp: InstalledApp) {
-        // Stop keepalive background services unconditionally so the process can suspend cleanly
         BackgroundServiceManager.stop()
 
-        // Reinstalling ourself will hang until we leave the app, so we need to exit it without force closing
         Task.detached {
             let bgTaskID = await MainActor.run {
                 UIApplication.shared.beginBackgroundTask(withName: "SelfReinstall", expirationHandler: nil)
@@ -411,44 +358,11 @@ final class InstallAppOperation: BasePipelineOperation<InstallAppOperationContex
                 self.debugLog("[InstallAppOperation] We are not in the foreground, let's not do anything")
                 return
             }
-            
             let delaySeconds = AppConstants.Installation.selfInstallSuspendDelayNs / 1_000_000_000
             self.debugLog("[InstallAppOperation] We are still installing after \(delaySeconds) seconds")
-            
             await self.suspendToHomeScreen()
 
-            // #if !os(tvOS)
-            // let settings = await UNUserNotificationCenter.current().notificationSettings()
-            // switch settings.authorizationStatus {
-            //     case .authorized, .ephemeral, .provisional:
-            //         self.verboseLog("[InstallAppOperation] Notifications are enabled")
-            //
-            //         let content = UNMutableNotificationContent()
-            //         content.title = "Refreshing..."
-            //         content.body = "SideStore will automatically move to the homescreen to finish refreshing!"
-            //         let notification = UNNotificationRequest(identifier: Bundle.Info.appbundleIdentifier + ".FinishRefreshNotification", content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
-            //         try? await UNUserNotificationCenter.current().add(notification)
-            //         
-            //         await self.suspendToHomeScreen()
-            //
-            //     default:
-            //         self.verboseLog("[InstallAppOperation] Notifications are not enabled")
-            //
-            //         await withTaskGroup(of: Void.self) { group in
-            //             group.addTask { await handler.requestBackgroundSuspension() }
-            //             group.addTask { try? await Task.sleep(nanoseconds: 5_000_000_000) }
-            //             _ = await group.next()
-            //             group.cancelAll()
-            //         }
-            //         await self.suspendToHomeScreen()
-            //     }
-            // #else
-            // NotificationCenter.default.post(name: NSNotification.Name("TVTopShelfItemsDidChangeNotification"), object: nil)
-            // await handler.requestBackgroundSuspension()
-            // await self.suspendToHomeScreen()
-            // #endif
         }
     }
-    
 
 }

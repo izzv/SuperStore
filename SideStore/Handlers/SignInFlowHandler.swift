@@ -5,26 +5,21 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import UIKit
 import SideSign
 
 class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
-    
     private weak var presentingViewController: UIViewController?
     private weak var presentedAuthVC: AuthenticationViewController?
-    
     private var credentialsContinuation: CheckedContinuation<(String, String), Error>?
     private var activeAuthCompletionHandler: ((Result<(ALTAccount, ALTAppleAPISession), Error>) -> Void)?
     var showsDoItLater: Bool = false
-    
     private lazy var navigationController: UINavigationController = {
         let storyboard = UIStoryboard(name: "Authentication", bundle: nil)
         let navigationController = storyboard.instantiateViewController(withIdentifier: "navigationController") as! UINavigationController
         navigationController.isModalInPresentation = true
         return navigationController
     }()
-    
     init(presentingViewController: UIViewController?) {
         self.presentingViewController = presentingViewController
     }
@@ -39,26 +34,21 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
         }
         return self.presentingViewController?.presentedViewController ?? self.presentingViewController
     }
-    
     @MainActor
     func credentials() async throws -> (String, String) {
         guard let presentingViewController = self.presentingViewController else {
             throw OperationError.invalidParameters("SignInFlowHandler: Cannot prompt for credentials because presentingViewController is nil")
         }
-        
         if let _ = self.presentedAuthVC {
             return try await withCheckedThrowingContinuation { continuation in
                 self.credentialsContinuation = continuation
             }
         }
-        
         return try await withCheckedThrowingContinuation { continuation in
             self.credentialsContinuation = continuation
-            
             let storyboard = UIStoryboard(name: "Authentication", bundle: nil)
             let authVC = storyboard.instantiateViewController(withIdentifier: "authenticationViewController") as! AuthenticationViewController
             self.presentedAuthVC = authVC
-            
             authVC.authenticationHandler = { [weak self] (appleID, password, completionHandler) in
                 guard let self = self else { return }
                 self.activeAuthCompletionHandler = completionHandler
@@ -67,32 +57,26 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                     credsContinuation.resume(returning: (appleID, password))
                 }
             }
-            
             authVC.completionHandler = { [weak self] (result) in
                 guard let self = self else { return }
                 if result == nil {
-                    // Cancelled
                     if let credsContinuation = self.credentialsContinuation {
                         self.credentialsContinuation = nil
                         credsContinuation.resume(throwing: OperationError.cancelled)
                     }
                     self.presentedAuthVC = nil
-                    
                     if self.navigationController.presentingViewController != nil {
                         self.navigationController.dismiss(animated: true)
                     }
                 } else {
-                    // Success (dismissed)
                     self.presentedAuthVC = nil
                 }
             }
-            
             self.navigationController.view.tintColor = .altInvertedPrimary
             self.navigationController.setViewControllers([authVC], animated: false)
             presentingViewController.present(self.navigationController, animated: true)
         }
     }
-    
     @MainActor
     func handleSignInResult(_ result: Result<(ALTAccount, ALTAppleAPISession), Error>) async {
         if let completionHandler = self.activeAuthCompletionHandler {
@@ -105,7 +89,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             }
         }
     }
-    
     @MainActor
     func verificationCode(for request: TwoFactorRequest) async throws -> TwoFactorResponse {
         guard self.isPresenterAvailable else {
@@ -177,7 +160,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
 
     @MainActor
     private func showErrorRetryAlert(message: String) async throws -> Bool {
-        // The message comes from Apple's response; never render a raw error page.
         let displayMessage = SignInFailure.looksLikeMarkup(message)
             ? NSLocalizedString("Apple returned an error page instead of a verification response. Please try again.", comment: "")
             : message
@@ -187,7 +169,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                 message: displayMessage,
                 preferredStyle: .alert
             )
-            
             alert.addAction(UIAlertAction(title: NSLocalizedString("Retry", comment: ""), style: .default) { _ in
                 continuation.resume(returning: true)
             })
@@ -257,13 +238,11 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                 textField.autocorrectionType = .no
                 textField.autocapitalizationType = .none
                 textField.keyboardType = .numberPad
-                
                 observer = NotificationCenter.default.addObserver(forName: UITextField.textDidChangeNotification, object: textField, queue: .main) { (notification) in
                     guard let textField = notification.object as? UITextField else { return }
                     alertController.actions.first?.isEnabled = (textField.text ?? "").count == 6
                 }
             }
-            
             let submitAction = UIAlertAction(title: NSLocalizedString("Continue", comment: ""), style: .default) { _ in
                 if let observer = observer {
                     NotificationCenter.default.removeObserver(observer)
@@ -330,14 +309,12 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                     alertController.addAction(changeNumberAction)
                 }
             }
-            
             alertController.addAction(UIAlertAction(title: systemLocalizedString("Cancel"), style: .cancel) { _ in
                 if let observer = observer {
                     NotificationCenter.default.removeObserver(observer)
                 }
                 continuation.resume(returning: .cancel)
             })
-            
             self.present(alertController)
         }
     }
@@ -447,7 +424,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
 
         self.present(alert)
     }
-    
     @MainActor
     func resolveRevocation(certificates: [ALTX509Certificate], teamType: ALTTeamType) async throws -> RevokeDecision {
         guard self.isPresenterAvailable else {
@@ -460,10 +436,8 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                 message: NSLocalizedString("Select iOS Development certificate(s) to revoke:", comment: ""),
                 preferredStyle: .alert
             )
-            
             let revokeVC = RevokeCertificatesAlertViewController(certificates: certificates, teamType: teamType)
             alertController.setValue(revokeVC, forKey: "contentViewController")
-            
             let cancelAction = UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel) { _ in
                 if teamType == .free {
                     let warningAlert = UIAlertController(
@@ -481,7 +455,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                     continuation.resume(returning: .keepExisting)
                 }
             }
-            
             let isPaid = (teamType != .free && teamType != .unknown)
             let initialCount = revokeVC.getSelectedCertificates().count
             let initialTitle: String
@@ -497,7 +470,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                     continuation.resume(returning: .revokeSelected(selected))
                 }
             }
-            
             if isPaid {
                 revokeAction.isEnabled = true
                 revokeVC.onSelectionChanged = { selected in
@@ -510,14 +482,11 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                     }
                 }
             }
-            
             alertController.addAction(cancelAction)
             alertController.addAction(revokeAction)
-            
             self.present(alertController)
         }
     }
-    
     @MainActor
     func resolveTeam(_ teams: [ALTTeam]) async throws -> ALTTeam {
         guard self.isPresenterAvailable else {
@@ -534,7 +503,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             self.present(selectTeamViewController)
         }
     }
-    
     @MainActor
     func resolvePostAuth() async {
         await withCheckedContinuation { continuation in
@@ -553,7 +521,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             self.present(instructionsViewController)
         }
     }
-    
     @MainActor
     func resolveDeviceRegistrationErrors(_ error: Error) async -> ProvisioningErrorDecision {
         let title: String
@@ -569,7 +536,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                 message: error.localizedDescription,
                 preferredStyle: .alert
             )
-            
             if self.showsDoItLater {
                 let retryAction = UIAlertAction(title: NSLocalizedString("Retry", comment: ""), style: .default) { _ in
                     alertController.dismiss(animated: true) {
@@ -589,28 +555,23 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                         continuation.resume(returning: .cancel)
                     }
                 }
-                
                 let skipAction = UIAlertAction(title: NSLocalizedString("Skip", comment: ""), style: .default) { _ in
                     alertController.dismiss(animated: true) {
                         continuation.resume(returning: .skip)
                     }
                 }
-                
                 let retryAction = UIAlertAction(title: NSLocalizedString("Retry", comment: ""), style: .default) { _ in
                     alertController.dismiss(animated: true) {
                         continuation.resume(returning: .retry)
                     }
                 }
-                
                 alertController.addAction(retryAction)
                 alertController.addAction(skipAction)
                 alertController.addAction(cancelAction)
             }
-            
             self.present(alertController)
         }
     }
-    
     @MainActor
     func resolveProvisioningError(_ error: Error) async -> ProvisioningErrorDecision {
         return await withCheckedContinuation { continuation in
@@ -619,7 +580,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                 message: error.localizedDescription,
                 preferredStyle: .alert
             )
-            
             if self.showsDoItLater {
                 let retryAction = UIAlertAction(title: NSLocalizedString("Retry", comment: ""), style: .default) { _ in
                     alertController.dismiss(animated: true) {
@@ -639,28 +599,23 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
                         continuation.resume(returning: .cancel)
                     }
                 }
-                
                 let skipAction = UIAlertAction(title: NSLocalizedString("Skip", comment: ""), style: .default) { _ in
                     alertController.dismiss(animated: true) {
                         continuation.resume(returning: .skip)
                     }
                 }
-                
                 let retryAction = UIAlertAction(title: NSLocalizedString("Retry", comment: ""), style: .default) { _ in
                     alertController.dismiss(animated: true) {
                         continuation.resume(returning: .retry)
                     }
                 }
-                
                 alertController.addAction(cancelAction)
                 alertController.addAction(skipAction)
                 alertController.addAction(retryAction)
             }
-            
             self.present(alertController)
         }
     }
-    
     @MainActor
     func showCertificateSkipAcknowledgment() async {
         await withCheckedContinuation { continuation in
@@ -694,7 +649,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             self.present(alertController)
         }
     }
-    
     @MainActor
     func resolveResign(mismatchReason: CodeSignValidationReason, context: StandaloneOperationContext) async throws -> Bool {
         guard self.isPresenterAvailable else {
@@ -726,14 +680,12 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             self.present(resignViewController)
         }
     }
-    
     @MainActor
     func complete() async {
         if self.navigationController.presentingViewController != nil {
             self.navigationController.dismiss(animated: true)
         }
     }
-    
     @MainActor
     private func present(_ viewController: UIViewController) {
         let anchorVC = self.activePresenter
@@ -741,10 +693,8 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             anchorVC?.present(viewController, animated: true)
             return
         }
-        
         if self.navigationController.presentingViewController != nil {
             if self.navigationController.viewControllers.contains(viewController) {
-                // Already in stack
             } else {
                 viewController.navigationItem.leftBarButtonItem = nil
                 self.navigationController.pushViewController(viewController, animated: true)
@@ -760,7 +710,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
         guard let presenter = self.activePresenter else {
             throw OperationError.invalidParameters("SignInFlowHandler: Cannot show outdated anisette warning because presenting view controller is unavailable")
         }
-        
         return await withCheckedContinuation { continuation in
             let alert = UIAlertController(title: "WARNING: Outdated anisette server", message: "We've detected you are using an older anisette server. Using this server has a higher likelihood of locking your account and causing other issues. Are you sure you want to continue?", preferredStyle: UIAlertController.Style.alert)
             alert.addAction(UIAlertAction(title: "Continue", style: UIAlertAction.Style.destructive, handler: { action in
@@ -769,7 +718,6 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
             alert.addAction(UIAlertAction(title: "Cancel", style: UIAlertAction.Style.cancel, handler: { action in
                 continuation.resume(returning: false)
             }))
-            
             presenter.present(alert, animated: true)
         }
     }

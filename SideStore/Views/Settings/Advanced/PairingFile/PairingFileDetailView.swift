@@ -5,7 +5,6 @@
 //  Created by Magesh K on 20/09/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import MinimuxerCommon
 import CryptoKit
@@ -17,7 +16,6 @@ private extension Color {
 
 struct PairingFileDetailView: View {
     let mode: PairingProtocol
-    
     @State private var rawContent: String
     @State private var isEditing = false
     @State private var editedContent = ""

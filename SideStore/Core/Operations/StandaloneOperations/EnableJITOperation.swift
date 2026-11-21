@@ -5,7 +5,6 @@
 //  Created by Magesh K on 23/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Combine
 import UniformTypeIdentifiers
@@ -122,7 +121,6 @@ func notifyJITSuccess(appName: String) async {
     }
     #endif
 
-    // Toast ONLY when notifications are disabled or not authorized
     await MainActor.run {
         if let window = UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.windows.first(where: { $0.isKeyWindow }) }).first {

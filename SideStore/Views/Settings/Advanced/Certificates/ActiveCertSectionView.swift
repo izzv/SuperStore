@@ -5,7 +5,6 @@
 //  Created by Magesh K on 2026-07-03.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import SideSign
 
@@ -13,7 +12,6 @@ struct ActiveCertSectionView: View {
     @ObservedObject var viewModel: CertificatesViewModel
     @Binding var hasCopiedActiveSerial: Bool
     var onDeactivate: () -> Void
-    
     var body: some View {
         Section("Active Local Certificate") {
             if let activeSerial = viewModel.activeSerialNumber {
@@ -21,11 +19,9 @@ struct ActiveCertSectionView: View {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundColor(.green)
                         .font(.title2)
-                    
                     VStack(alignment: .leading) {
                         HStack(spacing: 6) {
                             Text("Active Signing Certificate").font(.headline)
-                            
                             #if !os(tvOS)
                             SwiftUI.Button {
                                 UIPasteboard.general.string = activeSerial
@@ -40,7 +36,6 @@ struct ActiveCertSectionView: View {
                             .buttonStyle(.plain)
                             #endif
                         }
-                        
                         let displaySerial = viewModel.displayActiveSerial(activeSerial)
                         (
                             Text("SN: ").font(.footnote)
@@ -54,7 +49,6 @@ struct ActiveCertSectionView: View {
                             else { viewModel.revealedSerials.insert(key) }
                         }
                         #endif
-                        
                         if viewModel.isActiveCertThirdParty {
                             HStack(spacing: 4) {
                                 Image(systemName: "exclamationmark.triangle.fill")
@@ -86,7 +80,6 @@ struct ActiveCertSectionView: View {
                     }
                     #endif
                 }
-                
                 HStack {
                     Image(systemName: "checkmark.seal.fill").font(.title2).opacity(0)
                     SwiftUI.Button(role: .destructive) { onDeactivate() } label: {

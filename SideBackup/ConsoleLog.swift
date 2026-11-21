@@ -4,7 +4,6 @@
 //
 //  Created by Magesh K on 2/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
-
 import Foundation
 import OSLog
 
@@ -23,7 +22,6 @@ enum SideBackupError: LocalizedError {
         }
     }
 }
-
 
 final class ConsoleLog: Sendable {
     private static let lock = NSLock()
@@ -62,7 +60,6 @@ final class ConsoleLog: Sendable {
     private init() throws {
         self.logFileURL = try Self.determineLogFileURL()
 
-        // Auto-clear the log file on first initialization of the singleton
         try "".write(to: self.logFileURL, atomically: true, encoding: .utf8)
     }
 
@@ -79,10 +76,8 @@ final class ConsoleLog: Sendable {
     }
 
     func log(_ message: String, terminator: String = "\n") {
-        // 1. Log to Apple's OSLog
         logger.info("\(message)")
 
-        // 2. Append to shared file in App Group
         if let handle = try? FileHandle(forWritingTo: logFileURL) {
             defer { try? handle.close() }
             _ = try? handle.seekToEnd()
@@ -90,7 +85,6 @@ final class ConsoleLog: Sendable {
                 try? handle.write(contentsOf: data)
             }
         } else {
-            // Create file if it doesn't exist
             try? (message + terminator).write(to: logFileURL, atomically: true, encoding: .utf8)
         }
     }
@@ -104,7 +98,6 @@ private func getTag(level: String) -> String {
     return "\(timestamp) \(level): "
 }
 
-// Global print override to shadow Swift's standard print
 func debugLog(_ logger: ConsoleLog, _ items: Any..., separator: String = " ", terminator: String = "\n") {
     let message = items.map { "\($0)" }.joined(separator: separator)
     if !message.isEmpty && message.allSatisfy({ $0 == "\n" || $0 == "\r" }) {

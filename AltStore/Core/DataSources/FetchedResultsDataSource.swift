@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import CoreData
 
@@ -20,11 +19,9 @@ internal final class ProxyPredicate: NSCompoundPredicate {
         }
         self.init(type: .and, subpredicates: subpredicates)
     }
-    
     override init(type: NSCompoundPredicate.LogicalType, subpredicates: [NSPredicate]) {
         super.init(type: type, subpredicates: subpredicates)
     }
-    
     required init?(coder: NSCoder) {
         super.init(coder: coder)
     }
@@ -38,22 +35,18 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
             reload()
         }
     }
-    
     open var externalPredicate: NSPredicate?
     private var isObservingPredicate = false
-    
     private func setupPredicateObservation() {
         guard !isObservingPredicate else { return }
         fetchedResultsController.fetchRequest.addObserver(self, forKeyPath: "predicate", options: .new, context: nil)
         isObservingPredicate = true
     }
-    
     private func teardownPredicateObservation() {
         guard isObservingPredicate else { return }
         fetchedResultsController.fetchRequest.removeObserver(self, forKeyPath: "predicate")
         isObservingPredicate = false
     }
-    
     open override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
         if keyPath == "predicate", let fetchRequest = object as? NSFetchRequest<ContentType> {
             let newPredicate = change?[.newKey] as? NSPredicate
@@ -66,11 +59,9 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
             super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
     }
-    
     deinit {
         teardownPredicateObservation()
     }
-    
     open var fetchedResultsController: NSFetchedResultsController<ContentType> {
         willSet {
             teardownPredicateObservation()
@@ -81,11 +72,9 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
             if fetchedResultsController.delegate == nil {
                 fetchedResultsController.delegate = self
             }
-            
             self.externalPredicate = fetchedResultsController.fetchRequest.predicate
             let proxyPredicate = ProxyPredicate(predicate: self.predicate, externalPredicate: self.externalPredicate)
             fetchedResultsController.fetchRequest.predicate = proxyPredicate
-            
             setupPredicateObservation()
             reload()
         }
@@ -107,7 +96,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
         }
     }
     private var _backingItemCount: Int = 0
-    
     open override var contentView: ViewType? {
         didSet {
             performFetchIfNeeded()
@@ -120,11 +108,9 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
         if fetchedResultsController.delegate == nil {
             fetchedResultsController.delegate = self
         }
-        
         self.externalPredicate = fetchedResultsController.fetchRequest.predicate
         let proxyPredicate = ProxyPredicate(predicate: self.predicate, externalPredicate: self.externalPredicate)
         fetchedResultsController.fetchRequest.predicate = proxyPredicate
-        
         setupPredicateObservation()
         refreshItemCount()
     }
@@ -142,7 +128,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
             itemCount = 0
             return
         }
-        
         let limit = liveFetchLimit > 0 ? liveFetchLimit : Int.max
         itemCount = sections.reduce(0) { partialResult, sectionInfo in
             partialResult + min(sectionInfo.numberOfObjects, limit)
@@ -185,7 +170,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
 
     public func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange anObject: Any, at indexPath: IndexPath?, for type: NSFetchedResultsChangeType, newIndexPath: IndexPath?) {
         guard contentView?.window != nil else { return }
-        
         let changeType: CellContentChange.ChangeType
         switch type {
         case .insert: changeType = .insert
@@ -194,29 +178,22 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
         case .update: changeType = .update
         @unknown default: changeType = .update
         }
-        
         var change: CellContentChange? = nil
         if type == .update && indexPath != newIndexPath && indexPath != nil && newIndexPath != nil {
             change = CellContentChange(type: .move, currentIndexPath: indexPath, destinationIndexPath: newIndexPath)
         } else {
             change = CellContentChange(type: changeType, currentIndexPath: indexPath, destinationIndexPath: newIndexPath)
         }
-        
         guard let actualChange = change else { return }
         actualChange.rowAnimation = self.rowAnimation
-        
         var finalChange: CellContentChange? = actualChange
-        
         if self.liveFetchLimit > 0 {
-            // Reflects _previous_ section counts.
             var currentSectionCount = -1
             var destinationSectionCount = -1
-            
             var currentSection: NSFetchedResultsSectionInfo? = nil
             if let ip = indexPath, ip.section < self.fetchedResultsController.sections?.count ?? 0 {
                 currentSection = self.fetchedResultsController.sections?[ip.section]
             }
-            
             if let ip = indexPath {
                 let globalIndexPath = indexPathTranslator?.dataSource(self, globalIndexPathForLocalIndexPath: ip) ?? ip
                 if let tableView = contentView as? UITableView {
@@ -225,7 +202,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
                     currentSectionCount = collectionView.numberOfItems(inSection: globalIndexPath.section)
                 }
             }
-            
             if let newIP = newIndexPath {
                 let globalIndexPath = indexPathTranslator?.dataSource(self, globalIndexPathForLocalIndexPath: newIP) ?? newIP
                 let numberOfSections: Int
@@ -236,7 +212,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
                 } else {
                     numberOfSections = 0
                 }
-                
                 if globalIndexPath.section < numberOfSections {
                     if let tableView = contentView as? UITableView {
                         destinationSectionCount = tableView.numberOfRows(inSection: globalIndexPath.section)
@@ -247,7 +222,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
                     destinationSectionCount = 0
                 }
             }
-            
             switch actualChange.type {
             case .insert:
                 if let newIP = newIndexPath, newIP.item >= self.liveFetchLimit {
@@ -307,7 +281,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
                 }
             }
         }
-        
         if let changeToDispatch = finalChange {
             addChange(changeToDispatch)
         }
@@ -315,7 +288,6 @@ open class FetchedResultsDataSource<ContentType: NSManagedObject, CellType: UIVi
 
     public func controller(_ controller: NSFetchedResultsController<NSFetchRequestResult>, didChange sectionInfo: NSFetchedResultsSectionInfo, atSectionIndex sectionIndex: Int, for type: NSFetchedResultsChangeType) {
         guard contentView?.window != nil else { return }
-        
         let changeType: CellContentChange.ChangeType
         switch type {
         case .insert: changeType = .insert
@@ -336,30 +308,23 @@ open class FetchedResultsCollectionViewPrefetchingDataSource<ContentType: NSMana
     public var prefetchItemCache = NSCache<AnyObject, AnyObject>()
     public var prefetchHandler: ((ContentType, IndexPath) async throws -> PrefetchContentType?)?
     public var prefetchCompletionHandler: ((UICollectionViewCell, PrefetchContentType?, IndexPath, Error?) -> Void)?
-    
     private var prefetchTasks: [IndexPath: Task<Void, Never>] = [:]
 
     public override func configureCell(_ cell: UICollectionViewCell, at indexPath: IndexPath) {
         super.configureCell(cell, at: indexPath)
-        
         prefetchTasks[indexPath]?.cancel()
-        
         let item = self.item(at: indexPath)
         if let cached = prefetchItemCache.object(forKey: item as AnyObject) as? PrefetchContentType {
             self.prefetchCompletionHandler?(cell, cached, indexPath, nil)
             return
         }
-        
         guard let prefetchHandler else { return }
-        
         prefetchTasks[indexPath] = Task { @MainActor [weak self, weak cell] in
             defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
             do {
                 guard let content = try await prefetchHandler(item, indexPath) else { return }
                 guard !Task.isCancelled else { return }
-                
                 self?.prefetchItemCache.setObject(content as AnyObject, forKey: item as AnyObject)
-                
                 guard let self, let cell else { return }
                 if let collectionView = self.contentView,
                    let cellIndexPath = collectionView.indexPath(for: cell) {
@@ -390,7 +355,6 @@ open class FetchedResultsCollectionViewPrefetchingDataSource<ContentType: NSMana
                 continue
             }
             guard prefetchTasks[indexPath] == nil else { continue }
-            
             prefetchTasks[indexPath] = Task { [weak self] in
                 defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
                 guard let content = try? await prefetchHandler(item, indexPath) else { return }
@@ -411,30 +375,23 @@ open class FetchedResultsTableViewPrefetchingDataSource<ContentType: NSManagedOb
     public var prefetchItemCache = NSCache<AnyObject, AnyObject>()
     public var prefetchHandler: ((ContentType, IndexPath) async throws -> PrefetchContentType?)?
     public var prefetchCompletionHandler: ((UITableViewCell, PrefetchContentType?, IndexPath, Error?) -> Void)?
-    
     private var prefetchTasks: [IndexPath: Task<Void, Never>] = [:]
 
     public override func configureCell(_ cell: UITableViewCell, at indexPath: IndexPath) {
         super.configureCell(cell, at: indexPath)
-        
         prefetchTasks[indexPath]?.cancel()
-        
         let item = self.item(at: indexPath)
         if let cached = prefetchItemCache.object(forKey: item as AnyObject) as? PrefetchContentType {
             self.prefetchCompletionHandler?(cell, cached, indexPath, nil)
             return
         }
-        
         guard let prefetchHandler else { return }
-        
         prefetchTasks[indexPath] = Task { @MainActor [weak self, weak cell] in
             defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
             do {
                 guard let content = try await prefetchHandler(item, indexPath) else { return }
                 guard !Task.isCancelled else { return }
-                
                 self?.prefetchItemCache.setObject(content as AnyObject, forKey: item as AnyObject)
-                
                 guard let self, let cell else { return }
                 if let tableView = self.contentView,
                    let cellIndexPath = tableView.indexPath(for: cell) {
@@ -465,7 +422,6 @@ open class FetchedResultsTableViewPrefetchingDataSource<ContentType: NSManagedOb
                 continue
             }
             guard prefetchTasks[indexPath] == nil else { continue }
-            
             prefetchTasks[indexPath] = Task { [weak self] in
                 defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
                 guard let content = try? await prefetchHandler(item, indexPath) else { return }

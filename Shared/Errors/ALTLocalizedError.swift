@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 10/14/22.
 //  Copyright © 2022 Riley Testut. All rights reserved.
 //
-
 import Foundation
 
 public let ALTLocalizedTitleErrorKey = "ALTLocalizedTitle"
@@ -42,7 +41,7 @@ public extension ALTLocalizedError
 public protocol ALTErrorCode: Sendable, RawRepresentable where RawValue == Int
 {
     associatedtype Error: ALTLocalizedError where Error.Code == Self
-    static var errorDomain: String { get } // Optional
+    static var errorDomain: String { get } 
 }
 
 public protocol ALTErrorEnum: ALTErrorCode
@@ -51,12 +50,10 @@ public protocol ALTErrorEnum: ALTErrorCode
     var errorFailureReason: String { get }
 }
 
-/// LocalizedError & CustomNSError & CustomStringConvertible
 public extension ALTLocalizedError
 {
     var errorCode: Int { self.code.rawValue }
     var errorDescription: String? {
-        // Use errorFailure directly without relying on bridging to NSError
         return self.errorFailure ?? self.failureReason
     }
 
@@ -88,23 +85,20 @@ public extension ALTLocalizedError
     }
 }
 
-/// Default Implementations
 public extension ALTLocalizedError where Code: ALTErrorEnum
 {
     static var errorDomain: String {
         return Code.errorDomain
     }
-    // ALTErrorEnum Codes provide their failure reason directly.
     var errorFailureReason: String {
         return self.code.errorFailureReason
     }
 }
 
-/// Default Implementations
 public extension ALTErrorCode
 {
     static var errorDomain: String {
-        let typeName = String(reflecting: Self.self) // "\(Self.self)" doesn't include module name, but String(reflecting:) does.
+        let typeName = String(reflecting: Self.self) 
         let errorDomain = typeName.replacingOccurrences(of: "ErrorCode", with: "Error")
         return errorDomain
     }
@@ -112,8 +106,6 @@ public extension ALTErrorCode
 
 public extension ALTLocalizedError
 {
-    // Allows us to initialize errors with localizedTitle + localizedFailure
-    // while still using the error's custom initializer at callsite.
     init(_ error: Self, localizedTitle: String? = nil, localizedFailure: String? = nil)
     {
         self = error
@@ -133,12 +125,11 @@ private extension ALTLocalizedError
     var userInfoValues: [(String, Any)] {
         let userInfoValues = Mirror(reflecting: self).children.compactMap { (label, value) -> (String, Any)? in
             guard let userInfoValue = value as? any UserInfoValueProtocol,
-                  let key: any StringProtocol = userInfoValue.key ?? label?.dropFirst() // Remove leading underscore
+                  let key: any StringProtocol = userInfoValue.key ?? label?.dropFirst() 
             else { return nil }
 
             return (String(key), userInfoValue.wrappedValue)
         }
-        
         return userInfoValues
     }
 }
@@ -162,8 +153,6 @@ public struct DefaultLocalizedError<Code: ALTErrorEnum>: ALTLocalizedError
     }
 }
 
-/// Custom Operators
-/// These allow us to pattern match ALTErrorCodes against arbitrary errors via ~ prefix.
 prefix operator ~
 public prefix func ~<Code: ALTErrorCode>(expression: Code) -> NSError
 {
@@ -176,18 +165,3 @@ public func ~=(pattern: any Swift.Error, value: any Swift.Error) -> Bool
     let isMatch = pattern._domain == value._domain && pattern._code == value._code
     return isMatch
 }
-
-// These operators *should* allow us to match ALTErrorCodes against arbitrary errors,
-// but they don't work as of iOS 16.1 and Swift 5.7.
-//
-//public func ~=<Error: ALTLocalizedError>(pattern: Error, value: Swift.Error) -> Bool
-//{
-//    let isMatch = pattern._domain == value._domain && pattern._code == value._code
-//    return isMatch
-//}
-//
-//public func ~=<Code: ALTErrorCode>(pattern: Code, value: Swift.Error) -> Bool
-//{
-//    let isMatch = Code.errorDomain == value._domain && pattern.rawValue == value._code
-//    return isMatch
-//}

@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/22/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 import Foundation
 
 public extension Result
@@ -17,7 +16,6 @@ public extension Result
         case .failure: return nil
         }
     }
-    
     var error: Failure? {
         switch self
         {
@@ -25,7 +23,6 @@ public extension Result
         case .failure(let error): return error
         }
     }
-    
     init(_ value: Success?, _ error: Failure?)
     {
         switch (value, error)

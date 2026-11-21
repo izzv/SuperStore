@@ -5,7 +5,6 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -26,14 +25,11 @@ final class StageBackupAppOperation: BasePipelineOperation<InstallAppOperationCo
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
         self.setProgress(10)
-        
         guard let targetApp = self.targetApp else {
             debugLog("[StageBackupAppOperation] Error: target app is nil")
             throw OperationError.invalidParameters("StageBackupAppOperation: target app is nil")
         }
-        
         debugLog("[StageBackupAppOperation] Preparing backup app stage for '\(targetApp.name)' (\(targetApp.bundleIdentifier)), target bundleID: '\(context.targetBundleIdentifier)'")
-        
         guard ALTApplication(fileURL: targetApp.fileURL) != nil else {
             debugLog("[StageBackupAppOperation] Error: ALTApplication invalid/not found at \(targetApp.fileURL.path)")
             throw OperationError.missingAppBundle(reason: "Could not find application bundle for '\(targetApp.name)' at '\(targetApp.fileURL.lastPathComponent)'")
@@ -54,7 +50,6 @@ final class StageBackupAppOperation: BasePipelineOperation<InstallAppOperationCo
         debugLog("[StageBackupAppOperation] Unzipping SideBackup.ipa...")
         let unzippedAppBundleURL = try FileManager.default.unzipAppBundle(at: sidebackupFileURL, toDirectory: temporaryDirectoryURL)
         debugLog("[StageBackupAppOperation] Unzipped SideBackup app bundle to \(unzippedAppBundleURL.path)")
-        
         guard let sideBackupBundle = ALTApplication(fileURL: unzippedAppBundleURL) else {
             debugLog("[StageBackupAppOperation] Error: Failed to instantiate ALTApplication at \(unzippedAppBundleURL.path)")
             throw OperationError.missingAppBundle(reason: "Unzipped bundle directory could not be located at '\(unzippedAppBundleURL.lastPathComponent)'")
@@ -73,7 +68,6 @@ final class StageBackupAppOperation: BasePipelineOperation<InstallAppOperationCo
             targetAppGroups.append(Bundle.baseAltStoreAppGroupID)
         }
 
-        // replace sidebackup app's entitlements with target app's entilements (for appgroup!)
         context.additionalEntitlements[.appGroups] = targetAppGroups
 
         let installedAppUTI: [String: any Sendable] = [

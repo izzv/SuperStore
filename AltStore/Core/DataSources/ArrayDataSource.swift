@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import CoreData
 
@@ -31,7 +30,6 @@ open class ArrayDataSource<ContentType, CellType: UIView & CellContentCell, View
         self.items = items
         self.itemCount = items.count
         self.isApplyingBatchChanges = false
-        
         if let changes = changes {
             if !changes.isEmpty, let contentView = self.contentView {
                 (contentView as? CellContentTransactionUpdateable)?.beginUpdates()
@@ -58,30 +56,23 @@ open class ArrayCollectionViewPrefetchingDataSource<ContentType, PrefetchContent
     public var prefetchItemCache = NSCache<AnyObject, AnyObject>()
     public var prefetchHandler: ((ContentType, IndexPath) async throws -> PrefetchContentType?)?
     public var prefetchCompletionHandler: ((UICollectionViewCell, PrefetchContentType?, IndexPath, Error?) -> Void)?
-    
     private var prefetchTasks: [IndexPath: Task<Void, Never>] = [:]
 
     public override func configureCell(_ cell: UICollectionViewCell, at indexPath: IndexPath) {
         super.configureCell(cell, at: indexPath)
-        
         prefetchTasks[indexPath]?.cancel()
-        
         let item = self.item(at: indexPath)
         if let cached = prefetchItemCache.object(forKey: item as AnyObject) as? PrefetchContentType {
             self.prefetchCompletionHandler?(cell, cached, indexPath, nil)
             return
         }
-        
         guard let prefetchHandler else { return }
-        
         prefetchTasks[indexPath] = Task { @MainActor [weak self, weak cell] in
             defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
             do {
                 guard let content = try await prefetchHandler(item, indexPath) else { return }
                 guard !Task.isCancelled else { return }
-                
                 self?.prefetchItemCache.setObject(content as AnyObject, forKey: item as AnyObject)
-                
                 guard let self, let cell else { return }
                 if let collectionView = self.contentView,
                    let cellIndexPath = collectionView.indexPath(for: cell) {
@@ -112,7 +103,6 @@ open class ArrayCollectionViewPrefetchingDataSource<ContentType, PrefetchContent
                 continue
             }
             guard prefetchTasks[indexPath] == nil else { continue }
-            
             prefetchTasks[indexPath] = Task { [weak self] in
                 defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
                 guard let content = try? await prefetchHandler(item, indexPath) else { return }
@@ -133,30 +123,23 @@ open class ArrayTableViewPrefetchingDataSource<ContentType, PrefetchContentType>
     public var prefetchItemCache = NSCache<AnyObject, AnyObject>()
     public var prefetchHandler: ((ContentType, IndexPath) async throws -> PrefetchContentType?)?
     public var prefetchCompletionHandler: ((UITableViewCell, PrefetchContentType?, IndexPath, Error?) -> Void)?
-    
     private var prefetchTasks: [IndexPath: Task<Void, Never>] = [:]
 
     public override func configureCell(_ cell: UITableViewCell, at indexPath: IndexPath) {
         super.configureCell(cell, at: indexPath)
-        
         prefetchTasks[indexPath]?.cancel()
-        
         let item = self.item(at: indexPath)
         if let cached = prefetchItemCache.object(forKey: item as AnyObject) as? PrefetchContentType {
             self.prefetchCompletionHandler?(cell, cached, indexPath, nil)
             return
         }
-        
         guard let prefetchHandler else { return }
-        
         prefetchTasks[indexPath] = Task { @MainActor [weak self, weak cell] in
             defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
             do {
                 guard let content = try await prefetchHandler(item, indexPath) else { return }
                 guard !Task.isCancelled else { return }
-                
                 self?.prefetchItemCache.setObject(content as AnyObject, forKey: item as AnyObject)
-                
                 guard let self, let cell else { return }
                 if let tableView = self.contentView,
                    let cellIndexPath = tableView.indexPath(for: cell) {
@@ -187,7 +170,6 @@ open class ArrayTableViewPrefetchingDataSource<ContentType, PrefetchContentType>
                 continue
             }
             guard prefetchTasks[indexPath] == nil else { continue }
-            
             prefetchTasks[indexPath] = Task { [weak self] in
                 defer { self?.prefetchTasks.removeValue(forKey: indexPath) }
                 guard let content = try? await prefetchHandler(item, indexPath) else { return }

@@ -5,12 +5,10 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 protocol AsyncOperation<T>: AnyObject, ProgressReporting, OperationLogging {
     associatedtype T
-    
     var isCancelled: Bool { get }
 
     @discardableResult
@@ -23,13 +21,10 @@ class BaseOperation<Context: OperationContext, Result>: NSObject, AsyncOperation
 
     private(set) var progress: Progress!
     private(set) var context: Context!
-    
     private(set) var isCancelled = false
     fileprivate let lock = NSLock()
-    
 
     var totalUnitCount: Int64 { 100 }
-    
     init(context: Context) throws {
         if Self.self === BaseOperation.self {
             throw AbstractClassError.abstractInitializerInvoked
@@ -39,22 +34,18 @@ class BaseOperation<Context: OperationContext, Result>: NSObject, AsyncOperation
         self.progress = Progress.discreteProgress(totalUnitCount: self.totalUnitCount)
         self.progress.cancellationHandler = { [weak self] in self?.cancel() }
     }
-    
     func setProgress(_ completedUnitCount: Int64) {
         let previous = self.progress.completedUnitCount
         self.progress.completedUnitCount = completedUnitCount
         verboseLog("[\(String(describing: type(of: self)))] Progress updated: \(previous) -> \(completedUnitCount) (total: \(self.progress.totalUnitCount))")
     }
-    
     func operationStep() throws -> any OperationStep {
         throw AbstractClassError.abstractMethodInvoked
     }
-    
     func executePreconditionCheck(parentProgress: Progress?) async throws {
         let className = String(describing: type(of: self))
         debugLog("[\(className)] executePreconditionCheck() started")
         defer { debugLog("[\(className)] executePreconditionCheck() completed") }
-        
         if let parentProgress = parentProgress {
             let step = try self.operationStep()
             if try !self.context.attachProgressSlot(for: step, childProgress: self.progress, parentProgress: parentProgress) {
@@ -72,18 +63,15 @@ class BaseOperation<Context: OperationContext, Result>: NSObject, AsyncOperation
             throw error
         }
     }
-    
     @discardableResult
     func execute(parentProgress: Progress?) async throws -> Result
     {
         throw AbstractClassError.abstractMethodInvoked
     }
-    
     @discardableResult
     func execute() async throws -> Result {
         try await self.execute(parentProgress: nil)
     }
-    
     func cancel() {
         self.lock.lock()
         defer { self.lock.unlock() }

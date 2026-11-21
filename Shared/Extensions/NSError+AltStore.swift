@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 3/11/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 import Foundation
 
 #if canImport(UIKit)
@@ -16,7 +15,6 @@ import AppKit
 public typealias ALTFont = NSFont
 #endif
 
-
 public extension NSError
 {
     @objc(alt_localizedFailure)
@@ -24,7 +22,6 @@ public extension NSError
         let localizedFailure = (self.userInfo[NSLocalizedFailureErrorKey] as? String) ?? (NSError.userInfoValueProvider(forDomain: self.domain)?(self, NSLocalizedFailureErrorKey) as? String)
         return localizedFailure
     }
-    
     @objc(alt_localizedDebugDescription)
     var localizedDebugDescription: String? {
         let debugDescription = (self.userInfo[NSDebugDescriptionErrorKey] as? String) ?? (NSError.userInfoValueProvider(forDomain: self.domain)?(self, NSDebugDescriptionErrorKey) as? String)
@@ -70,7 +67,6 @@ public extension NSError
             return error
         }
     }
-    
     func sanitizedForSerialization() -> NSError
     {
         var userInfo = self.userInfo
@@ -80,37 +76,29 @@ public extension NSError
         userInfo[NSLocalizedRecoverySuggestionErrorKey] = self.localizedRecoverySuggestion
         userInfo[NSDebugDescriptionErrorKey] = self.localizedDebugDescription
 
-        // Remove userInfo values that don't conform to NSSecureEncoding.
         userInfo = userInfo.filter { (key, value) in
             guard let secureCodable = value as? NSSecureCoding else { return false }
-            
             switch secureCodable
             {
             case let array as NSArray:
                 let isSecureCodable = array.allSatisfy({ $0 is NSSecureCoding })
                 return isSecureCodable
-                
             case let dictionary as NSDictionary:
                 let isSecureCodable = dictionary.allValues.allSatisfy({ $0 is NSSecureCoding })
                 return isSecureCodable
-                
             default: return true
             }
         }
-        
-        // Sanitize underlying errors.
         if let underlyingError = userInfo[NSUnderlyingErrorKey] as? Error
         {
             let sanitizedError = (underlyingError as NSError).sanitizedForSerialization()
             userInfo[NSUnderlyingErrorKey] = sanitizedError
         }
-        
         if let underlyingErrors = userInfo[NSMultipleUnderlyingErrorsKey] as? [Error]
         {
             let sanitizedErrors = underlyingErrors.map { ($0 as NSError).sanitizedForSerialization() }
             userInfo[NSMultipleUnderlyingErrorsKey] = sanitizedErrors
         }
-        
         let error = NSError(domain: self.domain, code: self.code, userInfo: userInfo)
         return error
     }
@@ -153,9 +141,9 @@ public extension NSError
             switch (indexA, indexB)
             {
             case (let indexA?, let indexB?): return indexA < indexB
-            case (_?, nil): return true // indexA exists, indexB is nil, so A should come first.
-            case (nil, _?): return false  // indexA is nil, indexB exists, so B should come first.
-            case (nil, nil): return a.key < b.key // both indexes are nil, so sort alphabetically.
+            case (_?, nil): return true 
+            case (nil, _?): return false  
+            case (nil, nil): return a.key < b.key 
             }
         }
 
@@ -194,7 +182,6 @@ public extension NSError
             detailedDescription.append(attributedString)
         }
 
-        // Support dark mode
 		#if canImport(UIKit)
         detailedDescription.addAttribute(.foregroundColor, value: UIColor.label, range: NSMakeRange(0, detailedDescription.length))
 		#else
@@ -220,17 +207,13 @@ public extension NSError
             case NSLocalizedDescriptionKey:
                 if nsError.localizedFailure != nil
                 {
-                    // Error has localizedFailure, so return nil to construct localizedDescription from it + localizedFailureReason.
                     return nil
                 }
                 else if let localizedDescription = provider?(error, NSLocalizedDescriptionKey) as? String
                 {
-                    // Only call provider() if there is no localizedFailure.
                     return localizedDescription
                 }
 
-                // Otherwise, return failureReason for localizedDescription to avoid system prepending "Operation Failed" message.
-                // Do NOT return provider(NSLocalizedFailureReason), which might be unexpectedly nil if unrecognized error code.
                 return nsError.localizedFailureReason
 
             default:

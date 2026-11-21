@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/19/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 extension TimeInterval
@@ -124,8 +123,6 @@ class ToastView: UIControl
 
     convenience init(error: Error, mode: InfoMode)
     {
-        // Every alert funnels through here, so sanitising once keeps raw
-        // server payloads (HTML error pages, JSON blobs) out of all of them.
         let error = SignInFailure.normalizedForDisplay(error)
         let mode = mode == .fullError ? ErrorProcessing.InfoMode.fullError : ErrorProcessing.InfoMode.localizedDescription
 
@@ -382,7 +379,6 @@ class ToastView: UIControl
         let announcement = (self.textLabel.text ?? "") + ". " + (self.detailTextLabel.text ?? "")
         self.accessibilityLabel = announcement
 
-        // Minimum 0.75 delay to prevent announcement being cut off by VoiceOver.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
             UIAccessibility.post(notification: .announcement, argument: announcement)
         }

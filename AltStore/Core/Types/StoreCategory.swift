@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 11/8/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 import Foundation
 @preconcurrency import UIKit
 
@@ -19,7 +18,6 @@ public enum StoreCategory: String, CaseIterable
     case social
     case utilities
     case other
-    
     public var localizedName: String {
         switch self
         {
@@ -33,30 +31,25 @@ public enum StoreCategory: String, CaseIterable
         case .other: NSLocalizedString("Other", comment: "")
         }
     }
-    
     public var symbolName: String {
         switch self
         {
-        case .developer: "terminal" // renamed to apple.terminal as of iOS 17
+        case .developer: "terminal" 
         case .games: "gamecontroller"
         case .photoAndVideo: "camera"
         case .utilities: "paperclip"
         case .other: "square.stack.3d.up"
-            
         case .entertainment:
             if #available(iOS 17, *) { "movieclapper" }
             else { "tv" }
-        
         case .lifestyle:
             if #available(iOS 16.1, *) { "tree" }
             else { "sun.max" }
-        
         case .social:
             if #available(iOS 17.0, *) { "bubble.left.and.text.bubble.right" }
             else { "text.bubble" }
         }
     }
-    
     public var filledSymbolName: String {
         switch self
         {
@@ -64,7 +57,6 @@ public enum StoreCategory: String, CaseIterable
         default: return self.symbolName + ".fill"
         }
     }
-    
     public var tintColor: UIColor {
         switch self
         {

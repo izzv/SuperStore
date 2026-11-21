@@ -5,7 +5,6 @@
 //  Created by Magesh K on 9/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import UIKit
 import Combine
 
@@ -13,11 +12,9 @@ public struct ThemePreset: Identifiable, Equatable {
     public let id: String
     public let name: String
     public let hex: String
-    
     public var color: UIColor {
         UIColor(hex: hex) ?? .defaultAltPrimary
     }
-    
     public static let presets: [ThemePreset] = [
         ThemePreset(id: "classic", name: "SuperStore Teal", hex: "#19D3B5"),
         ThemePreset(id: "neonViolet", name: "Neon Violet", hex: "#8B5CF6"),

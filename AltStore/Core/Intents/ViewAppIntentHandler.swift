@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 7/10/20.
 //  Copyright © 2020 Riley Testut. All rights reserved.
 //
-
 #if !os(tvOS)
 import Intents
 

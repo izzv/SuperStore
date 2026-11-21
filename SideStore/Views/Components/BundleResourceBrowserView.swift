@@ -5,15 +5,12 @@
 //  Created by Magesh K on 2/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 #if !os(tvOS)
 import QuickLook
 #endif
 import SideSign
 import CodeSignKit
-
-// MARK: - Bundle Item Model
 
 struct BundleItem: Identifiable {
     let id = UUID()
@@ -23,8 +20,6 @@ struct BundleItem: Identifiable {
     let fileSize: Int64
     let childCount: Int
 }
-
-// MARK: - Bundle Resource Browser View
 
 struct BundleResourceBrowserView: View {
     let rootURL: URL
@@ -76,7 +71,6 @@ struct BundleResourceBrowserView: View {
             : title)
         .searchable(text: $searchQuery, prompt: "Search files")
         .toolbar {
-            // Trailing: Select / Done
             ToolbarItem(placement: .navigationBarTrailing) {
                 SwiftUI.Button(isSelecting ? "Done" : "Select") {
                     withAnimation {
@@ -86,7 +80,6 @@ struct BundleResourceBrowserView: View {
                 }
             }
             #if !os(tvOS)
-            // Leading Share
             ToolbarItem(placement: .navigationBarLeading) {
                 if isSelecting && !selectedURLs.isEmpty {
                     SwiftUI.Button {
@@ -131,8 +124,6 @@ struct BundleResourceBrowserView: View {
     }
 }
 
-// MARK: - Bundle Item Row
-
 struct BundleItemRow: View {
     let item: BundleItem
     var isSelecting: Bool = false
@@ -161,7 +152,6 @@ struct BundleItemRow: View {
     @ViewBuilder
     private func rowContent(selected: Bool) -> some View {
         HStack(spacing: 12) {
-            // Selection indicator or file icon
             if isSelecting {
                 Image(systemName: selected ? "checkmark.circle.fill" : (item.isDirectory ? "minus.circle" : "circle"))
                     .font(.system(size: 22))
@@ -188,7 +178,6 @@ struct BundleItemRow: View {
             }
             Spacer()
 
-            // In select mode still show file icon on the right
             if isSelecting {
                 Image(systemName: fileIcon)
                     .font(.system(size: 16))
@@ -318,7 +307,6 @@ struct BundleItemRow: View {
     }
 }
 
-// MARK: - IPA Extraction State 
 final class IPAExtraction: ObservableObject {
     @Published var bundleURL: URL? = nil
     @Published var isExtracting = true
@@ -349,14 +337,11 @@ final class IPAExtraction: ObservableObject {
     }
 
     deinit {
-        // Only runs when the view is truly popped — not on forward navigation
         if let dir = tempDir {
             try? FileManager.default.removeItem(at: dir)
         }
     }
 }
-
-// MARK: - IPA Contents View
 
 struct IPAContentsView: View {
     let ipaURL: URL
@@ -403,9 +388,6 @@ struct IPAContentsView: View {
     }
 }
 
-
-// MARK: - Full App Bundle View (for extracted IPA or any .app bundle URL)
-
 struct FullAppBundleView: View {
     let bundleURL: URL
     @StateObject private var certificatesViewModel = CertificatesViewModel()
@@ -439,7 +421,6 @@ struct FullAppBundleView: View {
 
     var body: some View {
         List {
-            // Header
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(displayName)
@@ -453,7 +434,6 @@ struct FullAppBundleView: View {
                 .padding(.vertical, 8)
             }
 
-            // General Info — all from Info.plist
             Section(header: Text("General Info")) {
                 let plist = infoPlist
                 let bundleID = plist?["CFBundleIdentifier"] as? String ?? "N/A"
@@ -489,7 +469,6 @@ struct FullAppBundleView: View {
                 }
             }
 
-            // Provisioning Profile — from embedded.mobileprovision
             if let profile = provisioningProfile {
                 Section(header: Text("Provisioning Profile")) {
                     NavigationLink(destination: ProvisioningProfileDetailView(profile: profile, certificatesViewModel: certificatesViewModel)) {
@@ -507,7 +486,6 @@ struct FullAppBundleView: View {
                 }
             }
 
-            // Info.plist
             if let plist = infoPlist {
                 Section(header: Text("Info.plist")) {
                     NavigationLink(destination: InfoPlistContainerView(plist: plist)) {
@@ -517,7 +495,6 @@ struct FullAppBundleView: View {
                 }
             }
 
-            // App Extensions
             if !appExtensions.isEmpty {
                 Section(header: Text("App Extensions (\(appExtensions.count))")) {
                     ForEach(appExtensions, id: \.path) { extURL in
@@ -539,7 +516,6 @@ struct FullAppBundleView: View {
                 }
             }
 
-            // Resources — recursive browser
             Section(header: Text("Resources")) {
                 NavigationLink(destination: BundleResourceBrowserView(rootURL: bundleURL, title: "Bundle Contents")) {
                     Text("Browse Bundle Contents")
@@ -565,7 +541,6 @@ struct FullAppBundleView: View {
     }
 }
 
-// MARK: - Plist Resource Viewer 
 struct PlistResourceViewer: View {
     let url: URL
 
@@ -593,7 +568,6 @@ struct PlistResourceViewer: View {
         .onAppear {
             guard !isLoaded else { return }
             isLoaded = true
-            // Try as structured dict first (XML or binary plist)
             if let parser = try? InfoPlistParser(plistURL: url) {
                 plistDict = parser.rawDictionary
             } else {
@@ -604,8 +578,6 @@ struct PlistResourceViewer: View {
         }
     }
 }
-
-// MARK: - Resource Image Viewer
 
 struct ResourceImageViewer: View {
     let url: URL
@@ -637,8 +609,6 @@ struct ResourceImageViewer: View {
         #endif
     }
 }
-
-// MARK: - Resource Text Viewer
 
 struct ResourceTextViewer: View {
     var url: URL? = nil
@@ -686,7 +656,6 @@ struct ResourceTextViewer: View {
 }
 
 #if !os(tvOS)
-// MARK: - QuickLook Preview Controller Bridge
 
 struct QLPreviewControllerView: UIViewControllerRepresentable {
     let url: URL
@@ -716,7 +685,6 @@ struct QLPreviewControllerView: UIViewControllerRepresentable {
 }
 #endif
 
-// Provisioning Profile Resource Viewer Bridge
 struct ProvisioningProfileResourceViewer: View {
     let url: URL
     @StateObject private var certificatesViewModel = CertificatesViewModel()

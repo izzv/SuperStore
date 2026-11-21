@@ -5,7 +5,6 @@
 //  Created by Magesh K on 22/08/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import CoreData
 import SideSign
@@ -13,7 +12,6 @@ import SideSign
 public final class MaintenanceManager {
     public static let shared = MaintenanceManager()
 
-    // Increment this counter whenever you want to trigger another maintenance pass in future updates
     public static let currentMaintenanceCounter = 7
 
     public static let maintenanceCounterFileName = ".maintenance_counter"
@@ -114,7 +112,6 @@ private extension MaintenanceManager {
         }
     }
 
-    // added in v0.7.0
     func migrateLegacyCachedAppBundles() async {
         let context = DatabaseManager.shared.viewContext
         await context.perform {

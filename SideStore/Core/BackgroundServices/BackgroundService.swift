@@ -5,7 +5,6 @@
 //  Created by Magesh K on 15/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public protocol BackgroundService: Sendable {

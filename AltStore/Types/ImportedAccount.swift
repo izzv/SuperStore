@@ -5,7 +5,6 @@
 //  Created by ny on 9/7/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public enum CertificateEncryptionType: String, Codable {
@@ -38,14 +37,12 @@ struct ImportedAccount: Codable {
         case anisetteIdentifier
         case anisetteAdiBlob
 
-        // Legacy (pre 2.0) fallback keys
         case legacyCert = "cert"
         case legacyCertPass = "certpass"
         case legacyLocalUser = "local_user"
         case legacyAdiPB = "adiPB"
     }
 
-    // Encrypted Initializer (Requires passphrase)
     init(
         version: String = ImportedAccount.currentVersion,
         email: String,
@@ -64,7 +61,6 @@ struct ImportedAccount: Codable {
         self.anisetteAdiBlob = anisetteAdiBlob
     }
 
-    // Unencrypted Initializer (No passphrase)
     init(
         version: String = ImportedAccount.currentVersion,
         email: String,
@@ -95,7 +91,6 @@ struct ImportedAccount: Codable {
         }
 
         if let explicitType = try container.decodeIfPresent(CertificateEncryptionType.self, forKey: .certificateType) {
-            // v2.0 Payload: Strict, explicit certType (no guessing)
             switch explicitType {
             case .encrypted:
                 self.certificatePassword = try container.decode(String.self, forKey: .certificatePassword)
@@ -103,10 +98,6 @@ struct ImportedAccount: Codable {
                 self.certificatePassword = nil
             }
         } else {
-            // TODO: Remove this fallback branch when pre 2.0 payloads are deprecated.
-            // Pre 2.0 payloads always included mandatory "certpass".
-            // If non-empty -> encrypted (certificatePassword = legacyPass, certificateType evaluates to .encrypted)
-            // If empty ("") -> unencrypted (certificatePassword = nil, certificateType evaluates to .unencrypted)
             let legacyPass = try container.decode(String.self, forKey: .legacyCertPass)
             if !legacyPass.isEmpty {
                 self.certificatePassword = legacyPass

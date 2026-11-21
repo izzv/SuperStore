@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/2/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import UIKit
 
 public enum AppImportSourceMode: String, CaseIterable, Identifiable, Sendable {
@@ -33,7 +32,6 @@ public enum AppImportSourceMode: String, CaseIterable, Identifiable, Sendable {
 
 @MainActor
 public enum InstallAppDialog {
-    
     public static func presentSourceSelection(
         from presentingVC: UIViewController,
         barButtonItem: UIBarButtonItem? = nil,
@@ -65,12 +63,10 @@ public enum InstallAppDialog {
                 onChooseFiles()
             })
             #endif
-            
             alertController.addAction(UIAlertAction(title: NSLocalizedString("Install from URL", comment: ""), style: .default) { _ in
                 self.presentURLInputDialog(from: presentingVC, onConfirm: onConfirm)
             })
             alertController.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel))
-            
             presentingVC.present(alertController, animated: true)
 
         case .files:
@@ -80,7 +76,6 @@ public enum InstallAppDialog {
             self.presentURLInputDialog(from: presentingVC, onConfirm: onConfirm)
         }
     }
-    
     private static func presentURLInputDialog(
         from presentingVC: UIViewController,
         onConfirm: @escaping (URL) -> Void
@@ -90,7 +85,6 @@ public enum InstallAppDialog {
             message: NSLocalizedString("Enter the URL of the .ipa file to install.", comment: ""),
             preferredStyle: .alert
         )
-        
         alert.addTextField { textField in
             textField.placeholder = "https://example.com/app.ipa"
             textField.keyboardType = .URL
@@ -98,7 +92,6 @@ public enum InstallAppDialog {
             textField.autocorrectionType = .no
             textField.clearButtonMode = .whileEditing
         }
-        
         alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel))
         alert.addAction(UIAlertAction(title: NSLocalizedString("Continue", comment: ""), style: .default) { _ in
             guard let text = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -114,15 +107,12 @@ public enum InstallAppDialog {
                 presentingVC.present(errorAlert, animated: true)
                 return
             }
-            
             self.present(ipaURL: url, from: presentingVC) {
                 onConfirm(url)
             }
         })
-        
         presentingVC.present(alert, animated: true)
     }
-    
     public static func present(
         ipaURL: URL,
         from presentingViewController: UIViewController? = nil,
@@ -136,7 +126,6 @@ public enum InstallAppDialog {
         } else {
             message = String(format: NSLocalizedString("Do you want to continue? This will download and install from:\n%@", comment: ""), ipaURL.absoluteString)
         }
-        
         self.presentConfirmation(
             message: message,
             from: presentingViewController,
@@ -144,7 +133,6 @@ public enum InstallAppDialog {
             onCancel: onCancel
         )
     }
-    
     public static func present(
         storeApp: StoreApp,
         from presentingViewController: UIViewController? = nil,
@@ -174,7 +162,6 @@ public enum InstallAppDialog {
             onCancel: onCancel
         )
     }
-    
     private static func presentConfirmation(
         message: String,
         from presentingViewController: UIViewController?,
@@ -185,26 +172,22 @@ public enum InstallAppDialog {
             onConfirm()
             return
         }
-        
         let rootVC = presentingViewController ?? UIApplication.shared.topViewController()
         guard let presentingVC = rootVC else {
             onCancel()
             return
         }
-        
         let alert = UIAlertController(
             title: NSLocalizedString("Install App", comment: ""),
             message: message,
             preferredStyle: .alert
         )
-        
         alert.addAction(UIAlertAction(title: NSLocalizedString("Install", comment: ""), style: .default) { _ in
             onConfirm()
         })
         alert.addAction(UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel) { _ in
             onCancel()
         })
-        
         presentingVC.present(alert, animated: true)
     }
 }

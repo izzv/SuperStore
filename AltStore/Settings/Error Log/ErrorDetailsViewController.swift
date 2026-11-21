@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 10/5/22.
 //  Copyright © 2022 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 class ErrorDetailsViewController: UIViewController

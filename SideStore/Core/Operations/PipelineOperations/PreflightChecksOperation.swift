@@ -5,8 +5,6 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
-
 import Foundation
 import SideSign
 
@@ -37,13 +35,11 @@ final class PreflightChecksOperation: BasePipelineOperation<StandaloneOperationC
         let endProgress: Int64 = 90
         let range = endProgress - startProgress
         let count = operations.count
-        
         for (index, operation) in operations.enumerated() {
             if range > 0 {
                 let percent = startProgress + Int64(Double(index + 1) / Double(count) * Double(range))
                 self.setProgress(percent)
             }
-            
             let isSideStore = (operation.app as? ALTApplication)?.isAltStoreApp == true ||
                                operation.bundleIdentifier.isAltStoreAppID
             guard isSideStore else { continue }
@@ -67,7 +63,6 @@ final class PreflightChecksOperation: BasePipelineOperation<StandaloneOperationC
                 case .refresh(let installedApp),    .activate(let installedApp),    .deactivate(let installedApp), .deleteApp(let installedApp),
                      .backup(let installedApp),     .restore(let installedApp),     .resign(let installedApp, _),
                      .removeApp(let installedApp),  .removeDeactivatedApp(let installedApp):
-                    
                     if !currentTeamID.isEmpty && installedApp.bundleIdentifier == StoreApp.altstoreAppID {
                         incomingTargetID = installedApp.customBundleIdentifier ?? "\(StoreApp.altstoreAppID).\(currentTeamID)"
                     } else {
@@ -84,7 +79,6 @@ final class PreflightChecksOperation: BasePipelineOperation<StandaloneOperationC
                     guard let handler = self.handler else {
                         throw OperationError.cancelled
                     }
-                    
                     let shouldContinue = await handler.resolveBundleIDMismatch(
                         targetID: targetID,
                         activeEffectiveID: activeEffectiveID

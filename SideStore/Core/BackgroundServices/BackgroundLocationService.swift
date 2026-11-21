@@ -5,7 +5,6 @@
 //  Created by Magesh K on 15/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import CoreLocation
 
@@ -93,10 +92,8 @@ private final class LocationDelegateBridge: NSObject, CLLocationManagerDelegate,
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        // we don't care
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // we don't care
     }
 }

@@ -5,22 +5,18 @@
 //  Created by Magesh K on 23/03/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public class BuildInfo{
     private static let MARKETING_VERSION_TAG        = "CFBundleShortVersionString"
     private static let CURRENT_PROJECT_VERSION_TAG  = kCFBundleVersionKey as String
-    
     private static let XCODE_VERSION_TAG  = "DTXcode"
     private static let XCODE_REVISION_TAG = "DTXcodeBuild"
 
     let bundle: Bundle
-    
     public init(){
         bundle = Bundle.main
     }
-    
     enum BundleError: Swift.Error {
         case invalidURL
     }

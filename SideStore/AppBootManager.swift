@@ -5,35 +5,28 @@
 //  Created by Magesh K on 9/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import UIKit
 import Minimuxer
 
 public final class AppBootManager {
     public static let shared = AppBootManager()
-    
     private let lock = NSLock()
-    
     private var cachedNeedsPairingPrompt = false
     public var needsPairingPrompt: Bool {
         get { lock.withLock { cachedNeedsPairingPrompt } }
         set { lock.withLock { cachedNeedsPairingPrompt = newValue } }
     }
-    
     private var cachedNeedsSideJITPrompt = false
     public var needsSideJITPrompt: Bool {
         get { lock.withLock { cachedNeedsSideJITPrompt } }
         set { lock.withLock { cachedNeedsSideJITPrompt = newValue } }
     }
-    
     private init() {}
-    
 
     public nonisolated func startMinimuxer(pairingFile: String) async throws {
         debugLog("[AppBootManager] startMinimuxer() entered")
         defer { debugLog("[AppBootManager] startMinimuxer() exited") }
-        
         if UserDefaults.standard.enableEMPforWireguard {
             debugLog("[AppBootManager] Starting EMProxy before minimuxer...")
             try await startEMProxy()
@@ -41,8 +34,6 @@ public final class AppBootManager {
 
         let preferred = PairingFileManager.shared.preferredProtocol
         try await minimuxerStart(pairingFile, preferred: preferred)
-        
-        // Validate the pairing by trying to fetch the UDID
         do {
             debugLog("[AppBootManager] startMinimuxer(): Minimuxer fetchUDID() based connection starting...")
             let deviceUDID = try await fetchUDID(forceLive: true)
@@ -58,7 +49,6 @@ public final class AppBootManager {
             }
         }
     }
-    
     @MainActor
     public func promptForPairing(on vc: UIViewController) async {
         var isRetry = false
@@ -72,14 +62,12 @@ public final class AppBootManager {
                 debugLog("[AppBootManager] promptForPairing: user skipped or cancelled pairing prompt")
                 break
             }
-            
             debugLog("[AppBootManager] promptForPairing: fetching pairing file at selectedURL: \(selectedURL.path)")
             guard let pairingString = PairingFileManager.shared.fetchPairingFile() else {
                 debugLog("[AppBootManager] promptForPairing: failed to read saved pairing file from disk")
                 isRetry = true
                 continue
             }
-            
             do {
                 try await self.startMinimuxer(pairingFile: pairingString)
                 self.needsPairingPrompt = false
@@ -103,11 +91,9 @@ public final class AppBootManager {
             }
         }
     }
-    
     public nonisolated func performBootSequence() async {
         debugLog("[AppBootManager] performBootSequence() entered")
         defer { debugLog("[AppBootManager] performBootSequence() exited") }
-        
         async let jitCheck: Void = {
             debugLog("[AppBootManager] performBootSequence(): JIT check starting")
             defer { debugLog("[AppBootManager] performBootSequence(): JIT check completed") }
@@ -119,13 +105,11 @@ public final class AppBootManager {
                     debugLog("[AppBootManager] Cannot find sideJITServer")
                 }
             }
-            
             if #available(iOS 17, *), UserDefaults.standard.isSideJITServerEnabled {
                 await SideJITManager.shared.askForNetwork()
                 debugLog("[AppBootManager] SideJITServer Enabled")
             }
         }()
-        
         async let minimuxerCheck: Void = {
             debugLog("[AppBootManager] performBootSequence(): Minimuxer check starting")
             defer { debugLog("[AppBootManager] performBootSequence(): Minimuxer check completed") }
@@ -142,7 +126,6 @@ public final class AppBootManager {
                 debugLog("[AppBootManager] Failed to start minimuxer: \(error)")
             }
         }()
-        
         _ = await (jitCheck, minimuxerCheck)
     }
 }

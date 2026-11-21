@@ -5,7 +5,6 @@
 //  Created by Magesh K on 13/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -18,7 +17,6 @@ final class PatchInfoPlistOperation: BasePipelineOperation<InstallAppOperationCo
             debugLog("[PatchInfoPlistOperation] execute() took: \(String(format: "%.3fs", elapsed))")
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
-        
         guard let targetAppBundle = self.context.targetAppBundle else {
             debugLog("[PatchInfoPlistOperation] No targetAppBundle found. Skipping.")
             return
@@ -26,22 +24,18 @@ final class PatchInfoPlistOperation: BasePipelineOperation<InstallAppOperationCo
 
         for bundle in targetAppBundle.allAppBundles {
             let installedEntity = self.installedEntity(for: bundle)
-            
-            // 1. If not already in context, load from installedApp's cache
             if self.context.customInfoPlistByBundleID[bundle.bundleIdentifier] == nil {
                 if let plistURL = installedEntity?.customInfoPlistURL,
                    let customParser = try? InfoPlistParser(plistURL: plistURL) {
                     self.context.customInfoPlistByBundleID[bundle.bundleIdentifier] = customParser.rawDictionary
                 }
             }
-            
             if self.context.customEntitlementsByBundleID[bundle.bundleIdentifier] == nil {
                 if let customEntitlements = installedEntity?.customEntitlements {
                     self.context.customEntitlementsByBundleID[bundle.bundleIdentifier] = customEntitlements
                 }
             }
 
-            // 2. Apply custom Info.plist if available
             if let customPlist = self.context.customInfoPlistByBundleID[bundle.bundleIdentifier] {
                 do {
                     if !bundle.isExtension {
@@ -52,7 +46,6 @@ final class PatchInfoPlistOperation: BasePipelineOperation<InstallAppOperationCo
                             self.context.customBundleIdentifier = customID
                         }
                     }
-                    
                     try bundle.updateInfoPlist(with: customPlist)
                     debugLog("[PatchInfoPlistOperation] Successfully patched Info.plist for \(bundle.bundleIdentifier)")
                 } catch {
@@ -61,7 +54,6 @@ final class PatchInfoPlistOperation: BasePipelineOperation<InstallAppOperationCo
                 }
             }
 
-            // 3. Register custom entitlements if available
             if let customEntitlements = self.context.customEntitlementsByBundleID[bundle.bundleIdentifier] {
                 if !bundle.isExtension {
                     for (key, value) in customEntitlements {
@@ -72,7 +64,6 @@ final class PatchInfoPlistOperation: BasePipelineOperation<InstallAppOperationCo
             }
         }
     }
-    
     private func installedEntity(for bundle: ALTApplication) -> (any InstalledAppProtocol)? {
         if bundle.isExtension {
             return self.context.installedApp?.appExtensions.first(where: { $0.bundleIdentifier == bundle.bundleIdentifier })

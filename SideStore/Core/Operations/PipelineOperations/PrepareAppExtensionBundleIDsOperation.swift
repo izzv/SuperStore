@@ -5,7 +5,6 @@
 //  Created by Magesh K on 01/08/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 import Foundation
 
 final class PrepareAppExtensionBundleIDsOperation: BasePipelineOperation<InstallAppOperationContext, Void>, @unchecked Sendable {
@@ -17,7 +16,6 @@ final class PrepareAppExtensionBundleIDsOperation: BasePipelineOperation<Install
             debugLog("[PrepareAppExtensionBundleIDsOperation] execute() took: \(String(format: "%.3fs", elapsed))")
         }
         try await super.executePreconditionCheck(parentProgress: parentProgress)
-        
         if self.context.useMainProfile {
             if let appBundle = self.context.targetAppBundle, let profile = self.context.provisioningProfiles?[self.context.bundleIdentifier] {
                 var appexBundleIds: [String: String] = [:]

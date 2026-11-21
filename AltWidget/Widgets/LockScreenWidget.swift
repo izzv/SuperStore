@@ -5,18 +5,15 @@
 //  Created by Riley Testut on 7/7/22.
 //  Copyright © 2022 Riley Testut. All rights reserved.
 //
-
 import SwiftUI
 import WidgetKit
 
 struct TextLockScreenWidget: Widget
 {
     private let kind: String = "TextLockAppDetail"
-    
     init() {
         debugLog("[TextLockScreenWidget] Initialized widget kind: TextLockAppDetail")
     }
-    
     public var body: some WidgetConfiguration {
         if #available(iOSApplicationExtension 16, *)
         {
@@ -44,11 +41,9 @@ struct TextLockScreenWidget: Widget
 struct IconLockScreenWidget: Widget
 {
     private let kind: String = "IconLockAppDetail"
-    
     init() {
         debugLog("[IconLockScreenWidget] Initialized widget kind: IconLockAppDetail")
     }
-    
     public var body: some WidgetConfiguration {
         if #available(iOSApplicationExtension 16, *)
         {
@@ -90,17 +85,12 @@ private struct ComplicationView: View
     let date: Date
     let isPlaceholder: Bool
     let style: Style
-    
     var body: some View {
         let refreshedDate = self.apps.first?.refreshedDate ?? .now
         let expirationDate = self.apps.first?.expirationDate ?? .now
-        
         let totalDays = expirationDate.numberOfCalendarDays(since: refreshedDate)
         let daysRemaining = expirationDate.numberOfCalendarDays(since: self.date)
-        
         let progress = totalDays > 0 ? Double(daysRemaining) / Double(totalDays) : 0.0
-        
-        // TODO: Gauge initialized with an out-of-bounds progress amount. The amount will be clamped to the nearest bound.
         Gauge(value: progress) {
             if self.apps.isEmpty
             {
@@ -110,20 +100,17 @@ private struct ComplicationView: View
                     VStack(spacing: -1) {
                         Text("-")
                             .font(.system(size: 20.0, weight: .bold, design: .rounded))
-                        
                         Text("DAYS")
                             .font(.caption)
                     }
                     .fixedSize()
                     .offset(y: -1)
-                    
                 case .icon:
                     ZStack {
                         Image("SmallIcon")
                             .resizable()
                             .aspectRatio(1.0, contentMode: .fill)
                             .scaleEffect(x: 0.8, y: 0.8)
-                        
                         Text("-")
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(Color.black)
@@ -145,33 +132,27 @@ private struct ComplicationView: View
                         let fontSize = daysRemaining > 99 ? 18.0 : 20.0
                         Text("\(daysRemaining)")
                             .font(.system(size: fontSize, weight: .bold, design: .rounded))
-                        
                         Text(daysRemaining == 1 ? "DAY" : "DAYS")
                             .font(.caption)
                     }
                     .fixedSize()
                     .offset(y: -1)
-                    
                 case .icon:
                     ZStack {
-                        // Destination
                         Image("SmallIcon")
                             .resizable()
                             .aspectRatio(1.0, contentMode: .fill)
                             .scaleEffect(x: 0.8, y: 0.8)
-                        
-                        // Source
                         (
                             daysRemaining > 7 ?
                             Text("7+")
                                 .font(.system(size: 18, weight: .bold, design: .rounded))
                                 .kerning(-2) :
-                                
                             Text("\(daysRemaining)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                          )
                         .foregroundColor(Color.black)
-                        .blendMode(.destinationOut) // Clip text out of image.
+                        .blendMode(.destinationOut) 
                     }
                 }
             }
@@ -193,10 +174,8 @@ private let widgetFamily = if #available(iOS 16, *) { WidgetFamily.accessoryCirc
 } timeline: {
     let expiredDate = Date().addingTimeInterval(1 * 60 * 60 * 24 * 7)
     let (altstore, _, _, longAltStore, _, _) = AppSnapshot.makePreviewSnapshots()
-    
     AppsEntry<Void>(date: Date(), apps: [altstore])
     AppsEntry<Void>(date: Date(), apps: [longAltStore])
-    
     AppsEntry<Void>(date: expiredDate, apps: [altstore])
 }
 
@@ -206,9 +185,7 @@ private let widgetFamily = if #available(iOS 16, *) { WidgetFamily.accessoryCirc
 } timeline: {
     let expiredDate = Date().addingTimeInterval(1 * 60 * 60 * 24 * 7)
     let (altstore, _, _, longAltStore, _, _) = AppSnapshot.makePreviewSnapshots()
-    
     AppsEntry<Void>(date: Date(), apps: [altstore])
     AppsEntry<Void>(date: Date(), apps: [longAltStore])
-    
     AppsEntry<Void>(date: expiredDate, apps: [altstore])
 }

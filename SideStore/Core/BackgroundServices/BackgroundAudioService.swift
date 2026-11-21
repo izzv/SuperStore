@@ -5,7 +5,6 @@
 //  Created by Magesh K on 15/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import AVFoundation
 
@@ -97,26 +96,6 @@ public final class BackgroundAudioService: BackgroundService, @unchecked Sendabl
         }
     }
 
-    /*
-        wav pcm header and payload format taken from: 
-        https://ccrma.stanford.edu/courses/422-winter-2014/projects/WaveFormat/
-
-        0                   1                   2                   3
-        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |   "R"   "I"   "F"   "F"       |        ChunkSize (36+data)    |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |   "W"   "A"   "V"   "E"       |   "f"   "m"   "t"   " "       |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |      Subchunk1Size (16)       |  Format (1=PCM) | Channels (1)|
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |          SampleRate (8000 Hz) |          ByteRate (16000)     |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |  BlockAlign(2)| BitsSample(16)|   "d"   "a"   "t"   "a"       |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-        |          DataSize (16000)     | Zero Bytes (Pure Silence)...  |
-        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    */
     private static func generateSilentWAV() -> Data {
         let sampleRate:    UInt32 = 8000
         let numChannels:   UInt16 = 1

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 13/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import UIKit
 import SideSign
@@ -111,14 +110,11 @@ final class EntitlementsCustomizationViewModel: ObservableObject {
     func selectTarget(id: String) {
         guard id != selectedTargetID else { return }
 
-        // 1. Commit outgoing draft into its container
         draftContainers[selectedTargetID] = activeEntries
 
-        // 2. Switch active target
         selectedTargetID = id
         searchQuery = ""
 
-        // 3. Load incoming target draft container (or initial entries if untouched)
         if let existingDraft = draftContainers[id] {
             activeEntries = existingDraft
         } else if let target = targets.first(where: { $0.id == id }) {

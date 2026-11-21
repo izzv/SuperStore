@@ -5,7 +5,6 @@
 //  Created by Magesh K on 2026-06-29.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import CoreData
 import SideSign
@@ -32,16 +31,12 @@ class CacheViewModel: ObservableObject {
         }
     }
     @Published var showErrorAlert = false
-    
-    // Deletion states
     @Published var itemToDelete: CacheItem? = nil {
         didSet {
             showDeleteAlert = itemToDelete != nil
         }
     }
     @Published var showDeleteAlert = false
-    
-    // Export/Share states
     @Published var activeExportURL: URL? = nil
 
     let formatter = ByteCountFormatter()
@@ -51,17 +46,12 @@ class CacheViewModel: ObservableObject {
         formatter.countStyle = .file
         return formatter.string(fromByteCount: size)
     }
-    
     func loadCacheItems() {
         self.isLoading = true
-        
         let internalAppURLs = CacheManager.shared.fetchInternalApps()
         let resignedAppURLs = CacheManager.shared.fetchResignedApps()
-        
-        // Fetch all database apps to map display names & icons
         let context = DatabaseManager.shared.viewContext
         var dbAppsByFingerprint: [String: (name: String, bundleID: String, fileURL: URL, alternateIconURL: URL, hasAlternateIcon: Bool)] = [:]
-        
         context.performAndWait {
             let apps = InstalledApp.all(in: context)
             for app in apps {
@@ -75,28 +65,20 @@ class CacheViewModel: ObservableObject {
                 )
             }
         }
-        
-        // Process on background queue
         Task.detached {
             var internalItems: [CacheItem] = []
             var resignedItems: [CacheItem] = []
-            
-            // 1. Process Internal Cache Items
             for shaDirURL in internalAppURLs {
                 let sha = shaDirURL.lastPathComponent
                 let appURL = shaDirURL.appendingPathComponent("App.app")
                 let size = CacheManager.shared.calculateSize(of: shaDirURL)
                 let sizeStr = await self.formatBytes(size)
-                
                 let appBundle = ALTApplication(fileURL: appURL)
                 let bundleID = appBundle?.bundleIdentifier
-                
                 var displayName = appBundle?.name ?? sha
                 var iconImage: UIImage? = appBundle?.icon
-                
                 if let dbInfo = dbAppsByFingerprint[sha] {
                     displayName = dbInfo.name
-                    
                     if dbInfo.hasAlternateIcon,
                        let data = try? Data(contentsOf: dbInfo.alternateIconURL) {
                         iconImage = UIImage(data: data)
@@ -104,7 +86,6 @@ class CacheViewModel: ObservableObject {
                         iconImage = appIcon
                     }
                 }
-                
                 let item = CacheItem(
                     id: sha,
                     name: displayName,
@@ -117,21 +98,16 @@ class CacheViewModel: ObservableObject {
                 )
                 internalItems.append(item)
             }
-            
-            // 2. Process Resigned App Items
             for url in resignedAppURLs {
                 let filename = url.lastPathComponent
                 let size = CacheManager.shared.calculateSize(of: url)
                 let sizeStr = await self.formatBytes(size)
-                
                 let displayName = filename.replacingOccurrences(of: ".app", with: "")
                                           .replacingOccurrences(of: ".ipa", with: "")
-                
                 var iconImage: UIImage? = nil
                 if let appIcon = ALTApplication(fileURL: url)?.icon {
                     iconImage = appIcon
                 }
-                
                 let item = CacheItem(
                     id: filename,
                     name: displayName,
@@ -144,11 +120,8 @@ class CacheViewModel: ObservableObject {
                 )
                 resignedItems.append(item)
             }
-            
-            // Sort by size descending
             internalItems.sort { $0.sizeInBytes > $1.sizeInBytes }
             resignedItems.sort { $0.sizeInBytes > $1.sizeInBytes }
-            
             DispatchQueue.main.async {
                 self.internalApps = internalItems
                 self.resignedApps = resignedItems
@@ -156,10 +129,8 @@ class CacheViewModel: ObservableObject {
             }
         }
     }
-    
     func deleteItem(_ item: CacheItem) {
         self.isLoading = true
-        
         DispatchQueue.global(qos: .userInitiated).async {
             do {
                 try CacheManager.shared.delete(at: item.url)

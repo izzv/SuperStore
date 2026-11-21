@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import CoreData
 
@@ -40,7 +39,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
     }
     open weak var indexPathTranslator: CellContentIndexPathTranslating?
     open var isDynamic: Bool { false }
-    
     public func localIndexPath(for globalIndexPath: IndexPath) -> IndexPath? {
         if let translator = indexPathTranslator {
             return translator.dataSource(self, localIndexPathForGlobalIndexPath: globalIndexPath)
@@ -61,7 +59,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
             updatePlaceholderVisibility()
         }
     }
-    
     private var isPlaceholderViewVisible: Bool = false
     #if !os(tvOS)
     private var previousSeparatorStyle: UITableViewCell.SeparatorStyle = .none
@@ -150,7 +147,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
 
     open func addChange(_ change: CellContentChange) {
         let transformedChange: CellContentChange
-        
         if change.sectionIndex != UnknownSectionIndex {
             let sectionIndexPath = IndexPath(item: 0, section: change.sectionIndex)
             let globalIndexPath = indexPathTranslator?.dataSource(self, globalIndexPathForLocalIndexPath: sectionIndexPath) ?? sectionIndexPath
@@ -161,7 +157,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
             transformedChange = CellContentChange(type: change.type, currentIndexPath: currentIndexPath, destinationIndexPath: destinationIndexPath)
         }
         transformedChange.rowAnimation = change.rowAnimation
-        
         if change.sectionIndex == UnknownSectionIndex {
             var indexPathForRemovingFromCache: IndexPath? = nil
             switch change.type {
@@ -179,7 +174,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
                 }
             }
         }
-        
         (contentView as? CellContentUpdateableView)?.addChange(transformedChange)
     }
 
@@ -258,7 +252,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
         }
         return false
     }
-    
     open override func responds(to aSelector: Selector!) -> Bool {
         if super.responds(to: aSelector) {
             return true
@@ -268,7 +261,6 @@ open class CellContentDataSource<ContentType, CellType: UIView & CellContentCell
         }
         return false
     }
-    
     open override func forwardingTarget(for aSelector: Selector!) -> Any? {
         if let proxy = self.proxy, isDataSourceSelector(aSelector) {
             return proxy

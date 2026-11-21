@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 4/4/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 extension UINavigationBarAppearance
@@ -15,7 +14,6 @@ extension UINavigationBarAppearance
         let buttonAppearance = UIBarButtonItemAppearance(style: .plain)
         buttonAppearance.normal.titleTextAttributes = [.foregroundColor: tintColor]
         self.buttonAppearance = buttonAppearance
-        
         let backButtonImage = UIImage(systemName: "chevron.backward")?.withTintColor(tintColor, renderingMode: .alwaysOriginal)
         self.setBackIndicatorImage(backButtonImage, transitionMaskImage: backButtonImage)
     }

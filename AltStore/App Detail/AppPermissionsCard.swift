@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/4/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 import SwiftUI
 
 @available(iOS 16, tvOS 16, *)
@@ -16,14 +15,11 @@ extension AppPermissionsCard
         static func name(_ permission: Permission) -> TransitionKey {
             TransitionKey(key: "name", permission: permission)
         }
-        
         static func icon(_ permission: Permission) -> TransitionKey {
             TransitionKey(key: "icon", permission: permission)
         }
-        
         let key: String
         let permission: Permission
-        
         private init(key: String, permission: Permission)
         {
             self.key = key
@@ -38,70 +34,50 @@ struct AppPermissionsCard<Permission: AppPermissionProtocol>: View
     let title: LocalizedStringKey
     let description: LocalizedStringKey
     let tintColor: Color
-    
     let permissions: [Permission]
-    
     @State
     private var selectedPermission: Permission?
-    
     @Namespace
     private var animation
-    
     private var isTitleVisible: Bool {
         if selectedPermission == nil
         {
-            // Title should always be visible when showing all permissions.
             return true
         }
-        
-        // If showing permission details, only show title if there
-        // are more than 2 permissions total to save vertical space.
         let isTitleVisible = permissions.count > 2
         return isTitleVisible
     }
-    
     var body: some View {
         let title = Text(title)
             .font(.title3)
             .bold()
-            .minimumScaleFactor(0.1) // Avoid clipping during matchedGeometryEffect animation.
-        
+            .minimumScaleFactor(0.1) 
         VStack(spacing: 8) {
             if isTitleVisible
             {
-                // If title is visible, place _outside_ `content`
-                // to avoid being covered by permissionDetailView.
                 title
             }
-            
             let content = VStack(spacing: 8) {
                 if !isTitleVisible
                 {
-                    // Place title inside `content` when not visible
-                    // so it's covered by permissionDetailView.
                     title
                 }
-                
                 VStack(spacing: 20) {
                     Text(description)
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
-                    
                     Grid(verticalSpacing: 15) {
                         ForEach(permissions, id: \.self) { permission in
                             permissionRow(for: permission)
                         }
                     }
-                    
                     Text("Tap a permission to learn more.")
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            
             if let selectedPermission
             {
-                // Hide content with overlay to preserve existing size.
                 content.hidden().overlay {
                     permissionDetailView(for: selectedPermission)
                 }
@@ -124,18 +100,16 @@ struct AppPermissionsCard<Permission: AppPermissionProtocol>: View
         .overlay {
             if selectedPermission != nil
             {
-                // Make entire view tappable when overlay is visible.
                 SwiftUI.Button(action: hidePermission) {
                     VStack {}
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
-        .foregroundColor(.secondary) // Vibrancy
-        .background(.regularMaterial) // Blur background for auto-legibility correction.
+        .foregroundColor(.secondary) 
+        .background(.regularMaterial) 
         .background(tintColor, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
     }
-    
     @ViewBuilder
     private func permissionRow(for permission: Permission) -> some View
     {
@@ -146,11 +120,9 @@ struct AppPermissionsCard<Permission: AppPermissionProtocol>: View
                         .font(.body)
                         .bold()
                         .minimumScaleFactor(0.33)
-                        .lineLimit(.max) // Setting lineLimit to anything fixes text wrapping at large text sizes.
-                    
+                        .lineLimit(.max) 
                     let image = Image(systemName: permission.effectiveSymbolName)
                         .gridColumnAlignment(.center)
-                    
                     if selectedPermission != nil
                     {
                         Label(title: { text }, icon: { image })
@@ -170,12 +142,11 @@ struct AppPermissionsCard<Permission: AppPermissionProtocol>: View
                     Image(systemName: "info.circle")
                         .imageScale(.large)
                 }
-                .contentShape(Rectangle()) // Make entire HStack tappable.
+                .contentShape(Rectangle()) 
             }
         }
-        .frame(minHeight: 30) // Make row tall enough to tap.
+        .frame(minHeight: 30) 
     }
-    
     @ViewBuilder
     private func permissionDetailView(for permission: Permission) -> some View
     {
@@ -184,13 +155,11 @@ struct AppPermissionsCard<Permission: AppPermissionProtocol>: View
                 .font(.largeTitle)
                 .fixedSize(horizontal: false, vertical: true)
                 .matchedGeometryEffect(id: TransitionKey.icon(permission), in: animation)
-            
             Text(permission.localizedDisplayName)
                 .font(.title2)
                 .bold()
-                .minimumScaleFactor(0.1) // Avoid clipping during matchedGeometryEffect animation.
+                .minimumScaleFactor(0.1) 
                 .matchedGeometryEffect(id: TransitionKey.name(permission), in: animation)
-            
             if let usageDescription = permission.usageDescription
             {
                 Text(usageDescription)
@@ -201,20 +170,16 @@ struct AppPermissionsCard<Permission: AppPermissionProtocol>: View
         .multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
     init(title: LocalizedStringKey, description: LocalizedStringKey, tintColor: Color, permissions: [Permission])
     {
         self.init(title: title, description: description, tintColor: tintColor, permissions: permissions, selectedPermission: nil)
     }
-    
     fileprivate init(title: LocalizedStringKey, description: LocalizedStringKey, tintColor: Color, permissions: [Permission], selectedPermission: Permission? = nil)
     {
         self.title = title
         self.description = description
         self.tintColor = tintColor
         self.permissions = permissions
-        
-        // Set _selectedPermission directly or else the preview won't detect it.
         self._selectedPermission = State(initialValue: selectedPermission)
     }
 }
@@ -228,7 +193,6 @@ private extension AppPermissionsCard
             self.selectedPermission = permission
         }
     }
-    
     func hidePermission()
     {
         withAnimation {
@@ -251,9 +215,7 @@ struct AppPermissionsCard_Previews: PreviewProvider
             PreviewAppPermission(permission: ALTAppPrivacyPermission.bluetooth),
             PreviewAppPermission(permission: ALTAppPrivacyPermission.calendars),
         ]
-        
         let tintColor = Color(uiColor: .deltaPrimary!)
-        
         return ForEach(1...8, id: \.self) { index in
                 AppPermissionsCard(title: "Privacy",
                                    description: "Delta may request access to the following:",

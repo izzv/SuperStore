@@ -5,38 +5,29 @@
 //  Created by Magesh K on 20/01/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
-
 class ErrorProcessing {
-    
     enum InfoMode: String {
         case fullError
         case localizedDescription
     }
-    
     let info: InfoMode
     let unique: Bool
     let recur: Bool
-    
-    
     var errors: Set<String> = []
-    
-    // by default we will process only the localDesc on first level errors
     init(_ mode: InfoMode = .localizedDescription, unique: Bool = false, recur: Bool = false){
         self.info = mode
         self.unique = unique
         self.recur = recur
     }
-    
     private func userFriendlyDescription(for error: NSError) -> String {
         let domain = error.domain
         if domain == "kcerrordomain" || domain == NSOSStatusErrorDomain {
             switch error.code {
-            case -25300: // errSecItemNotFound
+            case -25300: 
                 return NSLocalizedString("Keychain item not found.", comment: "")
-            case -25299: // errSecDuplicateItem
+            case -25299: 
                 return NSLocalizedString("Keychain item already exists.", comment: "")
-            case -25293: // errSecAuthFailed
+            case -25293: 
                 return NSLocalizedString("Keychain authentication failed.", comment: "")
             default:
                 return NSLocalizedString("Keychain security error.", comment: "")
@@ -46,13 +37,11 @@ class ErrorProcessing {
     }
 
     private func processError(_ error: NSError, ignoreTitle: Bool = false, getMoreErrors: (_ error: NSError)->String) -> String{
-        // if unique was requested and if this error is duplicate, ignore processing it
         let serializedError = "\(error)"
         if unique && errors.contains(serializedError) {
             return ""
         }
-        errors.insert(serializedError)    // mark this as processed
-        
+        errors.insert(serializedError)    
         var title = ""
         var desc = ""
         switch (info){
@@ -68,21 +57,15 @@ class ErrorProcessing {
     }
 
     func getDescription(error: NSError) -> String{
-        errors = []  // reinit for each request
+        errors = []  
         return getDescriptionText(error: error)
     }
-    
-    
     func getDescriptionText(error: NSError,_ depth: Int = 0) -> String{
-        // closure
         let recurseErrors = { error in
             self.getDescriptionText(error: error, depth+1)
         }
-        
         var description = ""
-        // process current error only if recur was not requested
         let processMoreErrors = recur ? recurseErrors : {_ in ""}
-        
         let underlyingErrors = error.underlyingErrors
         if let wrappedError = (error as? ALTWrappedError)?.wrappedError {
             description += getDescriptionText(error: wrappedError, depth + 1)
@@ -95,7 +78,6 @@ class ErrorProcessing {
             let error = underlyingError as NSError
             description += processError(error, getMoreErrors: processMoreErrors)
         } else {
-            // ignore the title for the base error since we wanted this to be description
             let isBaseError = (depth == 0)
             description += processError(error, ignoreTitle: isBaseError, getMoreErrors: processMoreErrors)
         }

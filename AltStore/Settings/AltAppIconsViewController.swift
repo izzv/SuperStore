@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 2/14/24.
 //  Copyright © 2024 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import SwiftUI
 
@@ -19,18 +18,15 @@ extension UIApplication
 private final class AltIcon: Decodable
 {
     static let defaultName: String = "Original"
-    
     var name: String
     var imageName: String
     var iconName: String
-    
     private enum CodingKeys: String, CodingKey
     {
         case name
         case imageName
         case iconName
     }
-    
     required init(from decoder: Decoder) throws
     {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -46,16 +42,13 @@ extension AltAppIconsViewController
     {
         case classic
         case modern
-//        case gradient
-//        case recessed
-        
+
         var localizedName: String {
             switch self
             {
             case .classic: return NSLocalizedString("Classic", comment: "")
             case .modern: return NSLocalizedString("Modern", comment: "")
-//            case .gradient: return NSLocalizedString("Gradient", comment: "")
-//            case .recessed: return NSLocalizedString("Recessed", comment: "")
+
             }
         }
     }
@@ -64,29 +57,20 @@ extension AltAppIconsViewController
 class AltAppIconsViewController: UICollectionViewController
 {
     private lazy var dataSource = self.makeDataSource()
-    
     private var iconsBySection = [Section: [AltIcon]]()
-    
     private var headerRegistration: UICollectionView.SupplementaryRegistration<UICollectionViewListCell>!
-    
     private var currentAlternateIconName: String? = UIApplication.shared.alternateIconName
-        
     override func viewDidLoad()
     {
         super.viewDidLoad()
-        
         self.title = NSLocalizedString("Change App Icon", comment: "")
-        
         let collectionViewLayout = self.makeLayout()
         self.collectionView.collectionViewLayout = collectionViewLayout
-        
         self.collectionView.backgroundColor = UIColor(resource: .settingsBackground)
-        
         do
         {
             let fileURL = Bundle.main.url(forResource: "AltIcons", withExtension: "plist")!
             let data = try Data(contentsOf: fileURL)
-            
             let icons = try PropertyListDecoder().decode([Section: [AltIcon]].self, from: data)
             self.iconsBySection = icons
         }
@@ -94,25 +78,19 @@ class AltAppIconsViewController: UICollectionViewController
         {
             debugLog("Failed to load alternate icons. \(error.localizedDescription)")
         }
-        
         self.dataSource.proxy = self
         self.collectionView.dataSource = self.dataSource
         self.dataSource.contentView = self.collectionView
-        
         self.collectionView.register(UICollectionViewListCell.self, forCellWithReuseIdentifier: CellContentGenericCellIdentifier)
         self.collectionView.register(UICollectionViewListCell.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: UICollectionView.elementKindSectionHeader)
-                
         self.headerRegistration = UICollectionView.SupplementaryRegistration<UICollectionViewListCell>(elementKind: UICollectionView.elementKindSectionHeader) { (headerView, elementKind, indexPath) in
             let section = Section.allCases[indexPath.section]
-            
             let font = UIFont(descriptor: UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body).bolded(), size: 0.0)
-            
             var configuration = UIListContentConfiguration.cell()
             configuration.text = section.localizedName
             configuration.textProperties.font = font
             configuration.textProperties.color = .white.withAlphaComponent(0.8)
             headerView.contentConfiguration = configuration
-            
             headerView.backgroundConfiguration = .clear()
         }
     }
@@ -130,25 +108,20 @@ private extension AltAppIconsViewController
         #endif
         configuration.backgroundColor = .clear
         configuration.headerMode = .supplementary
-                
         let layout = UICollectionViewCompositionalLayout.list(using: configuration)
         return layout
     }
-    
     func makeDataSource() -> CompositeCollectionViewDataSource<AltIcon>
     {
         let dataSources = Section.allCases.compactMap { self.iconsBySection[$0] }.filter { !$0.isEmpty }.map { icons in
             let dataSource = ArrayCollectionViewDataSource<AltIcon>(items: icons)
             return dataSource
         }
-        
         let dataSource = CompositeCollectionViewDataSource<AltIcon>(dataSources: dataSources)
         dataSource.cellConfigurationHandler = { [weak self] cell, icon, indexPath in
             let cell = cell as! UICollectionViewListCell
-            
             let imageWidth = 44.0
             let font = UIFont(descriptor: UIFontDescriptor.preferredFontDescriptor(withTextStyle: .body).bolded(), size: 0.0)
-            
             var config = cell.defaultContentConfiguration()
             config.text = icon.name
             config.textProperties.font = font
@@ -157,8 +130,7 @@ private extension AltAppIconsViewController
             let image = UIImage(named: icon.imageName)
             config.image = image
             config.imageProperties.maximumSize = CGSize(width: imageWidth, height: imageWidth)
-            config.imageProperties.cornerRadius = imageWidth / 5.0 // Copied from AppIconImageView
-            
+            config.imageProperties.cornerRadius = imageWidth / 5.0 
             cell.contentConfiguration = config
 
             let activeIconName = self?.currentAlternateIconName
@@ -172,23 +144,17 @@ private extension AltAppIconsViewController
             {
                 cell.accessories = []
             }
-            
             var backgroundConfiguration = UIBackgroundConfiguration.listPlainCell()
             backgroundConfiguration.backgroundColorTransformer = UIConfigurationColorTransformer { [weak cell] c in
                 if let state = cell?.configurationState, state.isHighlighted 
                 {
-                    // Highlighted, so use darker white for background.
                     return .white.withAlphaComponent(0.4)
                 }
-                
                 return .white.withAlphaComponent(0.25)
             }
             cell.backgroundConfiguration = backgroundConfiguration
-                        
-            // Ensure text is legible on green background.
             cell.overrideUserInterfaceStyle = .dark
         }
-        
         return dataSource
     }
 }
@@ -200,29 +166,20 @@ extension AltAppIconsViewController
         let headerView = self.collectionView.dequeueConfiguredReusableSupplementary(using: self.headerRegistration, for: indexPath)
         return headerView
     }
-    
     override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath)
     {
         let icon = self.dataSource.item(at: indexPath)
         let iconName = (icon.name == AltIcon.defaultName) ? nil : icon.iconName
-        
         guard self.currentAlternateIconName != iconName else { return }
-        
-        // Optimistically update selected icon name and reload UI so checkmark moves INSTANTLY
         self.currentAlternateIconName = iconName
         collectionView.reloadData()
-        
-        // If assigning primary icon, pass "nil" as alternate icon name.
         UIApplication.shared.setAlternateIconName(iconName) { [weak self] error in
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                
                 if let error
                 {
-                    // Revert checkmark if icon change failed
                     self.currentAlternateIconName = UIApplication.shared.alternateIconName
                     self.collectionView.reloadData()
-                    
                     let alertController = UIAlertController(title: NSLocalizedString("Unable to Change App Icon", comment: ""),
                                                             message: error.localizedDescription,
                                                             preferredStyle: .alert)
@@ -237,4 +194,3 @@ extension AltAppIconsViewController
         }
     }
 }
-

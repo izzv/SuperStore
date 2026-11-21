@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 extension UICollectionView: CellContentUpdateableView, CellContentTransactionUpdateable {
@@ -34,14 +33,11 @@ extension UICollectionView: CellContentUpdateableView, CellContentTransactionUpd
     public func endUpdates() {
         guard nestedUpdatesCounter > 0 else { return }
         nestedUpdatesCounter -= 1
-        
         if nestedUpdatesCounter > 0 {
             return
         }
-        
         guard let currentOperations = operations else { return }
         operations = nil
-        
         var postMoveUpdateChanges = [CellContentChange]()
         for change in currentOperations {
             if change.type == .move, let destinationIndexPath = change.destinationIndexPath {
@@ -50,34 +46,28 @@ extension UICollectionView: CellContentUpdateableView, CellContentTransactionUpd
                 postMoveUpdateChanges.append(updateChange)
             }
         }
-        
         var updateIndexPaths = [IndexPath]()
         for change in currentOperations {
             if change.sectionIndex == UnknownSectionIndex && change.type == .update, let indexPath = change.currentIndexPath {
                 updateIndexPaths.append(indexPath)
             }
         }
-        
         let moveIndexPaths = postMoveUpdateChanges.compactMap { $0.currentIndexPath }
         let allTargetIndexPaths = Array(Set(updateIndexPaths + moveIndexPaths))
-        
         var isFinished = false
         let finish = { [weak self] in
             guard let self = self, !isFinished else { return }
             isFinished = true
-            
             if !allTargetIndexPaths.isEmpty {
                 UIView.performWithoutAnimation {
                     self.reconfigureItems(at: allTargetIndexPaths)
                 }
             }
         }
-        
         CATransaction.begin()
         CATransaction.setCompletionBlock {
             finish()
         }
-        
         self.performBatchUpdates({
             for change in currentOperations {
                 if change.sectionIndex != UnknownSectionIndex {
@@ -110,7 +100,6 @@ extension UICollectionView: CellContentUpdateableView, CellContentTransactionUpd
         }, completion: { _ in
             finish()
         })
-        
         CATransaction.commit()
     }
 

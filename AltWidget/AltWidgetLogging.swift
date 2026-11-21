@@ -21,29 +21,22 @@ internal enum AltWidgetLogging {
             isLoggingEnabled = enabled
         }
     }
-    
     fileprivate static func logToFile(_ text: String) {
         guard let url = WidgetLogManager.widgetLogURL ?? FileManager.default.altstoreSharedDirectory?.appendingPathComponent("widget.log") else {
             return
         }
-        
         lock.lock()
         defer { lock.unlock() }
-        
         let fileExists = FileManager.default.fileExists(atPath: url.path)
         if !fileExists {
             FileManager.default.createFile(atPath: url.path, contents: nil, attributes: nil)
         }
-        
         guard let handle = try? FileHandle(forWritingTo: url) else { return }
         defer { try? handle.close() }
-        
         let fd = handle.fileDescriptor
         flock(fd, LOCK_EX)
         defer { flock(fd, LOCK_UN) }
-        
         handle.seekToEndOfFile()
-        
         if !hasWrittenBootHeader {
             hasWrittenBootHeader = true
             let date = Date()
@@ -51,16 +44,13 @@ internal enum AltWidgetLogging {
             formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
             formatter.locale = Locale(identifier: "en_US_POSIX")
             let dateString = formatter.string(from: date)
-            
             let totalWidth = 51
             let innerWidth = totalWidth - 2
             let leftPadLength = max(0, (innerWidth - dateString.count) / 2)
             let rightPadLength = max(0, innerWidth - dateString.count - leftPadLength)
             let leftPadding = String(repeating: " ", count: leftPadLength)
             let rightPadding = String(repeating: " ", count: rightPadLength)
-            
             let header = """
-            
             ===================================================
             |              Widget is Starting up              |
             ===================================================
@@ -68,13 +58,11 @@ internal enum AltWidgetLogging {
             ===================================================
             |\(leftPadding)\(dateString)\(rightPadding)|
             ===================================================
-            
             """
             if let headerData = header.data(using: .utf8) {
                 handle.write(headerData)
             }
         }
-        
         if let data = (text + "\n").data(using: .utf8) {
             handle.write(data)
         }

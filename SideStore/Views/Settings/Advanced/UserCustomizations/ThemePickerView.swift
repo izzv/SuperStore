@@ -5,7 +5,6 @@
 //  Created by Magesh K on 9/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 
 private extension Color {
@@ -20,21 +19,16 @@ struct ThemePickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Section 1: LIVE INTERFACE PREVIEW
                 previewSection
 
-                // Section 2: FULL SPECTRUM COLOR WHEEL & SELECTION
                 #if !os(tvOS)
                 colorWheelSection
                 #endif
 
-                // Section 3: PRESET THEME PALETTES
                 presetsSection
 
-                // Section 4: PRECISE COLOR METRICS
                 metricsSection
 
-                // Section 5: RESET BUTTON
                 resetButtonSection
             }
             .padding(.horizontal, 16)
@@ -57,7 +51,6 @@ struct ThemePickerView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color.white.opacity(0.6))
                 .padding(.horizontal, 16)
-            
             VStack(spacing: 16) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -69,8 +62,6 @@ struct ThemePickerView: View {
                             .foregroundColor(Color.white.opacity(0.6))
                     }
                     Spacer()
-                    
-                    // Mock Pill Button
                     Text("7 DAYS")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.white)
@@ -79,8 +70,6 @@ struct ThemePickerView: View {
                         .background(selectedColor)
                         .cornerRadius(16)
                 }
-                
-                // Mock Progress Bar
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 4)
@@ -91,7 +80,6 @@ struct ThemePickerView: View {
                     }
                 }
                 .frame(height: 6)
-                
                 HStack {
                     Text("Active Theme Accent")
                         .font(.system(size: 13, weight: .medium))

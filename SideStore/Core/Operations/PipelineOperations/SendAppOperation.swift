@@ -5,14 +5,12 @@
 //  Created by Riley Testut on 6/7/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 import Foundation
 import Network
 import SideSign
 
 final class SendAppOperation: BasePipelineOperation<InstallAppOperationContext, ALTApplication>, @unchecked Sendable {
-    
     override func execute(parentProgress: Progress?) async throws -> ALTApplication {
         let startTime = CFAbsoluteTimeGetCurrent()
         debugLog("[SendAppOperation] execute() started")
@@ -33,7 +31,6 @@ final class SendAppOperation: BasePipelineOperation<InstallAppOperationContext, 
 
         do {
             await CellularRefreshManager.shared.turnOffDataIfNeeded()
-            
             if UserDefaults.standard.preferResignedIPA, let ipaURL = self.context.ipaURL {
                 debugLog("[SendAppOperation] Sending IPA at \(ipaURL.path) via AFC...")
                 let rawBytes = try Data(contentsOf: ipaURL, options: .mappedIfSafe)

@@ -4,7 +4,6 @@
 //  Created by Magesh K on 7/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 
 #if canImport(UIKit)
@@ -29,11 +28,9 @@ private extension PlatformFontDescriptorSymbolicTraits {
 
 public struct MarkdownStyleKey: RawRepresentable, Hashable, Equatable {
     public let rawValue: String
-    
     public init(rawValue: String) {
         self.rawValue = rawValue
     }
-    
     public init(_ rawValue: String) {
         self.rawValue = rawValue
     }
@@ -53,34 +50,27 @@ public extension CharacterSet {
 }
 
 public extension NSAttributedString {
-    
     enum MarkdownSpanType {
         case emphasisSingle
         case emphasisDouble
         case linkInline
         case linkAutomatic
     }
-    
     convenience init(markdownRepresentation markdownString: String, attributes: [NSAttributedString.Key: Any]) {
         self.init(markdownRepresentation: markdownString, baseAttributes: attributes, styleAttributes: nil)
     }
-    
     convenience init(
         markdownRepresentation markdownString: String,
         baseAttributes: [NSAttributedString.Key: Any],
         styleAttributes: [MarkdownStyleKey: [NSAttributedString.Key: Any]]? = nil
     ) {
         assert(baseAttributes[.font] != nil, "A font attribute is required")
-        
         let result = NSMutableAttributedString(string: markdownString, attributes: baseAttributes)
-        
-        // 1. Replaces inline and automatic links
         let linkInlineStart = "["
         let linkInlineStartDivider = "]"
         let linkInlineEndDivider = "("
         let linkInlineEnd = ")"
         let linkInlineDividerMarker = linkInlineStartDivider + linkInlineEndDivider
-        
         updateAttributedString(
             result: result,
             beginMarker: linkInlineStart,
@@ -89,7 +79,6 @@ public extension NSAttributedString {
             spanType: .linkInline,
             styleAttributes: styleAttributes
         )
-        
         let linkAutomaticStart = "<"
         let linkAutomaticEnd = ">"
         updateAttributedString(
@@ -100,8 +89,6 @@ public extension NSAttributedString {
             spanType: .linkAutomatic,
             styleAttributes: styleAttributes
         )
-        
-        // 2. Replaces double emphasis (** and __)
         let emphasisDoubleStart = "**"
         let emphasisDoubleEnd = "**"
         updateAttributedString(
@@ -112,7 +99,6 @@ public extension NSAttributedString {
             spanType: .emphasisDouble,
             styleAttributes: styleAttributes
         )
-        
         let emphasisDoubleAlternateStart = "__"
         let emphasisDoubleAlternateEnd = "__"
         updateAttributedString(
@@ -123,8 +109,6 @@ public extension NSAttributedString {
             spanType: .emphasisDouble,
             styleAttributes: styleAttributes
         )
-        
-        // 3. Replaces single emphasis (* and _)
         let emphasisSingleStart = "_"
         let emphasisSingleEnd = "_"
         updateAttributedString(
@@ -135,7 +119,6 @@ public extension NSAttributedString {
             spanType: .emphasisSingle,
             styleAttributes: styleAttributes
         )
-        
         let emphasisSingleAlternateStart = "*"
         let emphasisSingleAlternateEnd = "*"
         updateAttributedString(
@@ -146,46 +129,34 @@ public extension NSAttributedString {
             spanType: .emphasisSingle,
             styleAttributes: styleAttributes
         )
-        
-        // 4. Remove backslashes from any escaped characters
         removeEscapedCharacterSet(in: result, characterSet: .markdownLiteralCharacterSet)
-        
         self.init(attributedString: result)
     }
-    
     var markdownRepresentation: String {
         let result = NSMutableString()
         let cleanAttributedString = NSMutableAttributedString(attributedString: self)
-        
-        // Remove attributes that break range (like foreground color, paragraph style)
         cleanAttributedString.removeAttribute(.foregroundColor, range: NSRange(location: 0, length: cleanAttributedString.length))
         cleanAttributedString.removeAttribute(.paragraphStyle, range: NSRange(location: 0, length: cleanAttributedString.length))
-        
         let normalizedAttributedString = NSAttributedString(attributedString: cleanAttributedString)
         let normalizedString = normalizedAttributedString.string
         let normalizedLength = normalizedAttributedString.length
-        
         var inBoldRun = false
         var inItalicRun = false
-        
         var index = 0
         while index < normalizedLength {
             var currentRange = NSRange(location: NSNotFound, length: 0)
             let currentAttributes = normalizedAttributedString.attributes(at: index, effectiveRange: &currentRange)
             let currentString = (normalizedString as NSString).substring(with: currentRange)
-            
             var nextAttributes: [NSAttributedString.Key: Any]? = nil
             let nextIndex = currentRange.location + currentRange.length
             if nextIndex < normalizedLength {
                 nextAttributes = normalizedAttributedString.attributes(at: nextIndex, effectiveRange: nil)
             }
-            
             let visualLineBreak = "\n\n"
             if currentString.contains(visualLineBreak) {
                 let components = currentString.components(separatedBy: visualLineBreak)
                 var visualLineBreakOffset = 0
                 var currentComponentRange = NSRange(location: currentRange.location, length: 0)
-                
                 for component in components {
                     currentComponentRange.length = component.count + visualLineBreakOffset
                     emitMarkdown(
@@ -215,17 +186,13 @@ public extension NSAttributedString {
             }
             index = currentRange.location + currentRange.length
         }
-        
         return result as String
     }
 }
 
-// MARK: - Private Helpers
-
 private func addTrait(to attributedString: NSMutableAttributedString, trait: PlatformFontDescriptorSymbolicTraits, range: NSRange) {
     attributedString.enumerateAttribute(.font, in: range, options: []) { value, subrange, _ in
         guard let font = value as? PlatformFont else { return }
-        
         #if canImport(UIKit)
         let symbolicTraits = font.fontDescriptor.symbolicTraits.union(trait)
         if let descriptor = font.fontDescriptor.withSymbolicTraits(symbolicTraits) {
@@ -248,7 +215,6 @@ private func replaceAttributes(spanType: NSAttributedString.MarkdownSpanType, st
     result.enumerateAttributes(in: range, options: []) { attributes, subrange, _ in
         var checkKey: MarkdownStyleKey? = nil
         var replacementKey: MarkdownStyleKey? = nil
-        
         if spanType == .emphasisSingle {
             checkKey = .emphasisDouble
             replacementKey = .emphasisSingle
@@ -256,26 +222,22 @@ private func replaceAttributes(spanType: NSAttributedString.MarkdownSpanType, st
             checkKey = .emphasisSingle
             replacementKey = .emphasisDouble
         }
-        
         if let check = checkKey, let replacement = replacementKey {
             let checkAttrs = styleAttributes[check] ?? [:]
             var hasExisting = true
             for (key, val) in checkAttrs {
                 if let attrVal = attributes[key], String(describing: attrVal) == String(describing: val) {
-                    // match
                 } else {
                     hasExisting = false
                     break
                 }
             }
-            
             let replacementAttrs: [NSAttributedString.Key: Any]?
             if hasExisting {
                 replacementAttrs = styleAttributes[.emphasisBoth]
             } else {
                 replacementAttrs = styleAttributes[replacement]
             }
-            
             if let replacementAttrs = replacementAttrs {
                 for key in replacementAttrs.keys {
                     result.removeAttribute(key, range: subrange)
@@ -296,8 +258,6 @@ private func updateAttributedString(
 ) {
     let scanString = result.string as NSString
     var mutationOffset = 0
-    
-    // Find horizontal rules to ignore
     var horizontalRuleRanges: [NSRange] = []
     if let rulerChar = beginMarker.first, (rulerChar == "*" || rulerChar == "_") {
         let rulerString = String(rulerChar)
@@ -315,7 +275,6 @@ private func updateAttributedString(
             if lineRange.length == 0 { break }
         }
     }
-    
     var scanIndex = 0
     while scanIndex < scanString.length {
         let remainingRange = NSRange(location: scanIndex, length: scanString.length - scanIndex)
@@ -323,21 +282,18 @@ private func updateAttributedString(
         if beginRange.location == NSNotFound {
             break
         }
-        
-        // Check escaping
-        let isEscaped = beginRange.location > 0 && scanString.character(at: beginRange.location - 1) == 92 // '\\'
+        let isEscaped = beginRange.location > 0 && scanString.character(at: beginRange.location - 1) == 92 
         var isLiteralOrList = false
         if beginMarker.count == 1 {
-            let hasPrefixStartOfLine = beginRange.location == 0 || scanString.character(at: beginRange.location - 1) == 10 // '\n'
-            let hasPrefixSpace = beginRange.location > 0 && scanString.character(at: beginRange.location - 1) == 32 // ' '
+            let hasPrefixStartOfLine = beginRange.location == 0 || scanString.character(at: beginRange.location - 1) == 10 
+            let hasPrefixSpace = beginRange.location > 0 && scanString.character(at: beginRange.location - 1) == 32 
             let hasSuffixSpace = beginRange.location + 1 < scanString.length && scanString.character(at: beginRange.location + 1) == 32
-            let hasPrefixTab = beginRange.location > 0 && scanString.character(at: beginRange.location - 1) == 9 // '\t'
+            let hasPrefixTab = beginRange.location > 0 && scanString.character(at: beginRange.location - 1) == 9 
             let hasSuffixTab = beginRange.location + 1 < scanString.length && scanString.character(at: beginRange.location + 1) == 9
             if (hasPrefixStartOfLine || hasPrefixSpace || hasPrefixTab) && (hasSuffixSpace || hasSuffixTab) {
                 isLiteralOrList = true
             }
         }
-        
         let mutatedIndex = beginRange.location - mutationOffset
         var isLinked = false
         if mutatedIndex >= 0 && mutatedIndex < result.length {
@@ -345,7 +301,6 @@ private func updateAttributedString(
                 isLinked = true
             }
         }
-        
         var isHorizontalRule = false
         for ruleRange in horizontalRuleRanges {
             if NSLocationInRange(beginRange.location, ruleRange) {
@@ -353,16 +308,13 @@ private func updateAttributedString(
                 break
             }
         }
-        
         if isEscaped || isLiteralOrList || isLinked || isHorizontalRule {
             scanIndex = beginRange.location + beginRange.length
             continue
         }
-        
         let beginIndex = beginRange.location + beginRange.length
         var foundEndMarker = false
         var endRange = NSRange(location: NSNotFound, length: 0)
-        
         var scanEndIndex = beginIndex
         while scanEndIndex < scanString.length {
             var searchRange = NSRange(location: scanEndIndex, length: scanString.length - scanEndIndex)
@@ -370,7 +322,6 @@ private func updateAttributedString(
             if visualLineRange.location != NSNotFound {
                 searchRange = NSRange(location: scanEndIndex, length: visualLineRange.location - scanEndIndex)
             }
-            
             var dividerMissing = false
             if let divider = dividerMarker {
                 let divRange = scanString.range(of: divider, options: [], range: searchRange)
@@ -386,13 +337,11 @@ private func updateAttributedString(
                     }
                 }
             }
-            
             endRange = scanString.range(of: endMarker, options: [], range: searchRange)
             if endRange.location != NSNotFound {
                 let endEscaped = endRange.location > 0 && scanString.character(at: endRange.location - 1) == 92
                 let hasPrefixSpace = endRange.location > 0 && scanString.character(at: endRange.location - 1) == 32
                 let hasSuffixSpace = endRange.location + 1 < scanString.length && scanString.character(at: endRange.location + 1) == 32
-                
                 if !endEscaped && !(hasPrefixSpace && hasSuffixSpace) {
                     if !dividerMissing {
                         foundEndMarker = true
@@ -404,19 +353,15 @@ private func updateAttributedString(
                 break
             }
         }
-        
         if foundEndMarker {
             let endIndex = endRange.location
             let mutatedBeginRange = NSRange(location: beginRange.location - mutationOffset, length: beginRange.length)
             let mutatedTextRange = NSRange(location: beginIndex - mutationOffset, length: endIndex - beginIndex)
-            
             var replaceMarkers = false
             var replaceStyleAttributes = false
             var replacementString: String? = nil
             var replacementAttributes: [NSAttributedString.Key: Any]? = nil
-            
             let matchTextRange = NSRange(location: beginIndex - mutationOffset, length: endIndex - beginIndex)
-            
             switch spanType {
             case .emphasisSingle, .emphasisDouble:
                 if beginIndex != endIndex {
@@ -427,7 +372,6 @@ private func updateAttributedString(
                 let matchString = (result.string as NSString).substring(with: matchTextRange)
                 var linkText: String? = nil
                 var inlineLink: String? = nil
-                
                 let linkTextMarkerRange = (matchString as NSString).range(of: "]")
                 if linkTextMarkerRange.location != NSNotFound {
                     linkText = (matchString as NSString).substring(to: linkTextMarkerRange.location)
@@ -439,7 +383,6 @@ private func updateAttributedString(
                         }
                     }
                 }
-                
                 if let text = linkText, let link = inlineLink {
                     if let url = URL(string: link) {
                         replacementString = text
@@ -472,7 +415,6 @@ private func updateAttributedString(
                                 synthesizedURL = URL(string: "https://\(string)")
                             }
                         }
-                        
                         if let url = synthesizedURL {
                             if let styleLink = styleAttributes?[.link] {
                                 replacementAttributes = styleLink
@@ -484,13 +426,10 @@ private func updateAttributedString(
                     }
                 }
             }
-            
             if replaceMarkers {
                 result.replaceCharacters(in: mutatedBeginRange, with: "")
                 mutationOffset += beginRange.length
-                
                 let currentMutatedTextRange = NSRange(location: beginIndex - mutationOffset, length: mutatedTextRange.length)
-                
                 if replaceStyleAttributes {
                     if spanType == .emphasisSingle {
                         if styleAttributes?[.emphasisSingle] != nil {
@@ -506,21 +445,17 @@ private func updateAttributedString(
                         }
                     }
                 }
-                
                 if let replacementAttributes = replacementAttributes {
                     result.addAttributes(replacementAttributes, range: currentMutatedTextRange)
                 }
-                
                 if let replacementString = replacementString {
                     result.replaceCharacters(in: currentMutatedTextRange, with: replacementString)
                     mutationOffset += currentMutatedTextRange.length - replacementString.count
                 }
-                
                 let mutatedEndRange = NSRange(location: endRange.location - mutationOffset, length: endRange.length)
                 result.replaceCharacters(in: mutatedEndRange, with: "")
                 mutationOffset += endRange.length
             }
-            
             scanIndex = endRange.location + endRange.length
         } else {
             scanIndex = beginRange.location + beginRange.length
@@ -534,10 +469,9 @@ private func removeEscapedCharacterSet(in result: NSMutableAttributedString, cha
     while needsScan {
         let scanString = result.string as NSString
         guard scanStart < scanString.length else { break }
-        
         let range = scanString.rangeOfCharacter(from: characterSet, options: [], range: NSRange(location: scanStart, length: scanString.length - scanStart))
         if range.location != NSNotFound {
-            let hasEscapeMarker = range.location > 0 && scanString.character(at: range.location - 1) == 92 // '\\'
+            let hasEscapeMarker = range.location > 0 && scanString.character(at: range.location - 1) == 92 
             if hasEscapeMarker {
                 result.replaceCharacters(in: NSRange(location: range.location - 1, length: 1), with: "")
                 scanStart = range.location
@@ -556,18 +490,16 @@ private func removeEscapedCharacterSet(in result: NSMutableAttributedString, cha
 private func adjustRangeForWhitespace(range: NSRange, string: NSString, prefixRange: inout NSRange, textRange: inout NSRange, suffixRange: inout NSRange) -> Bool {
     var adjusted = false
     let length = string.length
-    
     var startIndex = range.location
     while startIndex < length {
         let char = string.character(at: startIndex)
-        if char == 32 || char == 9 || char == 10 { // space, tab, newline
+        if char == 32 || char == 9 || char == 10 { 
             startIndex += 1
             adjusted = true
         } else {
             break
         }
     }
-    
     var endIndex = range.location + range.length - 1
     while endIndex > 0 {
         let char = string.character(at: endIndex)
@@ -579,7 +511,6 @@ private func adjustRangeForWhitespace(range: NSRange, string: NSString, prefixRa
         }
     }
     endIndex += 1
-    
     if startIndex < endIndex {
         prefixRange = NSRange(location: range.location, length: startIndex - range.location)
         textRange = NSRange(location: startIndex, length: endIndex - startIndex)
@@ -589,7 +520,6 @@ private func adjustRangeForWhitespace(range: NSRange, string: NSString, prefixRa
         textRange = range
         suffixRange = NSRange(location: NSNotFound, length: 0)
     }
-    
     return adjusted
 }
 
@@ -613,12 +543,10 @@ private func addEscapesInMarkdownString(text: NSMutableString, marker: String) {
                         scanIndex = range.location + range.length + remainder.count - 1
                     }
                 }
-                
                 if !isHorizontalRuler {
                     var insertEscape = false
                     var hasPrefixSpace = true
                     var hasSuffixSpace = true
-                    
                     if range.location == 0 {
                         if text.length > 1 {
                             let nextChar = (text as NSString).character(at: 1)
@@ -633,11 +561,9 @@ private func addEscapesInMarkdownString(text: NSMutableString, marker: String) {
                         hasPrefixSpace = prevChar == 32 || prevChar == 9 || prevChar == 10
                         hasSuffixSpace = nextChar == 32 || nextChar == 9 || nextChar == 10
                     }
-                    
                     if !(hasPrefixSpace && hasSuffixSpace) {
                         insertEscape = true
                     }
-                    
                     if insertEscape {
                         text.insert("\\", at: range.location)
                         scanIndex = range.location + range.length + 1
@@ -666,11 +592,9 @@ private func updateMarkdownString(
         let prefix = (string as NSString).substring(with: prefixRange)
         result.append(prefix)
     }
-    
     if let prefixString = prefixString {
         result.append(prefixString)
     }
-    
     let text = NSMutableString(string: (string as NSString).substring(with: textRange))
     if needsEscaping {
         addEscapesInMarkdownString(text: text, marker: "\\")
@@ -678,11 +602,9 @@ private func updateMarkdownString(
         addEscapesInMarkdownString(text: text, marker: "_")
     }
     result.append(text as String)
-    
     if let suffixString = suffixString {
         result.append(suffixString)
     }
-    
     if suffixRange.location != NSNotFound {
         let suffix = (string as NSString).substring(with: suffixRange)
         result.append(suffix)
@@ -709,7 +631,6 @@ private func emitMarkdown(
     } else {
         var currentRangeHasLink = false
         var currentRangeURL: URL? = nil
-        
         if let linkVal = currentAttributes[.link] {
             var url: URL? = nil
             if let u = linkVal as? URL {
@@ -717,7 +638,6 @@ private func emitMarkdown(
             } else if let s = linkVal as? String {
                 url = URL(string: s)
             }
-            
             if let u = url {
                 currentRangeHasLink = true
                 if u.scheme != "mailto" && u.absoluteString != currentString {
@@ -725,29 +645,23 @@ private func emitMarkdown(
                 }
             }
         }
-        
         var prefixString = ""
         var suffixString = ""
-        
         var currentSymbolicTraits: PlatformFontDescriptorSymbolicTraits = []
         if let font = currentAttributes[.font] as? PlatformFont {
             currentSymbolicTraits = font.fontDescriptor.symbolicTraits
         }
-        
         var nextSymbolicTraits: PlatformFontDescriptorSymbolicTraits = []
         if let nextAttrs = nextAttributes {
             if let font = nextAttrs[.font] as? PlatformFont {
                 nextSymbolicTraits = font.fontDescriptor.symbolicTraits
             }
         }
-        
         let currentRangeHasBold = currentSymbolicTraits.contains(.boldTrait)
         let currentRangeHasItalic = currentSymbolicTraits.contains(.italicTrait)
         let nextRangeHasBold = nextSymbolicTraits.contains(.boldTrait)
         let nextRangeHasItalic = nextSymbolicTraits.contains(.italicTrait)
-        
         var needsEscaping = true
-        
         if currentRangeHasBold {
             if !inBoldRun {
                 prefixString += "**"
@@ -760,7 +674,6 @@ private func emitMarkdown(
                 inItalicRun = true
             }
         }
-        
         if currentRangeHasLink {
             if let url = currentRangeURL {
                 prefixString += "["
@@ -771,21 +684,18 @@ private func emitMarkdown(
                 suffixString += ">"
             }
         }
-        
         if !nextRangeHasItalic {
             if inItalicRun {
                 suffixString += "_"
                 inItalicRun = false
             }
         }
-        
         if !nextRangeHasBold {
             if inBoldRun {
                 suffixString += "**"
                 inBoldRun = false
             }
         }
-        
         var prefixRange = NSRange(location: NSNotFound, length: 0)
         var textRange = NSRange(location: NSNotFound, length: 0)
         var suffixRange = NSRange(location: NSNotFound, length: 0)

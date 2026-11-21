@@ -5,7 +5,6 @@
 //  Created by Magesh K on 23/8/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 
 enum SideJITConnectionStatus: Equatable {
@@ -14,7 +13,6 @@ enum SideJITConnectionStatus: Equatable {
     case discovering
     case disconnected(reason: String)
     case checking
-    
     var color: Color {
         switch self {
         case .disabled: return .secondary
@@ -23,7 +21,6 @@ enum SideJITConnectionStatus: Equatable {
         case .disconnected: return .red
         }
     }
-    
     var title: String {
         switch self {
         case .disabled: return "Disabled"
@@ -43,11 +40,9 @@ struct SideJITResponseLog: Identifiable {
     let statusCode: Int
     let latencyMs: Int
     let rawPayload: String
-    
     var isSuccess: Bool {
         statusCode >= 200 && statusCode < 300
     }
-    
     var prettyPayload: String {
         rawPayload.prettyPrintedJSON
     }
@@ -111,7 +106,6 @@ struct SideJITServerConfigView: View {
             refreshServerState()
         }
     }
-    
     private var headerSection: some View {
         Section {
             Toggle(isOn: $isServerEnabled) {
@@ -122,7 +116,6 @@ struct SideJITServerConfigView: View {
                         .frame(width: 32, height: 32)
                         .background(Color.accentColor.opacity(0.15))
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Enable SideJITServer")
                             .font(.body.weight(.semibold))
@@ -143,7 +136,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private var statusSection: some View {
         Section(header: Text("Connection Status")) {
             HStack {
@@ -158,7 +150,6 @@ struct SideJITServerConfigView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            
             HStack {
                 Text("Resolved Address")
                     .layoutPriority(1)
@@ -181,7 +172,6 @@ struct SideJITServerConfigView: View {
                     }
                 }
             }
-            
             HStack {
                 Text("Resolution Mode")
                 Spacer()
@@ -191,7 +181,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private var configurationSection: some View {
         Section(
             header: Text("Server Address"),
@@ -210,7 +199,6 @@ struct SideJITServerConfigView: View {
                         UserDefaults.standard.textInputSideJITServerurl = trimmed.isEmpty ? nil : trimmed
                         refreshServerState()
                     }
-                
                 if !customAddress.isEmpty {
                     SwiftUI.Button {
                         customAddress = ""
@@ -225,7 +213,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private var diagnosticActionsSection: some View {
         Section(header: Text("Diagnostics & Tools")) {
             SwiftUI.Button {
@@ -244,7 +231,6 @@ struct SideJITServerConfigView: View {
             }
             .buttonStyle(.plain)
             .disabled(activeAction != nil)
-            
             SwiftUI.Button {
                 triggerDeviceRefresh()
             } label: {
@@ -261,7 +247,6 @@ struct SideJITServerConfigView: View {
             }
             .buttonStyle(.plain)
             .disabled(activeAction != nil)
-            
             SwiftUI.Button {
                 queryVersionEndpoint()
             } label: {
@@ -280,7 +265,6 @@ struct SideJITServerConfigView: View {
             .disabled(activeAction != nil)
         }
     }
-    
     private func responseInspectorSection(log: SideJITResponseLog) -> some View {
         Section(header: Text("Latest Server Response")) {
             VStack(alignment: .leading, spacing: 8) {
@@ -291,23 +275,18 @@ struct SideJITServerConfigView: View {
                         .padding(.vertical, 2)
                         .background(Color.secondary.opacity(0.2))
                         .cornerRadius(4)
-                    
                     Text(log.endpoint)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                    
                     Spacer()
-                    
                     Text("\(log.statusCode)")
                         .font(.system(.caption, design: .monospaced).bold())
                         .foregroundColor(log.isSuccess ? .green : .red)
-                    
                     Text("\(log.latencyMs)ms")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
-                
                 ScrollView(.vertical, showsIndicators: true) {
                     ScrollView(.horizontal, showsIndicators: false) {
                         Text(log.prettyPayload)
@@ -344,14 +323,12 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private var aboutSection: some View {
         Section(header: Text("About")) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("SideJITServer attaches Apple's debugserver service on macOS to running apps on iOS 17+ over local Wi-Fi or USB.")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
                 Text("When SuperStore triggers JIT, SideJITServer sends the debug attach signal and enables Just-In-Time execution instantly.")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -359,7 +336,6 @@ struct SideJITServerConfigView: View {
             .padding(.vertical, 2)
         }
     }
-    
     private var copiedToastView: some View {
         Text("Copied to Clipboard")
             .font(.subheadline.weight(.medium))
@@ -369,7 +345,6 @@ struct SideJITServerConfigView: View {
             .background(Capsule().fill(Color.accentColor))
             .padding(.bottom, 16)
     }
-    
     private func showCopied() {
         withAnimation(.spring(response: 0.3)) {
             showCopiedToast = true
@@ -380,7 +355,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private func refreshServerState() {
         guard isServerEnabled else {
             connectionStatus = .disabled
@@ -398,7 +372,6 @@ struct SideJITServerConfigView: View {
             await performPing(to: serverURL)
         }
     }
-    
     private func performPing(to serverURL: String) async {
         guard let url = URL(string: serverURL) else {
             debugLog("[SideJITConfig] performPing: invalid URL string '\(serverURL)'")
@@ -407,19 +380,16 @@ struct SideJITServerConfigView: View {
             }
             return
         }
-        
         let start = Date()
         var request = URLRequest(url: url)
         request.timeoutInterval = AppConstants.SideJIT.timeout
         debugLog("[SideJITConfig] performPing: sending GET request to \(url) (timeout: \(AppConstants.SideJIT.timeout)s)")
-        
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             let latency = Int(Date().timeIntervalSince(start) * 1000)
             let status = (response as? HTTPURLResponse)?.statusCode ?? 200
             let payload = String(data: data, encoding: .utf8) ?? "<binary data>"
             debugLog("[SideJITConfig] performPing: success from \(url) (status=\(status), latency=\(latency)ms, bytes=\(data.count)):\n\(payload.prettyPrintedJSON)")
-            
             await MainActor.run {
                 if status >= 200 && status < 400 {
                     self.connectionStatus = .ready(latencyMs: latency, address: serverURL)
@@ -451,7 +421,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private func testHealthCheck() {
         activeAction = .ping
         debugLog("[SideJITConfig] testHealthCheck: user triggered Test Connection (Ping)")
@@ -463,7 +432,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private func triggerDeviceRefresh() {
         activeAction = .refresh
         debugLog("[SideJITConfig] triggerDeviceRefresh: user triggered Refresh Devices")
@@ -474,19 +442,16 @@ struct SideJITServerConfigView: View {
                 await MainActor.run { self.activeAction = nil }
                 return
             }
-            
             let start = Date()
             var request = URLRequest(url: url)
             request.timeoutInterval = AppConstants.SideJIT.timeout
             debugLog("[SideJITConfig] triggerDeviceRefresh: requesting \(url)")
-            
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 let latency = Int(Date().timeIntervalSince(start) * 1000)
                 let status = (response as? HTTPURLResponse)?.statusCode ?? 200
                 let payload = String(data: data, encoding: .utf8) ?? ""
                 debugLog("[SideJITConfig] triggerDeviceRefresh: received status=\(status), latency=\(latency)ms:\n\(payload.prettyPrintedJSON)")
-                
                 await MainActor.run {
                     if status >= 200 && status < 400 {
                         self.connectionStatus = .ready(latencyMs: latency, address: serverURL)
@@ -518,7 +483,6 @@ struct SideJITServerConfigView: View {
             }
         }
     }
-    
     private func queryVersionEndpoint() {
         activeAction = .version
         debugLog("[SideJITConfig] queryVersionEndpoint: user triggered Query Versions")
@@ -529,19 +493,16 @@ struct SideJITServerConfigView: View {
                 await MainActor.run { self.activeAction = nil }
                 return
             }
-            
             let start = Date()
             var request = URLRequest(url: url)
             request.timeoutInterval = AppConstants.SideJIT.timeout
             debugLog("[SideJITConfig] queryVersionEndpoint: requesting \(url)")
-            
             do {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 let latency = Int(Date().timeIntervalSince(start) * 1000)
                 let status = (response as? HTTPURLResponse)?.statusCode ?? 200
                 let payload = String(data: data, encoding: .utf8) ?? ""
                 debugLog("[SideJITConfig] queryVersionEndpoint: received status=\(status), latency=\(latency)ms:\n\(payload.prettyPrintedJSON)")
-                
                 await MainActor.run {
                     self.latestLog = SideJITResponseLog(
                         timestamp: Date(),

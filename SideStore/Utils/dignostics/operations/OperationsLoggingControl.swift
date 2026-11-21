@@ -5,11 +5,9 @@
 //  Created by Magesh K on 14/01/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
 import Foundation
 
 class OperationsLoggingControl {
-    
     private static let defaultStepLoggingState = false
 
     static func isStepLoggingEnabled(for step: some OperationStep) -> Bool {

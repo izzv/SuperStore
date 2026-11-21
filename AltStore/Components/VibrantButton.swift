@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 3/22/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 private let preferredFont = UIFont.boldSystemFont(ofSize: 14)
@@ -24,7 +23,6 @@ class VibrantButton: UIButton
             }
         }
     }
-    
     var image: UIImage? {
         didSet {
             if #available(iOS 15, *)
@@ -37,7 +35,6 @@ class VibrantButton: UIButton
             }
         }
     }
-    
     var contentInsets: NSDirectionalEdgeInsets = .zero {
         didSet {
             if #available(iOS 15, *)
@@ -50,40 +47,32 @@ class VibrantButton: UIButton
             }
         }
     }
-    
     override var isIndicatingActivity: Bool {
         didSet {
             guard #available(iOS 15, *) else { return }
             self.updateConfiguration()
         }
     }
-    
     private let vibrancyView = UIVisualEffectView(effect: nil)
-    
     override init(frame: CGRect)
     {
         super.init(frame: frame)
-        
         self.initialize()
     }
-    
     required init?(coder: NSCoder)
     {
         super.init(coder: coder)
-        
         self.initialize()
     }
-    
     private func initialize()
     {
         #if !os(tvOS)
         let blurEffect = UIBlurEffect(style: .systemThinMaterial)
-        let vibrancyEffect = UIVibrancyEffect(blurEffect: blurEffect, style: .fill) // .fill is more vibrant than .secondaryLabel
+        let vibrancyEffect = UIVibrancyEffect(blurEffect: blurEffect, style: .fill) 
         #else
         let blurEffect = UIBlurEffect(style: .regular)
         let vibrancyEffect = UIVibrancyEffect(blurEffect: blurEffect)
         #endif
-        
         if #available(iOS 15, *)
         {
             var backgroundConfig = UIBackgroundConfiguration.clear()
@@ -95,60 +84,45 @@ class VibrantButton: UIButton
             config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { [weak self] (attributes) in
                 var attributes = attributes
                 attributes.font = preferredFont
-                
                 if let self, self.isIndicatingActivity
                 {
-                    // Hide title when indicating activity, but without changing intrinsicContentSize.
                     attributes.foregroundColor = UIColor.clear
                 }
-                
                 return attributes
             }
-            
             self.configuration = config
         }
         else
         {
             self.clipsToBounds = true
-            self.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8) // Add padding.
-            
+            self.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8) 
             let blurView = UIVisualEffectView(effect: blurEffect)
             blurView.isUserInteractionEnabled = false
             self.addSubview(blurView, pinningEdgesWith: .zero)
             self.insertSubview(blurView, at: 0)
         }
-        
         self.vibrancyView.effect = vibrancyEffect
         self.vibrancyView.isUserInteractionEnabled = false
         self.addSubview(self.vibrancyView, pinningEdgesWith: .zero)
     }
-    
     override func layoutSubviews()
     {
         super.layoutSubviews()
-        
         self.layer.cornerRadius = self.bounds.midY
-                
-        // Make sure content subviews are inside self.vibrancyView.contentView.
-        
         if let titleLabel = self.titleLabel, titleLabel.superview != self.vibrancyView.contentView
         {
             self.vibrancyView.contentView.addSubview(titleLabel)
         }
-       
         if let imageView = self.imageView, imageView.superview != self.vibrancyView.contentView
         {
             self.vibrancyView.contentView.addSubview(imageView)
         }
-        
         if self.activityIndicatorView.superview != self.vibrancyView.contentView
         {
             self.vibrancyView.contentView.addSubview(self.activityIndicatorView)
         }
-        
         if #unavailable(iOS 15)
         {
-            // Update font after init because the original titleLabel is replaced.
             self.titleLabel?.font = preferredFont
         }
     }

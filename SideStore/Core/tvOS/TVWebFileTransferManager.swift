@@ -5,7 +5,6 @@
 //  Created by Magesh K on 26/08/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 #if os(tvOS)
 @preconcurrency import UIKit
 import Foundation
@@ -265,7 +264,6 @@ public final class TVWebFileTransferManager: @unchecked Sendable {
         var fileData: Data = bodyData
         var filename = "uploaded_file"
 
-        // Multipart parsing
         if let filenameRange = rawString.range(of: "filename=\"") {
             let rest = rawString[filenameRange.upperBound...]
             if let quoteEnd = rest.range(of: "\"") {

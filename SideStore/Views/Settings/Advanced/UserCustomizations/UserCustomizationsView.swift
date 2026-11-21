@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/2/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Minimuxer
 
@@ -80,13 +79,11 @@ struct UserCustomizationsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Section 0: APPEARANCE & THEMES
                 VStack(alignment: .leading, spacing: 8) {
                     Text("APPEARANCE & THEMES")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     NavigationLink(destination: ThemePickerView()) {
                         HStack {
                             Text("Theme Manager")
@@ -109,13 +106,11 @@ struct UserCustomizationsView: View {
                     .cornerRadius(14)
                 }
 
-                // Section 1: ANISETTE
                 VStack(alignment: .leading, spacing: 8) {
                     Text("ANISETTE")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         toggleRow(
                             title: "On-Device Anisette",
@@ -128,9 +123,7 @@ struct UserCustomizationsView: View {
                                 }
                             )
                         )
-                        
                         divider
-                        
                         NavigationLink(destination: AnisetteDataView()) {
                             HStack {
                                 Text("Anisette Client Configuration")
@@ -144,9 +137,7 @@ struct UserCustomizationsView: View {
                             .padding(.horizontal, 16)
                             .frame(height: 50)
                         }
-                        
                         divider
-                        
                         SwiftUI.Button(role: .destructive) {
                             presentResetAdiDialog()
                         } label: {
@@ -173,13 +164,11 @@ struct UserCustomizationsView: View {
                     .cornerRadius(14)
                 }
 
-                // Section: SIDESIGN
                 VStack(alignment: .leading, spacing: 8) {
                     Text("SIDESIGN")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         NavigationLink(destination: SideSignConfigurationView()) {
                             HStack {
@@ -199,16 +188,13 @@ struct UserCustomizationsView: View {
                     .cornerRadius(14)
                 }
 
-                // Section 2: GENERAL
                 generalSection
 
-                // Section 2: APP VERIFICATION
                 VStack(alignment: .leading, spacing: 8) {
                     Text("APP VERIFICATION")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         toggleRow(title: "Disable All Verifications", isOn: Binding(
                             get: { appVerificationDisabled },
@@ -217,9 +203,7 @@ struct UserCustomizationsView: View {
                                 UserDefaults.standard.appVerificationDisabled = newValue
                             }
                         ))
-                        
                         divider
-                        
                         Group {
                             toggleRow(title: "Bundle Identifier Check", isOn: Binding(
                                 get: { isBundleIDVerificationEnabled },
@@ -228,9 +212,7 @@ struct UserCustomizationsView: View {
                                     UserDefaults.standard.isBundleIDVerificationEnabled = newValue
                                 }
                             ))
-                            
                             divider
-                            
                             toggleRow(title: "iOS Version Check", isOn: Binding(
                                 get: { isiOSVersionVerificationEnabled },
                                 set: { newValue in
@@ -238,9 +220,7 @@ struct UserCustomizationsView: View {
                                     UserDefaults.standard.isiOSVersionVerificationEnabled = newValue
                                 }
                             ))
-                            
                             divider
-                            
                             toggleRow(title: "App Version Check", isOn: Binding(
                                 get: { isAppVersionVerificationEnabled },
                                 set: { newValue in
@@ -248,9 +228,7 @@ struct UserCustomizationsView: View {
                                     UserDefaults.standard.isAppVersionVerificationEnabled = newValue
                                 }
                             ))
-                            
                             divider
-                            
                             toggleRow(title: "Checksum (SHA-256) Check", isOn: Binding(
                                 get: { isChecksumVerificationEnabled },
                                 set: { newValue in
@@ -258,9 +236,7 @@ struct UserCustomizationsView: View {
                                     UserDefaults.standard.isChecksumVerificationEnabled = newValue
                                 }
                             ))
-                            
                             divider
-                            
                             toggleRow(title: "App File Size Check", isOn: Binding(
                                 get: { isFileSizeVerificationEnabled },
                                 set: { newValue in
@@ -268,9 +244,7 @@ struct UserCustomizationsView: View {
                                     UserDefaults.standard.isFileSizeVerificationEnabled = newValue
                                 }
                             ))
-                            
                             divider
-                            
                             toggleRow(title: "Permission Checks", isOn: Binding(
                                 get: { !permissionCheckingDisabled },
                                 set: { newValue in
@@ -286,13 +260,11 @@ struct UserCustomizationsView: View {
                     .cornerRadius(14)
                 }
 
-                // Section 3: EMPROXY & WIREGUARD
                 VStack(alignment: .leading, spacing: 8) {
                     Text("EMPROXY & WIREGUARD")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -318,9 +290,7 @@ struct UserCustomizationsView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .frame(minHeight: 50)
-                        
                         divider
-                        
                         toggleRow(
                             title: "EMProxy (WireGuard) Server",
                             subtitle: "Restart required to apply changes",
@@ -337,16 +307,13 @@ struct UserCustomizationsView: View {
                     .cornerRadius(14)
                 }
 
-                // Section 4: CELLULAR REFRESH
                 cellularRefreshShortcutsSection
 
-                // Section 5: MINIMUXER BACKEND
                 VStack(alignment: .leading, spacing: 8) {
                     Text("MINIMUXER BACKEND")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         ForEach(GatewayBackend.allCases, id: \.self) { backend in
                             SwiftUI.Button(action: {
@@ -382,13 +349,11 @@ struct UserCustomizationsView: View {
                     .cornerRadius(14)
                 }
 
-                // Section 6: BACKGROUND SERVICE
                 VStack(alignment: .leading, spacing: 8) {
                     Text("BACKGROUND SERVICE")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         toggleRow(title: "Enable Background Keepalive", isOn: Binding(
                             get: { isBackgroundServiceEnabled },
@@ -397,9 +362,7 @@ struct UserCustomizationsView: View {
                                 BackgroundServiceManager.setEnabled(newValue)
                             }
                         ))
-                        
                         divider
-                        
                         ForEach(BackgroundServiceMode.allCases, id: \.self) { mode in
                             SwiftUI.Button(action: {
                                 selectedBackgroundServiceMode = mode
@@ -425,7 +388,6 @@ struct UserCustomizationsView: View {
                                 .padding(.vertical, 12)
                             }
                             .disabled(!isBackgroundServiceEnabled)
-                            
                             if mode != BackgroundServiceMode.allCases.last {
                                 divider
                             }
@@ -784,7 +746,6 @@ struct UserCustomizationsView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(Color.white.opacity(0.6))
                 .padding(.horizontal, 16)
-            
             VStack(spacing: 0) {
                 toggleRow(title: "Customize Info.plist", isOn: Binding(
                     get: { customizeInfoPlist },
@@ -793,9 +754,7 @@ struct UserCustomizationsView: View {
                         UserDefaults.standard.customizeInfoPlist = newValue
                     }
                 ))
-                
                 divider
-                
                 toggleRow(title: "Customize AppID", isOn: Binding(
                     get: { customizeInfoPlist ? true : customizeAppId },
                     set: { newValue in
@@ -805,9 +764,7 @@ struct UserCustomizationsView: View {
                 ))
                 .disabled(customizeInfoPlist)
                 .opacity(customizeInfoPlist ? 0.4 : 1.0)
-                
                 divider
-                
                 HStack {
                     Text("Customize Extensions")
                         .font(.system(size: 17, weight: .bold))
@@ -824,9 +781,7 @@ struct UserCustomizationsView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .frame(minHeight: 50)
-                
                 divider
-                
                 HStack {
                     Text("Default Import Mode")
                         .font(.system(size: 17, weight: .bold))
@@ -843,7 +798,6 @@ struct UserCustomizationsView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .frame(minHeight: 50)
-                
                 divider
 
                 toggleRow(
@@ -857,7 +811,6 @@ struct UserCustomizationsView: View {
                         }
                     )
                 )
-                
                 divider
 
                 toggleRow(
@@ -871,7 +824,6 @@ struct UserCustomizationsView: View {
                         }
                     )
                 )
-                
                 divider
 
                 toggleRow(
@@ -885,9 +837,7 @@ struct UserCustomizationsView: View {
                         }
                     )
                 )
-                
                 divider
-                
                 toggleRow(title: "Customize Entitlements", isOn: Binding(
                     get: { customizeEntitlements },
                     set: { newValue in
@@ -895,9 +845,7 @@ struct UserCustomizationsView: View {
                         UserDefaults.standard.customizeEntitlements = newValue
                     }
                 ))
-                
                 divider
-                
                 toggleRow(
                     title: "Auto-Fix AppGroup IDs",
                     subtitle: isFreeAccount ? "Required for free developer accounts" : "Automatically fix App Group casing mismatches",
@@ -939,9 +887,7 @@ struct UserCustomizationsView: View {
                         }
                     )
                 )
-                
                 divider
-                
                 toggleRow(
                     title: "Prefer Resigned IPA",
                     subtitle: "Prefer IPA (speed) vs App (storage) efficiency",
@@ -953,9 +899,7 @@ struct UserCustomizationsView: View {
                         }
                     )
                 )
-                
                 divider
-                
                 toggleRow(title: "Export Resigned IPAs", isOn: Binding(
                     get: { isExportResignedAppEnabled },
                     set: { newValue in
@@ -963,9 +907,7 @@ struct UserCustomizationsView: View {
                         UserDefaults.standard.isExportResignedAppEnabled = newValue
                     }
                 ))
-                
                 divider
-                
                 toggleRow(title: "Skip Uncopyable Backup Files", isOn: Binding(
                     get: { skipNonCopyableFiles },
                     set: { newValue in
@@ -973,9 +915,7 @@ struct UserCustomizationsView: View {
                         UserDefaults.standard.skipNonCopyableBackupFiles = newValue
                     }
                 ))
-                
                 divider
-                
                 toggleRow(
                     title: "Prefer Sheet for Info.plist",
                     subtitle: "Use sheet instead of dialog",
@@ -989,9 +929,7 @@ struct UserCustomizationsView: View {
                 )
                 .disabled(!customizeInfoPlist)
                 .opacity(!customizeInfoPlist ? 0.4 : 1.0)
-                
                 divider
-                
                 toggleRow(
                     title: "Prefer Sheet for Entitlements",
                     subtitle: "Use sheet instead of dialog",
@@ -1010,8 +948,6 @@ struct UserCustomizationsView: View {
             .cornerRadius(14)
         }
     }
-
-
 
     private var divider: some View {
         Rectangle()
@@ -1040,7 +976,6 @@ struct UserCustomizationsView: View {
         )
         let contentVC = ResetAdiAlertViewController()
         alertController.setValue(contentVC, forKey: "contentViewController")
-        
         let cancelAction = UIAlertAction(title: NSLocalizedString("Cancel", comment: ""), style: .cancel, handler: nil)
         let resetAction = UIAlertAction(title: NSLocalizedString("Reset & Sign Out", comment: ""), style: .destructive) { _ in
             let keepHeaders = contentVC.isKeepHeadersChecked
@@ -1058,7 +993,6 @@ struct UserCustomizationsView: View {
                 }
             }
         }
-        
         alertController.addAction(cancelAction)
         alertController.addAction(resetAction)
         top.present(alertController, animated: true, completion: nil)

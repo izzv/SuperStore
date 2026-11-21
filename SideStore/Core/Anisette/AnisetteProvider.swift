@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -36,9 +35,6 @@ enum AnisetteProvider {
         let identifier = await AnisetteConfigManager.shared.resolveDeviceIdentifier()
         let headers = await AnisetteConfigManager.shared.makeRequestHeaders()
 
-        // Try the server that worked last first, then walk the rest. A server
-        // that answers with a 503 or an HTML error page is just a failed
-        // attempt: we move on instead of surfacing its markup to the user.
         let order: [Int] = rotationDisabled
             ? [startIndex]
             : Array(0..<servers.count).map { (startIndex + $0) % servers.count }

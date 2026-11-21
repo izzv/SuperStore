@@ -6,7 +6,6 @@
 //  Solution credits: Thanks to @HugeBlack
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 #import "SideBackupAppLauncher.h"
 
 @interface NSObject (LSApplicationWorkspace)
@@ -25,21 +24,17 @@
                            completionHandler:(void (^ _Nullable)(BOOL success, NSError * _Nullable error))completionHandler {
     Class workspaceClass = NSClassFromString(@"LSApplicationWorkspace");
     Class configClass = NSClassFromString(@"_LSOpenConfiguration");
-    
     if (!workspaceClass || !configClass) {
         if (completionHandler) completionHandler(NO, nil);
         return;
     }
-    
     id workspace = [workspaceClass performSelector:@selector(defaultWorkspace)];
     id config = [[configClass alloc] init];
-    
     if ([config respondsToSelector:@selector(setFrontBoardOptions:)]) {
         [config performSelector:@selector(setFrontBoardOptions:) withObject:@{
             @"__PayloadURL": url
         }];
     }
-    
     if (workspace && [workspace respondsToSelector:@selector(openApplicationWithBundleIdentifier:usingConfiguration:completionHandler:)]) {
         [workspace openApplicationWithBundleIdentifier:bundleID usingConfiguration:config completionHandler:completionHandler];
     } else {

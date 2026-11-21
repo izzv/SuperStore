@@ -5,14 +5,9 @@
 //  Created by Magesh K on 4/7/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 import Network
 
-// MARK: - Root View (Domains List)
-
-// Entry point: discovers and lists browsable Bonjour domains.
-// Tapping a domain navigates to its service types.
 struct BonjourDiscoveryView: View {
     @StateObject private var viewModel = BonjourDiscoveryViewModel()
     @State private var selectedDomain: String? = nil
@@ -21,7 +16,6 @@ struct BonjourDiscoveryView: View {
     #if os(tvOS)
     @State private var showFilterDialog = false
     #endif
-    
     var body: some View {
         ZStack {
             #if !os(tvOS)
@@ -31,7 +25,6 @@ struct BonjourDiscoveryView: View {
             Color.clear
                 .ignoresSafeArea()
             #endif
-            
             if viewModel.isSearching && viewModel.domains.isEmpty {
                 ProgressView("Searching for domains…")
             } else if !viewModel.isSearching && viewModel.domains.isEmpty {
@@ -58,7 +51,6 @@ struct BonjourDiscoveryView: View {
                     Image(systemName: isAutoRefreshEnabled ? "antenna.radiowaves.left.and.right.circle.fill" : "antenna.radiowaves.left.and.right.circle")
                         .foregroundColor(isAutoRefreshEnabled ? .blue : .secondary)
                 }
-                
                 #if !os(tvOS)
                 Menu {
                     Menu {
@@ -75,7 +67,6 @@ struct BonjourDiscoveryView: View {
                     } label: {
                         Label("Group By", systemImage: "rectangle.3.group")
                     }
-                    
                     Menu {
                         SwiftUI.Button {
                             viewModel.domainSortAscending = true
@@ -120,24 +111,20 @@ struct BonjourDiscoveryView: View {
             stopAutoRefresh()
         }
     }
-    
     private func startAutoRefresh(triggerImmediateScan: Bool = false) {
         refreshTask?.cancel()
         refreshTask = viewModel.startDomainAutoRefresh(isAutoRefreshEnabled: isAutoRefreshEnabled, triggerImmediateScan: triggerImmediateScan)
     }
-    
     private func stopAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
         viewModel.stopDomainSearch()
     }
-    
     private func performManualRefresh() async {
         await viewModel.performManualDomainRefresh(isAutoRefreshEnabled: isAutoRefreshEnabled) {
             startAutoRefresh(triggerImmediateScan: true)
         }
     }
-    
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "network")
@@ -151,7 +138,6 @@ struct BonjourDiscoveryView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
-            
             SwiftUI.Button {
                 startAutoRefresh()
             } label: {
@@ -159,13 +145,11 @@ struct BonjourDiscoveryView: View {
                     .font(.subheadline.weight(.medium))
             }
             .padding(.top, 4)
-            
             VStack(spacing: 8) {
                 Text("Ensure **Local Network Access** is provided otherwise this function may not work as intended since it is based on L N A...")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                
                 Text("**Settings -> apps -> SuperStore -> LocalNetworkAccess = toggle on**")
                     .font(.caption.bold())
                     .foregroundColor(.secondary)
@@ -175,7 +159,6 @@ struct BonjourDiscoveryView: View {
             .padding(.horizontal, 24)
         }
     }
-    
     private var domainsList: some View {
         List {
             ForEach(viewModel.processedDomains) { section in
@@ -208,11 +191,6 @@ struct BonjourDiscoveryView: View {
     }
 }
 
-
-// MARK: - Service Types View
-
-// Lists all service types discovered in a given domain.
-// Tapping a type navigates to its instances.
 struct ServiceTypesView: View {
     let domain: String
     @ObservedObject var viewModel: BonjourDiscoveryViewModel
@@ -223,7 +201,6 @@ struct ServiceTypesView: View {
     @State private var showGroupDialog = false
     @State private var showSortDialog = false
     #endif
-    
     var body: some View {
         ZStack {
             #if !os(tvOS)
@@ -233,7 +210,6 @@ struct ServiceTypesView: View {
             Color.clear
                 .ignoresSafeArea()
             #endif
-            
             if viewModel.isSearching && viewModel.serviceTypes.isEmpty {
                 ProgressView("Searching for service types…")
             } else if !viewModel.isSearching && viewModel.serviceTypes.isEmpty {
@@ -260,7 +236,6 @@ struct ServiceTypesView: View {
                     Image(systemName: isAutoRefreshEnabled ? "antenna.radiowaves.left.and.right.circle.fill" : "antenna.radiowaves.left.and.right.circle")
                         .foregroundColor(isAutoRefreshEnabled ? .blue : .secondary)
                 }
-                
                 #if !os(tvOS)
                 Menu {
                     Menu {
@@ -274,7 +249,6 @@ struct ServiceTypesView: View {
                     } label: {
                         Label("Group By", systemImage: "rectangle.3.group")
                     }
-                    
                     Menu {
                         ForEach(ServiceTypeSortOption.allCases, id: \.self) { opt in
                             SwiftUI.Button {
@@ -302,7 +276,6 @@ struct ServiceTypesView: View {
                         }
                     }
                 }
-                
                 SwiftUI.Button {
                     showSortDialog = true
                 } label: {
@@ -328,24 +301,20 @@ struct ServiceTypesView: View {
             stopAutoRefresh()
         }
     }
-    
     private func startAutoRefresh(triggerImmediateScan: Bool = false) {
         refreshTask?.cancel()
         refreshTask = viewModel.startServiceTypeAutoRefresh(in: domain, isAutoRefreshEnabled: isAutoRefreshEnabled, triggerImmediateScan: triggerImmediateScan)
     }
-    
     private func stopAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
         viewModel.stopTypeSearch()
     }
-    
     private func performManualRefresh() async {
         await viewModel.performManualServiceTypeRefresh(in: domain, isAutoRefreshEnabled: isAutoRefreshEnabled) {
             startAutoRefresh(triggerImmediateScan: true)
         }
     }
-    
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
@@ -359,7 +328,6 @@ struct ServiceTypesView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
-            
             SwiftUI.Button {
                 startAutoRefresh()
             } label: {
@@ -367,13 +335,11 @@ struct ServiceTypesView: View {
                     .font(.subheadline.weight(.medium))
             }
             .padding(.top, 4)
-            
             VStack(spacing: 8) {
                 Text("Ensure **Local Network Access** is provided otherwise this function may not work as intended since it is based on L N A...")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                
                 Text("**Settings -> apps -> SuperStore -> LocalNetworkAccess = toggle on**")
                     .font(.caption.bold())
                     .foregroundColor(.secondary)
@@ -383,7 +349,6 @@ struct ServiceTypesView: View {
             .padding(.horizontal, 24)
         }
     }
-    
     private var serviceTypesList: some View {
         List {
             ForEach(viewModel.processedServiceTypes) { section in
@@ -404,7 +369,6 @@ struct ServiceTypesView: View {
                                 Image(systemName: typeInfo.friendlyName != nil ? "checkmark.seal.fill" : "questionmark.circle")
                                     .foregroundColor(typeInfo.friendlyName != nil ? .green : .orange)
                                     .frame(width: 28)
-                                
                                 VStack(alignment: .leading, spacing: 2) {
                                     if let friendly = typeInfo.friendlyName {
                                         Text(friendly)
@@ -437,7 +401,6 @@ struct ServiceTypesView: View {
             await performManualRefresh()
         }
     }
-    
     @ViewBuilder
     private var searchingFooter: some View {
         if viewModel.isSearching {
@@ -452,11 +415,6 @@ struct ServiceTypesView: View {
     }
 }
 
-
-// MARK: - Service Instances View
-
-// Lists all discovered instances of a specific service type.
-// Tapping an instance navigates to its resolved details.
 struct ServiceInstancesView: View {
     let serviceType: String
     let domain: String
@@ -469,7 +427,6 @@ struct ServiceInstancesView: View {
     @State private var showGroupDialog = false
     @State private var showSortDialog = false
     #endif
-    
     var body: some View {
         ZStack {
             #if !os(tvOS)
@@ -479,7 +436,6 @@ struct ServiceInstancesView: View {
             Color.clear
                 .ignoresSafeArea()
             #endif
-            
             if viewModel.isSearching && viewModel.instances.isEmpty {
                 ProgressView("Searching for instances…")
             } else if !viewModel.isSearching && viewModel.instances.isEmpty {
@@ -506,7 +462,6 @@ struct ServiceInstancesView: View {
                     Image(systemName: isAutoRefreshEnabled ? "antenna.radiowaves.left.and.right.circle.fill" : "antenna.radiowaves.left.and.right.circle")
                         .foregroundColor(isAutoRefreshEnabled ? .blue : .secondary)
                 }
-                
                 #if !os(tvOS)
                 Menu {
                     Menu {
@@ -520,7 +475,6 @@ struct ServiceInstancesView: View {
                     } label: {
                         Label("Group By", systemImage: "rectangle.3.group")
                     }
-                    
                     Menu {
                         ForEach(ServiceInstanceSortOption.allCases, id: \.self) { opt in
                             SwiftUI.Button {
@@ -548,7 +502,6 @@ struct ServiceInstancesView: View {
                         }
                     }
                 }
-                
                 SwiftUI.Button {
                     showSortDialog = true
                 } label: {
@@ -574,24 +527,20 @@ struct ServiceInstancesView: View {
             stopAutoRefresh()
         }
     }
-    
     private func startAutoRefresh(triggerImmediateScan: Bool = false) {
         refreshTask?.cancel()
         refreshTask = viewModel.startInstanceAutoRefresh(ofType: serviceType, in: domain, isAutoRefreshEnabled: isAutoRefreshEnabled, triggerImmediateScan: triggerImmediateScan)
     }
-    
     private func stopAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
         viewModel.stopInstanceSearch()
     }
-    
     private func performManualRefresh() async {
         await viewModel.performManualInstanceRefresh(ofType: serviceType, in: domain, isAutoRefreshEnabled: isAutoRefreshEnabled) {
             startAutoRefresh(triggerImmediateScan: true)
         }
     }
-    
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "antenna.radiowaves.left.and.right.slash")
@@ -605,7 +554,6 @@ struct ServiceInstancesView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
-            
             SwiftUI.Button {
                 startAutoRefresh()
             } label: {
@@ -613,13 +561,11 @@ struct ServiceInstancesView: View {
                     .font(.subheadline.weight(.medium))
             }
             .padding(.top, 4)
-            
             VStack(spacing: 8) {
                 Text("Ensure **Local Network Access** is provided otherwise this function may not work as intended since it is based on L N A...")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                
                 Text("**Settings -> apps -> SuperStore -> LocalNetworkAccess = toggle on**")
                     .font(.caption.bold())
                     .foregroundColor(.secondary)
@@ -629,7 +575,6 @@ struct ServiceInstancesView: View {
             .padding(.horizontal, 24)
         }
     }
-    
     private var instancesList: some View {
         List {
             ForEach(viewModel.processedInstances) { section in
@@ -645,7 +590,6 @@ struct ServiceInstancesView: View {
                                 Image(systemName: "desktopcomputer")
                                     .foregroundColor(.accentColor)
                                     .frame(width: 28)
-                                
                                 Text(instance.name)
                                     .font(.body)
                                     .lineLimit(2)
@@ -666,7 +610,6 @@ struct ServiceInstancesView: View {
             await performManualRefresh()
         }
     }
-    
     @ViewBuilder
     private var searchingFooter: some View {
         if viewModel.isSearching {
@@ -681,26 +624,19 @@ struct ServiceInstancesView: View {
     }
 }
 
-
-// MARK: - Service Detail View
-
-// Shows full resolved details of a service: hostname, port, IP addresses, TXT records.
 struct ServiceDetailView: View {
     let service: DiscoveredService
     @ObservedObject var viewModel: BonjourDiscoveryViewModel
     let autoRefreshEnabled: Bool
-    
     @State private var isAutoRefreshEnabled: Bool
     @State private var refreshTask: Task<Void, Never>? = nil
     @State private var showCopyConfirmation = false
-    
     init(service: DiscoveredService, viewModel: BonjourDiscoveryViewModel, autoRefreshEnabled: Bool = true) {
         self.service = service
         self.viewModel = viewModel
         self.autoRefreshEnabled = autoRefreshEnabled
         self._isAutoRefreshEnabled = State(initialValue: autoRefreshEnabled)
     }
-    
     var body: some View {
         ZStack {
             #if !os(tvOS)
@@ -710,7 +646,6 @@ struct ServiceDetailView: View {
             Color.clear
                 .ignoresSafeArea()
             #endif
-            
             if let resolved = viewModel.resolvedService {
                 resolvedContent(resolved)
             } else if let error = viewModel.resolveError {
@@ -737,7 +672,6 @@ struct ServiceDetailView: View {
                     Image(systemName: isAutoRefreshEnabled ? "antenna.radiowaves.left.and.right.circle.fill" : "antenna.radiowaves.left.and.right.circle")
                         .foregroundColor(isAutoRefreshEnabled ? .blue : .secondary)
                 }
-                
                 #if !os(tvOS)
                 Menu {
                     SwiftUI.Button {
@@ -787,24 +721,20 @@ struct ServiceDetailView: View {
             await performManualRefresh()
         }
     }
-    
     private func startAutoRefresh(triggerImmediateScan: Bool = false) {
         refreshTask?.cancel()
         refreshTask = viewModel.startDetailAutoRefresh(for: service, isAutoRefreshEnabled: isAutoRefreshEnabled, triggerImmediateScan: triggerImmediateScan)
     }
-    
     private func stopAutoRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
         viewModel.stopResolving()
     }
-    
     private func performManualRefresh() async {
         await viewModel.performManualDetailRefresh(for: service, isAutoRefreshEnabled: isAutoRefreshEnabled) {
             startAutoRefresh(triggerImmediateScan: true)
         }
     }
-    
     private var loadingState: some View {
         VStack(spacing: 16) {
             ProgressView()
@@ -814,7 +744,6 @@ struct ServiceDetailView: View {
                 .foregroundColor(.secondary)
         }
     }
-    
     private func errorState(_ message: String) -> some View {
         VStack(spacing: 16) {
             Image(systemName: "exclamationmark.triangle")
@@ -828,7 +757,6 @@ struct ServiceDetailView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
-            
             SwiftUI.Button {
                 viewModel.resolveService(service)
             } label: {
@@ -838,7 +766,6 @@ struct ServiceDetailView: View {
             .padding(.top, 4)
         }
     }
-    
     private func iconForInterfaceType(_ type: NWInterface.InterfaceType) -> String {
         switch type {
         case .wifi: return "wifi"
@@ -848,24 +775,19 @@ struct ServiceDetailView: View {
         default: return "network"
         }
     }
-    
     private func nameForInterfaceType(_ type: NWInterface.InterfaceType) -> String {
         BonjourDiscoveryViewModel.nameForInterfaceType(type)
     }
-    
     private func resolvedContent(_ resolved: ResolvedServiceInfo) -> some View {
         List {
-            // Service Name Header
             Section {
                 VStack(alignment: .center, spacing: 8) {
                     Image(systemName: "bonjour")
                         .font(.system(size: 36))
                         .foregroundColor(.accentColor)
-                    
                     Text(resolved.name)
                         .font(.headline)
                         .multilineTextAlignment(.center)
-                    
                     if let purpose = BonjourDiscoveryManager.friendlyName(for: resolved.type) {
                         Text(purpose)
                             .font(.caption)
@@ -873,7 +795,6 @@ struct ServiceDetailView: View {
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 8)
                     }
-                    
                     HStack(spacing: 8) {
                         Text(resolved.type.contains("_tcp") ? "TCP" : "UDP")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -881,7 +802,6 @@ struct ServiceDetailView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
                             .background(Capsule().fill(resolved.type.contains("_tcp") ? Color.blue : Color.orange))
-                        
                         Text(BonjourDiscoveryViewModel.portCategory(for: resolved.port))
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
@@ -898,23 +818,17 @@ struct ServiceDetailView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
             }
-            
-            // Connection Info (Hostname, Addresses, Port, Type, Domain)
             Section(header: Text("Connection")) {
                 DetailRow(label: "Hostname", value: resolved.hostname, onCopy: copyWithFeedback)
-                
                 if !viewModel.resolvedAddressItems.isEmpty {
                     ForEach(viewModel.resolvedAddressItems) { item in
                         DetailRow(label: item.label, value: item.address, tag: item.interfaceTag, onCopy: copyWithFeedback)
                     }
                 }
-                
                 DetailRow(label: "Port", value: "\(resolved.port)", onCopy: copyWithFeedback)
                 DetailRow(label: "Type", value: resolved.type, onCopy: copyWithFeedback)
                 DetailRow(label: "Domain", value: resolved.domain, onCopy: copyWithFeedback)
             }
-            
-            // Interfaces
             if !service.interfaces.isEmpty {
                 Section(header: Text("Discovered Interfaces (\(service.interfaces.count))")) {
                     ForEach(service.interfaces, id: \.index) { iface in
@@ -945,12 +859,9 @@ struct ServiceDetailView: View {
                     }
                 }
             }
-            
-            // Decoded Device / Software Information
             let modelRecord = resolved.txtRecords.first(where: { $0.key.lowercased() == "model" })?.value
             let decodedModel = modelRecord != nil ? BonjourDiscoveryViewModel.decodeDeviceModel(modelRecord!) : nil
             let osRecord = resolved.txtRecords.first(where: { $0.key.lowercased() == "osvers" || $0.key.lowercased() == "os" })?.value
-            
             if decodedModel != nil || osRecord != nil {
                 Section(header: Text("Device Info")) {
                     if let model = decodedModel {
@@ -961,8 +872,6 @@ struct ServiceDetailView: View {
                     }
                 }
             }
-            
-            // TXT Records
             if !resolved.txtRecords.isEmpty {
                 Section(header: Text("TXT Record (\(resolved.txtRecords.count))")) {
                     ForEach(resolved.txtRecords, id: \.key) { record in
@@ -993,8 +902,6 @@ struct ServiceDetailView: View {
                     }
                 }
             }
-            
-            // DNS-SD Raw Records
             let dnsRecords = viewModel.dnsSDRawRecords(resolved: resolved)
             Section(header: Text("DNS-SD Records")) {
                 ForEach(dnsRecords, id: \.content) { rec in
@@ -1024,13 +931,10 @@ struct ServiceDetailView: View {
                     }
                 }
             }
-            
-            // Quick Actions (Moved to Bottom)
             Section(header: Text("Quick Actions")) {
                 let isWeb = resolved.type.contains("_http") || resolved.type.contains("_https") || resolved.port == 80 || resolved.port == 443 || resolved.port == 8080
                 let isSSH = resolved.type.contains("_ssh") || resolved.port == 22
                 let endpointStr = "\(resolved.hostname):\(resolved.port)"
-                
                 if isWeb {
                     let scheme = resolved.type.contains("_https") || resolved.port == 443 ? "https" : "http"
                     if let url = URL(string: "\(scheme)://\(resolved.hostname):\(resolved.port)") {
@@ -1039,7 +943,6 @@ struct ServiceDetailView: View {
                         }
                     }
                 }
-                
                 if isSSH {
                     SwiftUI.Button {
                         copyWithFeedback("ssh \(resolved.hostname) -p \(resolved.port)")
@@ -1047,13 +950,11 @@ struct ServiceDetailView: View {
                         Label("Copy SSH Command", systemImage: "terminal")
                     }
                 }
-                
                 SwiftUI.Button {
                     copyWithFeedback(endpointStr)
                 } label: {
                     Label("Copy Host:Port Endpoint", systemImage: "link")
                 }
-                
                 SwiftUI.Button {
                     if let jsonStr = viewModel.copyAsJSON(service: service, resolved: resolved) {
                         copyWithFeedback(jsonStr)
@@ -1078,7 +979,6 @@ struct ServiceDetailView: View {
             }
         }
     }
-    
     private func copyWithFeedback(_ string: String) {
         #if !os(tvOS)
         UIPasteboard.general.string = string
@@ -1092,7 +992,6 @@ struct ServiceDetailView: View {
             }
         }
     }
-    
     private var copiedBanner: some View {
         Text("Copied to Clipboard")
             .font(.subheadline.weight(.medium))
@@ -1107,16 +1006,11 @@ struct ServiceDetailView: View {
     }
 }
 
-
-// MARK: - Detail Row
-
-// A simple key-value row with tap-to-copy and context menu
 private struct DetailRow: View {
     let label: String
     let value: String
     var tag: String? = nil
     var onCopy: ((String) -> Void)? = nil
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {

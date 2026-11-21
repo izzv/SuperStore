@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 8/16/23.
 //  Copyright © 2023 Riley Testut. All rights reserved.
 //
-
 import SwiftUI
 import WidgetKit
 
@@ -15,7 +14,6 @@ private extension Color
 {
     static let altGradientLight = Color.init(.displayP3, red: 219.0/255.0, green: 38.0/255.0, blue: 200.0/255.0)
     static let altGradientDark = Color.init(.displayP3, red: 135.0/255.0, green: 22.0/255.0, blue: 232.0/255.0)
-    
     static let altGradientExtraDark = Color.init(.displayP3, red: 58.0/255.0, green: 8.0/255.0, blue: 135.0/255.0)
 }
 
@@ -23,24 +21,19 @@ struct WidgetTag: WidgetInfo{
     let ID: Int?
 }
 
-//@available(iOS 17, *)
 struct ActiveAppsWidget: Widget
 {
     struct Constants{
         static let MAX_ROWS_PER_PAGE: UInt = 3
     }
-    
     private static var id: Int = 1
     private let widgetKind: String
-    
     init(){
         widgetKind = "ActiveApps - \(Self.id)"
         Self.id += 1
         debugLog("[ActiveAppsWidget] Initialized instance with widgetKind: \(widgetKind)")
     }
-    
     public var body: some WidgetConfiguration {
-        
         if #available(iOS 17, *)
         {
 
@@ -54,7 +47,6 @@ struct ActiveAppsWidget: Widget
             .supportedFamilies([.systemMedium])
             .configurationDisplayName("Active Apps")
             .description("View remaining days until your active apps expire. Tap the countdown timers to refresh them in the background.")
-            
             return widgetConfig
         }
         else
@@ -74,13 +66,11 @@ private struct ActiveAppsWidgetView: View
 {
     var entry: AppsEntry<WidgetInfo>
     var widgetKind: String
-    
     @Environment(\.colorScheme)
     private var colorScheme
 
     @Environment(\.widgetRenderingMode)
     private var renderingMode
-        
     var body: some View {
         Group {
             if entry.apps.isEmpty
@@ -100,8 +90,6 @@ private struct ActiveAppsWidgetView: View
             }
             else if renderingMode == .accented
             {
-                // Plain dark background in tinted mode so the system's
-                // accent colour composites cleanly over it.
                 Color.black
             }
             else
@@ -110,51 +98,35 @@ private struct ActiveAppsWidgetView: View
             }
         }
     }
-    
     private var content: some View {
         GeometryReader { (geometry) in
             HStack(alignment: .center) {
-                
                 let itemsPerPage = ActiveAppsWidget.Constants.MAX_ROWS_PER_PAGE
-                
                 let preferredRowHeight = (geometry.size.height / Double(itemsPerPage)) - 8
                 let rowHeight = min(preferredRowHeight, geometry.size.height / 2)
 
                 LazyVStack(spacing: 12) {
                     ForEach(Array(entry.apps.enumerated()), id: \.offset) { index, app in
-                    
                         let icon: UIImage = app.icon ?? UIImage(named: "SideStore") ?? UIImage(systemName: "app.fill")!
-                        
-                        // 1024x1024 images are not supported by previews but supported by device
-                        // so we scale the image to 97% so as to reduce its actual size but not too much
-                        // to somewhere below value, acceptable by previews ie < 1042x948
                         let scalingFactor = 0.97
-                        
                         let resizedSize = CGSize(
                             width:  icon.size.width * scalingFactor,
                             height: icon.size.height * scalingFactor
                         )
-                        
                         let resizedIcon = icon.resizing(to: resizedSize) ?? icon
                         let cornerRadius = rowHeight / 5.0
                         let daysRemaining = app.expirationDate.numberOfCalendarDays(since: entry.date)
 
                         HStack(spacing: 10) {
-                            // In tinted (accented) mode, luminanceToAlpha() converts the icon's
-                            // brightness into opacity so the system can tint it with the user's
-                            // chosen accent colour. widgetAccentable() opts the view into that
-                            // accent group. In fullColor mode both are no-ops (via the helpers).
                             Image(uiImage: resizedIcon)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .luminanceToAlphaInAccentedMode()
                                 .mask(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                                 .widgetAccentableIfAvailable()
-                            
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(app.name)
                                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                
                                 let text = if entry.date > app.expirationDate
                                 {
                                     Text("Expired")
@@ -163,19 +135,16 @@ private struct ActiveAppsWidgetView: View
                                 {
                                     Text("Expires in \(daysRemaining) ") + (daysRemaining == 1 ? Text("day") : Text("days"))
                                 }
-                                
                                 text
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                                     .foregroundStyle(.secondary)
                             }
                             .widgetAccentableIfAvailable()
-                            
                             Spacer()
-                            
                             Countdown(startDate: app.refreshedDate,
                                       endDate: app.expirationDate,
                                       currentDate: entry.date,
-                                      strokeWidth: 3.0) // Slightly thinner circle stroke width
+                                      strokeWidth: 3.0) 
                             .background {
                                 Color.black.opacity(0.1)
                                     .mask(Capsule())
@@ -183,40 +152,30 @@ private struct ActiveAppsWidgetView: View
                             }
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                             .activatesRefreshAllAppsIntent()
-                            // this modifier invalidates the view (disables user interaction and shows a blinking effect)
                             .invalidatableContent()
                             .widgetAccentableIfAvailable()
 
                         }
                         .frame(height: rowHeight)
-                    
                     }
                 }
-                
                 Spacer(minLength: 16)
-                
                 let buttonWidth: CGFloat = 16
                 let widgetID = entry.context?.ID
-                
                 VStack {
                     Image(systemName: "arrow.up")
                         .resizable()
                         .frame(width: buttonWidth, height: buttonWidth)
                         .opacity(0.3)
-                        // .mask(Capsule())
                         .pageUpButton(widgetID, widgetKind)
-                    
                     Spacer()
-                    
                     Image(systemName: "arrow.down")
                         .resizable()
                         .frame(width: buttonWidth, height: buttonWidth)
                         .opacity(0.3)
-                        // .mask(Capsule())
                         .pageDownButton(widgetID, widgetKind)
                 }
                 .padding(.vertical)
-                
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
@@ -224,7 +183,6 @@ private struct ActiveAppsWidgetView: View
             }
         }
     }
-    
     private var placeholder: some View {
         VStack(spacing: 4) {
             Text("Open SuperStore")
@@ -247,15 +205,11 @@ private struct ActiveAppsWidgetView: View
 } timeline: {
     let expiredDate = Date().addingTimeInterval(1 * 60 * 60 * 24 * 7)
     let (altstore, delta, clip, longAltStore, longDelta, longClip) = AppSnapshot.makePreviewSnapshots()
-    
     AppsEntry<Void>(date: Date(), apps: [altstore, delta, clip])
     AppsEntry<Void>(date: Date(), apps: [longAltStore, longDelta, longClip])
-    
     AppsEntry<Void>(date: expiredDate, apps: [altstore, delta, clip])
-    
     AppsEntry<Void>(date: Date(), apps: [altstore, delta])
     AppsEntry<Void>(date: Date(), apps: [altstore])
-    
     AppsEntry<Void>(date: Date(), apps: [])
     AppsEntry<Void>(date: Date(), apps: [], isPlaceholder: true)
 }

@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/2/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 
 private extension Color {
@@ -19,13 +18,11 @@ struct ExperimentalFeaturesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Section 1: STANDALONE FEATURES
                 VStack(alignment: .leading, spacing: 8) {
                     Text("STANDALONE FEATURES")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         if #available(iOS 26.0, *) {
                             NavigationLink(destination: WirelessPairView()) {
@@ -41,10 +38,8 @@ struct ExperimentalFeaturesView: View {
                                 .padding(.horizontal, 16)
                                 .frame(height: 50)
                             }
-                            
                             divider
                         }
-                        
                         NavigationLink(destination: CacheManagementView()) {
                             HStack {
                                 Text("Cache Management")
@@ -63,13 +58,11 @@ struct ExperimentalFeaturesView: View {
                     .cornerRadius(14)
                 }
 
-                // Section 2: MINIMUXER
                 VStack(alignment: .leading, spacing: 8) {
                     Text("MINIMUXER")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         toggleRow(title: "Enable Minimuxer Backend Hotswap", isOn: Binding(
                             get: { isMinimuxerBackendHotswapEnabled },

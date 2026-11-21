@@ -5,13 +5,11 @@
 //  Created by Joseph Mattiello on 11/7/22.
 //  Copyright © 2022 Riley Testut. All rights reserved.
 //
-
 import Foundation
 import SideSign
 import Minimuxer
 
 public enum AppConstants {
-    // features required for functioning
     public static let mandatoryFeatures: Set<ALTFeature> = [
         .appGroups
     ]
@@ -29,12 +27,10 @@ public enum AppConstants {
         public static let port                = String(defaultPort)
         public static let serverURL           = "\(address):\(port)"
     }
-    
     public enum Connection {
         public static let defaultOverrideIP     = "10.7.0.1"
         public static let defaultRemoteServerIP = "10.7.0.1"
     }
-    
     public enum Sources {
         public static let fetchTimeout: TimeInterval  = 3.0
         public static let defaultSourcesURL           = URL(string: "https://sidestore.io/default-sources")!
@@ -42,20 +38,17 @@ public enum AppConstants {
         public static let sideStoreFallbackIconURL    = URL(string: "https://sidestore.io/apps-v2.json/apps/sidestore/icon.png")!
         public static let sideStoreWebsite            = URL(string: "https://sidestore.io")!
     }
-    
     public enum Bonjour {
         public static let defaultDomain                         = "local."
         public static let defaultDiscoveryTimeout: TimeInterval = 2.0
         public static let periodicRefreshInterval: TimeInterval = 6.0
     }
-    
     public enum SideJIT {
         public static let bonjourServiceName    = "SideJITServer"
         public static let bonjourServiceType    = "_http._tcp"
         public static let timeout: TimeInterval = 2.0
         public static let defaultServerURL      = "http://\(bonjourServiceName).\(bonjourServiceType).local:8080".lowercased()
     }
-    
     public enum WebTransferServer {
         public static let defaultPort: UInt16 = 8080
     }
@@ -68,7 +61,6 @@ public enum AppConstants {
         public static let defaultODAMetadataURL       = URL(string: "https://zzz.haus/oda.json")!
         public static var defaultODAMetadataURLString: String { defaultODAMetadataURL.absoluteString }
 
-        // Proxied from upstream SideSign
         public static let defaultClientInfo           = Constants.Anisette.defaultClientInfo
         public static let defaultUserAgent            = Constants.Anisette.defaultUserAgent
 
@@ -124,25 +116,16 @@ public enum AppConstants {
         public static let userAgent               = Constants.DeveloperServices.userAgent
     }
 
-    // MARK: - Brand
-
-    /// Branding and contact details for this fork. This is the single place
-    /// to edit them: the About screen and the feedback mail composer both
-    /// read from here. A nil value hides the matching control, so an
-    /// unfilled fork never ships a dead link.
     public enum Brand {
 
-        /// Recipient for "Send Email" in Settings. nil hides that option.
         public static let supportEmail: String? = nil
 
-        /// Buttons on the About screen. nil hides the button.
         public static let patreonURL: URL?   = nil
         public static let twitterURL: URL?   = nil
         public static let instagramURL: URL? = nil
     }
 
     public enum URLs {
-        // Proxied upstream URLs from SideSign
         public static let developerAccount          = Constants.URLs.developerAccount
         public static let developerServicesBase     = Constants.URLs.developerServicesBase
         public static let developerServicesV1Base   = Constants.URLs.developerServicesV1Base
@@ -152,7 +135,6 @@ public enum AppConstants {
         public static let appleAuthDevices          = Constants.URLs.appleAuthDevices
         public static let appleAccount              = URL(string: "https://account.apple.com")!
 
-        // SideStore Documentation & Community URLs
         public static let pairingDocumentation      = URL(string: "https://docs.sidestore.io/docs/advanced/pairing-file")!
         public static let errorCodesDocumentation   = URL(string: "https://docs.sidestore.io/docs/troubleshooting/error-codes")!
         public static let sideStoreWebsite          = URL(string: "https://sidestore.io")!

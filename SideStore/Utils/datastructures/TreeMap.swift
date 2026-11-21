@@ -5,16 +5,11 @@
 //  Created by Magesh K on 21/02/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
 public class TreeMap<Key: Comparable, Value>: Sequence {
-    
-    // MARK: - Node and Color Definitions
-    
     fileprivate enum Color {
         case red
         case black
     }
-    
     fileprivate class Node {
         var key: Key
         var value: Value
@@ -22,7 +17,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         var right: Node?
         weak var parent: Node?
         var color: Color
-        
         init(key: Key, value: Value, color: Color = .red, parent: Node? = nil) {
             self.key = key
             self.value = value
@@ -30,17 +24,9 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
             self.parent = parent
         }
     }
-    
-    // MARK: - TreeMap Properties and Initializer
-    
     private var root: Node?
     public private(set) var count: Int = 0
-    
     public init() {}
-    
-    // MARK: - Public Dictionary-like API
-    
-    /// Subscript: Get or set value for a given key.
     public subscript(key: Key) -> Value? {
         get { return get(key: key) }
         set {
@@ -51,15 +37,10 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
             }
         }
     }
-    
-    /// Returns the value associated with the given key.
     public func get(key: Key) -> Value? {
         guard let node = getNode(forKey: key) else { return nil }
         return node.value
     }
-    
-    /// Inserts (or updates) the key with the given value.
-    /// Returns the old value if the key was already present.
     @discardableResult
     public func insert(key: Key, value: Value) -> Value? {
         if let node = getNode(forKey: key) {
@@ -67,7 +48,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
             node.value = value
             return oldValue
         }
-        // Create new node
         let newNode = Node(key: key, value: value)
         var parent: Node? = nil
         var current = root
@@ -91,9 +71,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         fixAfterInsertion(newNode)
         return nil
     }
-    
-    /// Removes the node with the given key.
-    /// Returns the removed value if it existed.
     @discardableResult
     public func remove(key: Key) -> Value? {
         guard let node = getNode(forKey: key) else { return nil }
@@ -102,35 +79,23 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         count -= 1
         return removedValue
     }
-    
-    /// Returns true if the map is empty.
     public var isEmpty: Bool {
         return count == 0
     }
-    
-    /// Returns all keys in sorted order.
     public var keys: [Key] {
         var result = [Key]()
         for (k, _) in self { result.append(k) }
         return result
     }
-    
-    /// Returns all values in order of their keys.
     public var values: [Value] {
         var result = [Value]()
         for (_, v) in self { result.append(v) }
         return result
     }
-    
-    /// Removes all entries.
     public func removeAll() {
         root = nil
         count = 0
     }
-    
-    // MARK: - Internal Helper Methods
-    
-    /// Standard BST search for a node matching the key.
     private func getNode(forKey key: Key) -> Node? {
         var current = root
         while let node = current {
@@ -144,8 +109,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         }
         return nil
     }
-    
-    /// Returns the minimum node in the subtree rooted at `node`.
     private func minimum(_ node: Node) -> Node {
         var current = node
         while let next = current.left {
@@ -153,9 +116,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         }
         return current
     }
-    
-    // MARK: - Rotation Methods
-    
     private func rotateLeft(_ x: Node) {
         guard let y = x.right else { return }
         x.right = y.left
@@ -173,7 +133,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         y.left = x
         x.parent = y
     }
-    
     private func rotateRight(_ x: Node) {
         guard let y = x.left else { return }
         x.left = y.right
@@ -191,10 +150,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         y.right = x
         x.parent = y
     }
-    
-    // MARK: - Insertion Fix-Up
-    
-    /// Restores red–black properties after insertion.
     private func fixAfterInsertion(_ x: Node) {
         var node = x
         node.color = .red
@@ -241,10 +196,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         }
         root?.color = .black
     }
-    
-    // MARK: - Deletion Helpers
-    
-    /// Replaces subtree rooted at u with subtree rooted at v.
     private func transplant(_ u: Node, _ v: Node?) {
         if u.parent == nil {
             root = v
@@ -257,13 +208,10 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
             vNode.parent = u.parent
         }
     }
-    
-    /// Deletes node z and fixes red–black properties.
     private func deleteNode(_ z: Node) {
         var y = z
         let originalColor = y.color
         var x: Node?
-        
         if z.left == nil {
             x = z.right
             transplant(z, z.right)
@@ -294,8 +242,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
             fixAfterDeletion(x, parent: z.parent)
         }
     }
-    
-    /// Restores red–black properties after deletion.
     private func fixAfterDeletion(_ x: Node?, parent: Node?) {
         var x = x
         var parent = parent
@@ -358,18 +304,11 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
         }
         x?.color = .black
     }
-    
-    // Convenience overload if parent is not separately tracked.
     private func fixAfterDeletion(_ x: Node?) {
         fixAfterDeletion(x, parent: x?.parent)
     }
-    
-    // MARK: - Sequence Conformance (In-Order Traversal)
-    
     public struct Iterator: IteratorProtocol {
         private var stack: [Node] = []
-        
-        // Marked as private because Node is a private type.
         fileprivate init(root: Node?) {
             var current = root
             while let node = current {
@@ -377,7 +316,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
                 current = node.left
             }
         }
-        
         public mutating func next() -> (Key, Value)? {
             if stack.isEmpty { return nil }
             let node = stack.removeLast()
@@ -390,7 +328,6 @@ public class TreeMap<Key: Comparable, Value>: Sequence {
             return result
         }
     }
-    
     public func makeIterator() -> Iterator {
         return Iterator(root: root)
     }

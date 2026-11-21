@@ -5,7 +5,6 @@
 //  Created by Magesh K on 20/09/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import UIKit
 import UniformTypeIdentifiers
 import MinimuxerCommon
@@ -25,7 +24,6 @@ final class PairingViewController: NSObject {
         let message = isRetry
             ? NSLocalizedString("The selected pairing file is invalid or not usable. Please select a valid pairing file.", comment: "")
             : NSLocalizedString("Select the pairing file or select \"Help\" for help.", comment: "")
-        
         let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
         alert.setMarkdownMessage(message)
         alert.addAction(UIAlertAction(title: NSLocalizedString("Help", comment: ""), style: .default) { _ in
@@ -45,7 +43,6 @@ final class PairingViewController: NSObject {
             UserDefaults.standard.isPairingReset = false
         })
         #endif
-        
         let cancelTitle = isRetry ? NSLocalizedString("Skip", comment: "") : NSLocalizedString("Cancel", comment: "")
         alert.addAction(UIAlertAction(title: cancelTitle, style: .cancel) { _ in
             if completion == nil {
@@ -85,7 +82,6 @@ final class PairingViewController: NSObject {
             providedProtocol.rawValue,
             providedProtocol.rawValue
         )
-        
         let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
         alert.setMarkdownMessage(message)
         alert.addAction(UIAlertAction(title: String(format: NSLocalizedString("Switch to %@", comment: ""), providedProtocol.rawValue), style: .default) { _ in

@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 10/3/18.
 //  Copyright © 2018 Riley Testut. All rights reserved.
 //
-
 import Foundation
 import CoreData
 
@@ -38,17 +37,14 @@ public extension Decoder
 public struct DecoderItem<Value>
 {
     public let key: CodingUserInfoKey
-    
     public var wrappedValue: Value? {
         get { fatalError("only works on instance properties of classes") }
         set { fatalError("only works on instance properties of classes") }
     }
-    
     public init(key: CodingUserInfoKey)
     {
         self.key = key
     }
-    
     public static subscript<OuterSelf: JSONDecoder>(
         _enclosingInstance decoder: OuterSelf,
         wrapped wrappedKeyPath: ReferenceWritableKeyPath<OuterSelf, Value?>,

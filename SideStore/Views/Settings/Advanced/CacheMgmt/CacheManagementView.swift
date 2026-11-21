@@ -5,13 +5,11 @@
 //  Created by Magesh K on 2026-06-29.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import SwiftUI
 
 struct CacheManagementView: View {
     @StateObject private var viewModel = CacheViewModel()
     @Environment(\.colorScheme) var colorScheme
-    
     var body: some View {
         ZStack {
             if viewModel.isLoading && viewModel.internalApps.isEmpty && viewModel.resignedApps.isEmpty {
@@ -41,7 +39,6 @@ struct CacheManagementView: View {
                             }
                         }
                     }
-                    
                     Section(header: Text("Exported Resigned Apps"), footer: Text("Copies of signed app bundles exported to your Documents folder. These can be shared or retrieved via the Files app.")) {
                         if viewModel.resignedApps.isEmpty {
                             Text("No exported resigned apps.")
@@ -70,11 +67,9 @@ struct CacheManagementView: View {
                 .listStyle(GroupedListStyle())
                 #endif
             }
-            
             if viewModel.isLoading && !(viewModel.internalApps.isEmpty && viewModel.resignedApps.isEmpty) {
                 Color.black.opacity(0.3)
                     .edgesIgnoringSafeArea(.all)
-                
                 ProgressView()
                     .padding()
                     #if !os(tvOS)
@@ -126,7 +121,6 @@ struct CacheItemRow: View {
     let item: CacheItem
     let onExport: () -> Void
     let onDelete: () -> Void
-    
     var body: some View {
         HStack(spacing: 12) {
             if let image = item.image {
@@ -149,13 +143,11 @@ struct CacheItemRow: View {
                     #endif
                     .cornerRadius(8)
             }
-            
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.body)
                     .fontWeight(.semibold)
                     .lineLimit(1)
-                
                 if let bundleID = item.bundleIdentifier {
                     Text(bundleID)
                         .font(.caption)
@@ -163,9 +155,7 @@ struct CacheItemRow: View {
                         .lineLimit(1)
                 }
             }
-            
             Spacer()
-            
             Text(item.sizeString)
                 .font(.subheadline)
                 .foregroundColor(.secondary)

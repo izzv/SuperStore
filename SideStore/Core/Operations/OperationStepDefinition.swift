@@ -5,7 +5,6 @@
 //  Created by Magesh K on 30/07/26.
 //  Copyright © 2026 AltStore. All rights reserved.
 //
-
 import Foundation
 
 struct PipelineExecutionStep: Hashable {
@@ -32,9 +31,6 @@ struct StandaloneExecutionStep: Hashable {
     }
 }
 
-// `PipelineStepDefinition` defines the exact step sequences for all application operations.
-//  NOTE: A pipeline step CANNOT contain another pipeline step nor any standalone steps.
-//        Nesting or executing pipeline steps recursively inside a step is strictly disallowed by design to keep pipeline explicit
 struct PipelineStepDefinition {
     static let install: [PipelineExecutionStep] = [
         PipelineExecutionStep(.downloadApp,                      20),
@@ -96,7 +92,6 @@ struct PipelineStepDefinition {
     ]
 
     static let activate: [PipelineExecutionStep] = [
-        // sidebackup app install
         PipelineExecutionStep(.stageBackupApp,                    3),
         PipelineExecutionStep(.updateAppCertificate,              2),
         PipelineExecutionStep(.verifyCertificate,                 2),
@@ -109,9 +104,7 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.sendApp,                           4),
         PipelineExecutionStep(.installApp,                        5),
         PipelineExecutionStep(.cacheSigningCert,                  1),
-        // restore data
         PipelineExecutionStep(.restoreAppData,                   10),
-        // install original app
         PipelineExecutionStep(.stageApp,                          2),
         PipelineExecutionStep(.updateAppCertificate,              3),
         PipelineExecutionStep(.verifyCertificate,                 3),
@@ -127,9 +120,7 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.installApp,                       15),
         PipelineExecutionStep(.cacheSigningCert,                  1),
         PipelineExecutionStep(.cacheResignedMetadata,             1),
-        // cleanup old backup
         PipelineExecutionStep(.removeBackupData,                  2),
-        // cleanup staged app
         PipelineExecutionStep(.cleanStagedApp,                    1)
     ]
 
@@ -138,7 +129,6 @@ struct PipelineStepDefinition {
     ]
 
     static let deactivate: [PipelineExecutionStep] = [
-        // sidebackup install
         PipelineExecutionStep(.stageBackupApp,                    5),
         PipelineExecutionStep(.updateAppCertificate,              3),
         PipelineExecutionStep(.verifyCertificate,                 3),
@@ -151,15 +141,12 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.sendApp,                           8),
         PipelineExecutionStep(.installApp,                       10),
         PipelineExecutionStep(.cacheSigningCert,                  1),
-        // backup data
         PipelineExecutionStep(.backupAppData,                    25),
-        // uninstall app from device & mark inactive
         PipelineExecutionStep(.uninstallApp,                     28),
         PipelineExecutionStep(.markAppInactive,                   2)
     ]
 
     static let backup: [PipelineExecutionStep] = [
-        // sidebackup app install
         PipelineExecutionStep(.stageBackupApp,                    5),
         PipelineExecutionStep(.updateAppCertificate,              3),
         PipelineExecutionStep(.verifyCertificate,                 3),
@@ -172,9 +159,7 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.sendApp,                           8),
         PipelineExecutionStep(.installApp,                       10),
         PipelineExecutionStep(.cacheSigningCert,                  1),
-        // backup data
         PipelineExecutionStep(.backupAppData,                    25),
-        // install original app
         PipelineExecutionStep(.stageApp,                          2),
         PipelineExecutionStep(.updateAppCertificate,              3),
         PipelineExecutionStep(.verifyCertificate,                 3),
@@ -190,7 +175,6 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.installApp,                        2),
         PipelineExecutionStep(.cacheSigningCert,                  1),
         PipelineExecutionStep(.cacheResignedMetadata,             1),
-        // cleanup staged app
         PipelineExecutionStep(.cleanStagedApp,                    1)
     ]
 
@@ -203,7 +187,6 @@ struct PipelineStepDefinition {
     ]
 
     static let restore: [PipelineExecutionStep] = [
-        // sidebackup app install
         PipelineExecutionStep(.stageBackupApp,                    3),
         PipelineExecutionStep(.updateAppCertificate,              2),
         PipelineExecutionStep(.verifyCertificate,                 2),
@@ -216,9 +199,7 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.sendApp,                           4),
         PipelineExecutionStep(.installApp,                        5),
         PipelineExecutionStep(.cacheSigningCert,                  1),
-        // restore data
         PipelineExecutionStep(.restoreAppData,                   10),
-        // install original app
         PipelineExecutionStep(.stageApp,                          2),
         PipelineExecutionStep(.updateAppCertificate,              3),
         PipelineExecutionStep(.verifyCertificate,                 3),
@@ -234,9 +215,7 @@ struct PipelineStepDefinition {
         PipelineExecutionStep(.installApp,                       15),
         PipelineExecutionStep(.cacheSigningCert,                  1),
         PipelineExecutionStep(.cacheResignedMetadata,             1),
-        // cleanup old backup
         PipelineExecutionStep(.removeBackupData,                  2),
-        // cleanup staged app
         PipelineExecutionStep(.cleanStagedApp,                    1)
     ]
 

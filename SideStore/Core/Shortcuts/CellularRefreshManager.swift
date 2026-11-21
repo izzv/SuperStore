@@ -5,7 +5,6 @@
 //  Created by Magesh K on 4/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import UIKit
 import Minimuxer
@@ -171,13 +170,11 @@ public final class CellularRefreshManager: @unchecked Sendable {
         return false
     }
 
-    // public apis
     @discardableResult
     public func turnOffDataIfNeeded(addOnDelay: TimeInterval = 0) async -> Bool {
         guard isSupported && isEnabled else { return false }
         guard !didTurnOffData else { return false }
 
-        // If Wi-Fi is active, skip running cellular toggle shortcuts
         guard !minimuxer.network.isWifiSatisfied else {
             debugLog("[CellularRefreshManager] Wi-Fi is active, skipping turnOff shortcut.")
             return false

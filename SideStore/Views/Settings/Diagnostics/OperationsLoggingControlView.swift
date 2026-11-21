@@ -5,7 +5,6 @@
 //  Created by Magesh K on 14/01/25.
 //  Copyright © 2025 SideStore. All rights reserved.
 //
-
 import SwiftUI
 
 private extension Color {
@@ -57,13 +56,11 @@ struct OperationsLoggingControlView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Standalone Steps
                 VStack(alignment: .leading, spacing: 8) {
                     Text("STANDALONE STEPS")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         ForEach(Array(standaloneStepToggles.enumerated()), id: \.element.name) { index, entry in
                             if index > 0 {
@@ -75,14 +72,11 @@ struct OperationsLoggingControlView: View {
                     .background(Color.settingsRowBackground)
                     .cornerRadius(14)
                 }
-                
-                // Pipeline Steps
                 VStack(alignment: .leading, spacing: 8) {
                     Text("PIPELINE STEPS")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.6))
                         .padding(.horizontal, 16)
-                    
                     VStack(spacing: 0) {
                         ForEach(Array(pipelineStepToggles.enumerated()), id: \.element.name) { index, entry in
                             if index > 0 {
@@ -127,7 +121,6 @@ struct OperationsLoggingControlView: View {
         .padding(.vertical, 10)
         .frame(minHeight: 50)
     }
-    
     private var divider: some View {
         Rectangle()
             .fill(Color.settingsDivider)

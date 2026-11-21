@@ -5,7 +5,6 @@
 //  Created by Magesh K on 04/07/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SwiftUI
 import Combine
@@ -28,7 +27,6 @@ struct WirelessPairTarget: Identifiable, Hashable {
     var ipv4: String?
     var ipv6: String?
     var port: UInt16
-    
     var name: String {
         if case .bonjour(let txt) = service.result.metadata,
            let customName = txt.dictionary["name"], !customName.isEmpty {
@@ -36,30 +34,25 @@ struct WirelessPairTarget: Identifiable, Hashable {
         }
         return service.name
     }
-    
     var rawType: String { service.type }
-    
     var model: String? {
         if case .bonjour(let txt) = service.result.metadata {
             return txt.dictionary["model"]
         }
         return nil
     }
-    
     var uuid: String? {
         if case .bonjour(let txt) = service.result.metadata {
             return txt.dictionary["uuid"] ?? txt.dictionary["deviceid"]
         }
         return nil
     }
-    
     var typeBadge: String {
         if service.type.contains("manual-pairing") { return "Apple TV / Manual" }
         if service.type.contains("pairable-host") { return "Pairable Host" }
         if service.type.contains("remotepairing") { return "Remote Device" }
         return BonjourDiscoveryManager.friendlyName(for: service.type) ?? service.type
     }
-    
     var iconName: String {
         if service.type.contains("manual-pairing") { return "appletv.fill" }
         if service.type.contains("pairable-host") { return "macbook.and.iphone" }
@@ -69,7 +62,6 @@ struct WirelessPairTarget: Identifiable, Hashable {
 
 @MainActor
 final class WirelessPairViewModel: ObservableObject {
-    // Server Advertising State
     @Published var statusText = "Ready to pair"
     @Published var subStatusText = "Tap Start to advertise this device on the local network."
     @Published var pinCode: String? = nil
@@ -78,37 +70,26 @@ final class WirelessPairViewModel: ObservableObject {
     @Published var errorMessage: String? = nil
     @Published var serviceID: String? = nil
     @Published var port: Int? = nil
-    
-    // Sheet / Dialog State
     @Published var isTargetDialogPresented = false
     @Published var dialogMode: PairingMode = .server
     @Published var selectedServerInterfaceId: String? = nil
     @Published var selectedOption: SelectedEndpointOption = .configuredFallback
-    
-    // Discovery State
     @Published var discoveredTargets: [WirelessPairTarget] = []
     @Published var isScanning = false
     @Published var activeInterfaces: [LocalInterfaceInfo] = []
-    
-    // Client PIN Prompt State
     @Published var isPinPromptPresented = false
     @Published var enteredPin = ""
     private var pinPromptCallback: ((String) -> Void)?
-    
-    // Share Sheet State
     @Published var shareSheetURL: URL? = nil
     @Published var isShareSheetPresented = false   
-    
     private let pairingServiceTypes = [
         "_remotepairing-manual-pairing._tcp",
         "_remotepairing._tcp",
         "_remotepairing-pairable-host._tcp"
     ]
-    
     private let bonjour = BonjourDiscoveryManager.shared
     private var cancellables = Set<AnyCancellable>()
     private var resolvingTasks: [String: Task<Void, Never>] = [:]
-    
     var fallbackConfigEndpoint: (ip: String, port: UInt16) {
         let config = ConnectionConfig.shared
         let port = remotePairingPortCache != 0 ? remotePairingPortCache : AppConstants.Minimuxer.remotePairingPort
@@ -126,12 +107,9 @@ final class WirelessPairViewModel: ObservableObject {
 
         return (ip: ip, port: port)
     }
-    
     init() {
         debugLog("[WirelessPairViewModel] init() initializing...")
         activeInterfaces = minimuxer.network.activeInterfaces
-        
-        // Setup closures once
         wirelessPairing.onReadyToPair = { [weak self] (serviceID: String, port: Int) in
             debugLog("[WirelessPairViewModel] onReadyToPair callback received: serviceID='\(serviceID)', port=\(port)")
             Task { @MainActor in
@@ -142,7 +120,6 @@ final class WirelessPairViewModel: ObservableObject {
                 self.subStatusText = "Ensure both devices are on the same Wi-Fi."
             }
         }
-        
         wirelessPairing.onPinReceived = { [weak self] (pin: String) in
             debugLog("[WirelessPairViewModel] onPinReceived callback received: pin='\(pin)'")
             Task { @MainActor in
@@ -152,7 +129,6 @@ final class WirelessPairViewModel: ObservableObject {
                 self.subStatusText = "Enter the pairing code shown below on your other device settings screen."
             }
         }
-        
         wirelessPairing.onRequestPin = { [weak self] (submitPin: @escaping (String) -> Void) in
             debugLog("[WirelessPairViewModel] onRequestPin callback received from wirelessPairing")
             Task { @MainActor in
@@ -165,7 +141,6 @@ final class WirelessPairViewModel: ObservableObject {
             }
         }
     }
-    
     func submitEnteredPin() {
         let pin = enteredPin.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalPin = pin.isEmpty ? "000000" : pin
@@ -175,7 +150,6 @@ final class WirelessPairViewModel: ObservableObject {
         isPinPromptPresented = false
         enteredPin = ""
     }
-    
     func cancelPinPrompt() {
         debugLog("[WirelessPairViewModel] cancelPinPrompt() cancelling PIN prompt")
         pinPromptCallback?("000000")
@@ -183,9 +157,7 @@ final class WirelessPairViewModel: ObservableObject {
         isPinPromptPresented = false
         enteredPin = ""
     }
-    
     private var discoveryTask: Task<Void, Never>?
-    
     func refreshInterfaces() {
         debugLog("[WirelessPairViewModel] refreshInterfaces() scanning active interfaces...")
         activeInterfaces = minimuxer.network.activeInterfaces
@@ -194,7 +166,6 @@ final class WirelessPairViewModel: ObservableObject {
             debugLog("[WirelessPairViewModel]  -> \(iface.name) [\(iface.type.rawValue)]: ip=\(iface.ip), ipv6=\(iface.ipv6 ?? "none"), subnet=\(iface.subnet)")
         }
     }
-    
     func selectDefaultServerInterface() {
         selectedServerInterfaceId = activeInterfaces
             .first(where: { $0.type == .wifi })?.id 
@@ -203,37 +174,31 @@ final class WirelessPairViewModel: ObservableObject {
             ?? activeInterfaces.first?.id
         debugLog("[WirelessPairViewModel] selectDefaultServerInterface() selected: \(selectedServerInterfaceId ?? "none")")
     }
-    
     func selectServerInterface(id: String) {
         debugLog("[WirelessPairViewModel] selectServerInterface(id: '\(id)')")
         selectedServerInterfaceId = id
     }
-    
     func selectTarget(_ target: WirelessPairTarget) {
         debugLog("[WirelessPairViewModel] selectTarget() selected: '\(target.name)' (\(target.rawType)) -> v4=\(target.ipv4 ?? "none"), v6=\(target.ipv6 ?? "none"), port=\(target.port)")
         selectedOption = .discovered(target)
     }
-    
     func selectFallbackEndpoint() {
         let fallback = fallbackConfigEndpoint
         debugLog("[WirelessPairViewModel] selectFallbackEndpoint() selected fallback: \(fallback.ip):\(fallback.port)")
         selectedOption = .configuredFallback
     }
-    
     func isTargetSelected(_ target: WirelessPairTarget) -> Bool {
         if case .discovered(let selected) = selectedOption {
             return selected.id == target.id
         }
         return false
     }
-    
     var isFallbackSelected: Bool {
         if case .configuredFallback = selectedOption {
             return true
         }
         return false
     }
-    
     func openClientDialog() {
         debugLog("[WirelessPairViewModel] openClientDialog() opening client target pairing sheet")
         dialogMode = .client
@@ -241,7 +206,6 @@ final class WirelessPairViewModel: ObservableObject {
         startDiscovery()
         isTargetDialogPresented = true
     }
-    
     func openServerDialog() {
         debugLog("[WirelessPairViewModel] openServerDialog() opening server interface selection sheet")
         if isAdvertising {
@@ -254,7 +218,6 @@ final class WirelessPairViewModel: ObservableObject {
             isTargetDialogPresented = true
         }
     }
-    
     func onDialogAppear() {
         debugLog("[WirelessPairViewModel] onDialogAppear (mode=\(dialogMode.rawValue), isPresented=\(isTargetDialogPresented))")
         if dialogMode == .server {
@@ -269,14 +232,12 @@ final class WirelessPairViewModel: ObservableObject {
             }
         }
     }
-    
     func onDialogDisappear() {
         debugLog("[WirelessPairViewModel] onDialogDisappear (mode=\(dialogMode.rawValue))")
         if dialogMode == .client {
             stopDiscovery()
         }
     }
-    
     func refreshDialog() {
         debugLog("[WirelessPairViewModel] refreshDialog (pull-to-refresh invoked for mode=\(dialogMode.rawValue))")
         if dialogMode == .client {
@@ -285,7 +246,6 @@ final class WirelessPairViewModel: ObservableObject {
             refreshInterfaces()
         }
     }
-    
     func dismissDialog() {
         debugLog("[WirelessPairViewModel] dismissDialog (mode=\(dialogMode.rawValue))")
         if dialogMode == .client {
@@ -293,11 +253,9 @@ final class WirelessPairViewModel: ObservableObject {
         }
         isTargetDialogPresented = false
     }
-    
     func confirmSelection() {
         debugLog("[WirelessPairViewModel] confirmSelection() invoked (mode=\(dialogMode.rawValue), option=\(selectedOption))")
         dismissDialog()
-        
         if dialogMode == .client {
             switch selectedOption {
             case .discovered(let target):
@@ -315,18 +273,15 @@ final class WirelessPairViewModel: ObservableObject {
             startPairing()
         }
     }
-    
     private func resolveEndpoint(for service: DiscoveredService) async -> (ipv4: String?, ipv6: String?, port: UInt16) {
         debugLog("[WirelessPairViewModel] resolveEndpoint() starting for '\(service.name)' (\(service.type))...")
         return await withCheckedContinuation { continuation in
             let isTCP = service.type.contains("_tcp")
             let params = isTCP ? NWParameters.tcp : NWParameters.udp
             params.includePeerToPeer = true
-            
             let conn = NWConnection(to: service.result.endpoint, using: params)
             let lock = NSLock()
             var didResume = false
-            
             let resumeOnce: ((ipv4: String?, ipv6: String?, port: UInt16)) -> Void = { result in
                 lock.withLock {
                     guard !didResume else { return }
@@ -336,12 +291,10 @@ final class WirelessPairViewModel: ObservableObject {
                     continuation.resume(returning: result)
                 }
             }
-            
             conn.pathUpdateHandler = { path in
                 if path.status == .satisfied, let remote = path.remoteEndpoint {
                     var resolvedHost = ""
                     var portVal: UInt16 = 0
-                    
                     switch remote {
                     case .hostPort(let host, let port):
                         resolvedHost = "\(host)".strippingInterfaceScope
@@ -355,25 +308,21 @@ final class WirelessPairViewModel: ObservableObject {
                     default:
                         resolvedHost = service.name
                     }
-                    
                     guard portVal > 0 else { return }
                     let ips = BonjourDiscoveryManager.resolveHostToIPs(resolvedHost)
                     let v4 = ips.first(where: { !$0.contains(":") && $0 != "0.0.0.0" })
                         ?? (!resolvedHost.contains(":") && resolvedHost.filter({ $0 == "." }).count == 3 ? resolvedHost : nil)
                     let v6 = ips.first(where: { $0.contains(":") })
                         ?? (resolvedHost.contains(":") ? resolvedHost : nil)
-                    
                     resumeOnce((v4, v6, portVal))
                 }
             }
-            
             conn.stateUpdateHandler = { state in
                 switch state {
                 case .ready, .waiting:
                     guard let remote = conn.currentPath?.remoteEndpoint else { return }
                     var resolvedHost = ""
                     var portVal: UInt16 = 0
-                    
                     switch remote {
                     case .hostPort(let host, let port):
                         resolvedHost = "\(host)".strippingInterfaceScope
@@ -387,14 +336,12 @@ final class WirelessPairViewModel: ObservableObject {
                     default:
                         resolvedHost = service.name
                     }
-                    
                     guard portVal > 0 else { return }
                     let ips = BonjourDiscoveryManager.resolveHostToIPs(resolvedHost)
                     let v4 = ips.first(where: { !$0.contains(":") && $0 != "0.0.0.0" })
                         ?? (!resolvedHost.contains(":") && resolvedHost.filter({ $0 == "." }).count == 3 ? resolvedHost : nil)
                     let v6 = ips.first(where: { $0.contains(":") })
                         ?? (resolvedHost.contains(":") ? resolvedHost : nil)
-                    
                     resumeOnce((v4, v6, portVal))
                 case .failed:
                     debugLog("[WirelessPairViewModel] resolveEndpoint() NWConnection state .failed for '\(service.name)'")
@@ -403,42 +350,33 @@ final class WirelessPairViewModel: ObservableObject {
                     break
                 }
             }
-            
             DispatchQueue.global().asyncAfter(deadline: .now() + 2.0) {
                 debugLog("[WirelessPairViewModel] resolveEndpoint() timeout (2.0s) reached for '\(service.name)'")
                 resumeOnce((nil, nil, 0))
             }
-            
             conn.start(queue: .global(qos: .userInitiated))
         }
     }
-    
     func startDiscovery() {
         discoveryTask?.cancel()
         isScanning = true
         discoveredTargets.removeAll()
-        
         discoveryTask = Task { @MainActor [weak self] in
             guard let self = self else { return }
             debugLog("[WirelessPairViewModel] startDiscovery() one-shot pass starting for types: \(self.pairingServiceTypes)")
-            
             self.bonjour.discoverInstances(ofTypes: self.pairingServiceTypes, inDomain: "local.", clearExisting: true)
-            
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             guard !Task.isCancelled else {
                 debugLog("[WirelessPairViewModel] startDiscovery() Task was cancelled before instance snapshot")
                 return
             }
-            
             let instancesSnapshot = self.bonjour.instances
             debugLog("[WirelessPairViewModel] one-shot: gathered \(instancesSnapshot.count) Bonjour instances from BonjourDiscoveryManager:")
             for s in instancesSnapshot {
                 debugLog("[WirelessPairViewModel]  -> instance: name='\(s.name)', type='\(s.type)', domain='\(s.domain)', id='\(s.id)'")
             }
-            
             self.bonjour.stopInstanceSearch()
             debugLog("[WirelessPairViewModel] Bonjour search stopped, resolving \(instancesSnapshot.count) endpoints in parallel...")
-            
             var finalTargets: [WirelessPairTarget] = []
             await withTaskGroup(of: WirelessPairTarget.self) { group in
                 for service in instancesSnapshot {
@@ -451,7 +389,6 @@ final class WirelessPairViewModel: ObservableObject {
                     finalTargets.append(target)
                 }
             }
-            
             guard !Task.isCancelled else {
                 debugLog("[WirelessPairViewModel] startDiscovery() Task was cancelled during endpoint resolution")
                 return
@@ -465,7 +402,6 @@ final class WirelessPairViewModel: ObservableObject {
             }
         }
     }
-    
     func stopDiscovery() {
         debugLog("[WirelessPairViewModel] stopDiscovery() invoked")
         discoveryTask?.cancel()
@@ -473,17 +409,14 @@ final class WirelessPairViewModel: ObservableObject {
         isScanning = false
         bonjour.stopInstanceSearch()
     }
-    
     func togglePairing() {
         debugLog("[WirelessPairViewModel] togglePairing() invoked (currently isAdvertising=\(isAdvertising))")
         if isAdvertising {
             stopPairing()
         } else {
-            // binds to all ie, 0.0.0.0
             startPairing()
         }
     }
-    
     func startPairing() {
         let docsPath = FileManager.default.documentsDirectory.path
         debugLog("[WirelessPairViewModel] startPairing() starting advertisement with base path: '\(docsPath)'")
@@ -494,7 +427,6 @@ final class WirelessPairViewModel: ObservableObject {
         port = nil
         statusText = "Waiting for connection..."
         subStatusText = "Open Remote Pairing on your Apple TV / Vision Pro / host device to discover this server."
-        
         wirelessPairing.start(
             outPath: docsPath,
             resolveFileName: { name, model in
@@ -509,7 +441,6 @@ final class WirelessPairViewModel: ObservableObject {
                 self.pinCode = nil
                 self.serviceID = nil
                 self.port = nil
-                
                 switch result {
                 case .success(let device):
                     debugLog("[WirelessPairViewModel] startPairing() SUCCESS with device: name='\(device.name)', model='\(device.model)'")
@@ -531,7 +462,6 @@ final class WirelessPairViewModel: ObservableObject {
     func stopPairing() {
         debugLog("[WirelessPairViewModel] stopPairing() stopping advertisement and tearing down session")
         wirelessPairing.stop()
-        
         isAdvertising = false
         statusText = "Ready to pair"
         subStatusText = "Tap Start to advertise this device on the local network."
@@ -540,7 +470,6 @@ final class WirelessPairViewModel: ObservableObject {
         serviceID = nil
         port = nil
     }
-    
     func triggerPairing(
         targetIp: String,
         targetPort: UInt16,
@@ -556,7 +485,6 @@ final class WirelessPairViewModel: ObservableObject {
         port = nil
         statusText = "Connecting to device..."
         subStatusText = "Initiating pairing handshake on \(targetIp):\(targetPort)..."
-        
         wirelessPairing.trigger(
             targetIp: targetIp,
             targetPort: targetPort,
@@ -572,7 +500,6 @@ final class WirelessPairViewModel: ObservableObject {
                 self.pinCode = nil
                 self.serviceID = nil
                 self.port = nil
-                
                 switch result {
                 case .success(let device):
                     debugLog("[WirelessPairViewModel] triggerPairing() SUCCESS with device: name='\(device.name)', model='\(device.model)'")
@@ -591,7 +518,6 @@ final class WirelessPairViewModel: ObservableObject {
             }
         }
     }
-    
     nonisolated static func pairingFileName(for deviceName: String? = nil, model: String? = nil) -> String {
         let namePart = deviceName ?? ""
         let modelPart = model ?? ""

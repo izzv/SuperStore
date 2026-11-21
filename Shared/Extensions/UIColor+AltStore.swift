@@ -5,7 +5,6 @@
 //  Created by Riley Testut on 5/9/19.
 //  Copyright © 2019 Riley Testut. All rights reserved.
 //
-
 @preconcurrency import UIKit
 
 public extension UIColor
@@ -24,7 +23,6 @@ public extension UIColor
     static let defaultAltPrimary = namedColor("Primary")!
     static let deltaPrimary = namedColor("DeltaPrimary")
     static let clipPrimary = namedColor("ClipPrimary")
-    
     static let refreshRed = namedColor("RefreshRed")!
     static let refreshOrange = namedColor("RefreshOrange")!
     static let refreshYellow = namedColor("RefreshYellow")!
@@ -63,7 +61,6 @@ public extension UIColor
 
             if traits.userInterfaceStyle == .dark
             {
-                // Only raise brightness when in dark mode.
                 brightness = max(brightness, UIColor.brightnessMinThreshold)
             }
 

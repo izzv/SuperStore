@@ -5,8 +5,6 @@
 //  Created by Magesh K on 7/30/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
-
 import Foundation
 import CoreData
 
@@ -24,7 +22,6 @@ enum AppOperation: CustomStringConvertible
     case resign(InstalledApp, alternateIconMode: AlternateIconMode = .preserve)
     case removeApp(InstalledApp)
     case removeDeactivatedApp(InstalledApp)
-    
     var rawValue: String {
         switch self
         {
@@ -42,11 +39,9 @@ enum AppOperation: CustomStringConvertible
         case .removeDeactivatedApp: return "removeDeactivatedApp"
         }
     }
-    
     var description: String {
         return self.rawValue
     }
-    
     func logSummary(status: String, elapsed: Double, error: Error? = nil) {
         logOperationSummary(
             operation: self.rawValue,
@@ -56,7 +51,6 @@ enum AppOperation: CustomStringConvertible
             error: error
         )
     }
-    
     var app: AppProtocol {
         switch self
         {
@@ -68,10 +62,8 @@ enum AppOperation: CustomStringConvertible
             return app
         }
     }
-    
     var bundleIdentifier: String {
         var bundleIdentifier: String!
-        
         if let context = (self.app as? NSManagedObject)?.managedObjectContext
         {
             context.performAndWait { bundleIdentifier = self.app.bundleIdentifier }
@@ -80,7 +72,6 @@ enum AppOperation: CustomStringConvertible
         {
             bundleIdentifier = self.app.bundleIdentifier
         }
-        
         return bundleIdentifier
     }
 

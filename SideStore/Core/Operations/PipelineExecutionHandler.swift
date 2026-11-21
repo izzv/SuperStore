@@ -5,7 +5,6 @@
 //  Created by Magesh K on 8/9/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 import SideSign
 
@@ -17,8 +16,6 @@ protocol PipelineExecutionHandler: AnyObject, Sendable {
     var installAppHandler: InstallAppHandler { get }
     var userCustomizationHandler: UserCustomizationHandler { get }
 }
-
-
 
 protocol PreflightChecksHandler: AnyObject, Sendable {
     func resolveBundleIDMismatch(targetID: String, activeEffectiveID: String) async -> Bool
@@ -93,4 +90,3 @@ protocol UserCustomizationHandler: AnyObject, Sendable {
     func resolveAppIconCustomization(appName: String) async throws -> URL?
     func resolveProvisioningProfileCustomization(appName: String, bundleID: String) async throws -> ProfileCustomizationChoice?
 }
-

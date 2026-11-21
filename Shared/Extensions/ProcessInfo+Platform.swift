@@ -5,7 +5,6 @@
 //  Created by SternXD on 9/13/26.
 //  Copyright © 2026 SideStore. All rights reserved.
 //
-
 import Foundation
 
 public extension ProcessInfo {
