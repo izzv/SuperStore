@@ -572,24 +572,38 @@ class AppleLogin:
         self.token = base64.b64encode(("%s:%s" % (dsid, idms)).encode()).decode()
         return {"dsid": dsid, "identity": self.token, "server": self.anisette.server}
 
-    def _decrypt(self, payload, iv=None):
-        key = self._srp.key
-        aes_key = hmac.new(key, b"extra data key:", hashlib.sha256).digest()
-        iv = iv or hmac.new(key, b"extra data iv:", hashlib.sha256).digest()[:16]
-        decryptor = Cipher(algorithms.AES(aes_key), modes.CBC(iv)).decryptor()
+    def _decrypt(self, payload, iv=None, key=None):
+        session = self._srp.key
+        aes_key = hmac.new(session, b"extra data key:", hashlib.sha256).digest()
+        iv = iv or hmac.new(session, b"extra data iv:", hashlib.sha256).digest()[:16]
+        decryptor = Cipher(algorithms.AES(key or aes_key), modes.CBC(iv)).decryptor()
         return decryptor.update(payload) + decryptor.finalize()
 
+    def _plist_from(self, body):
+        for marker in (b"bplist", b"<?xml", b"<plist"):
+            start = 0
+            while True:
+                index = body.find(marker, start)
+                if index < 0:
+                    break
+                try:
+                    return plistlib.loads(body[index:])
+                except Exception:
+                    start = index + 1
+        return plistlib.loads(body)
+
     def _unpack(self, body):
-        if body[:2] == b"\x1f\x8b":
-            try:
-                return gzip.decompress(body)
-            except Exception:
-                pass
-        if body[:1] == b"\x78":
-            try:
-                return zlib.decompress(body)
-            except Exception:
-                pass
+        for index in range(0, min(len(body), 256)):
+            if body[index : index + 2] == b"\x1f\x8b":
+                try:
+                    return gzip.decompress(body[index:])
+                except Exception:
+                    continue
+            if body[index] == 0x78 and index + 1 < len(body):
+                try:
+                    return zlib.decompress(body[index:])
+                except Exception:
+                    continue
         return body
 
     def _open_payload(self, sealed):
@@ -602,18 +616,43 @@ class AppleLogin:
                 return plistlib.loads(sealed)
             except Exception:
                 pass
-        tries = [(self._decrypt(sealed), None)]
-        if len(sealed) > 32 and len(sealed) % 16 == 0:
-            tries.append((self._decrypt(sealed[16:], sealed[:16]), "iv-prefixed"))
-        pad = 0
+        session = self._srp.key
+        hmac_key = hmac.new(session, b"extra data key:", hashlib.sha256).digest()
+        hmac_iv = hmac.new(session, b"extra data iv:", hashlib.sha256).digest()[:16]
+        zeros = b"\x00" * 16
+        variants = []
+        for key, key_name in ((hmac_key, "hmac"), (session, "session")):
+            for iv, iv_name in ((hmac_iv, "hmac"), (zeros, "zeros")):
+                variants.append((key, iv, 0, "%s key, %s iv" % (key_name, iv_name)))
+                if len(sealed) % 16 == 0 and len(sealed) > 32:
+                    variants.append((key, iv, 16, "%s key, %s iv, iv-prefixed" % (key_name, iv_name)))
+        heads = []
         body = b""
-        for raw, _label in tries:
+        for key, iv, offset, label in variants:
+            chunk = sealed[offset:]
+            if offset:
+                iv = sealed[:16]
+            if len(chunk) % 16:
+                continue
+            try:
+                raw = self._decrypt(chunk, iv, key)
+            except Exception as error:
+                heads.append("%s: %s" % (label, error))
+                continue
             pad = raw[-1] if raw else 0
+            body = raw
             for candidate in (self._unpack(raw[: -pad] if 0 < pad <= 16 else raw), self._unpack(raw)):
                 try:
-                    return plistlib.loads(candidate)
+                    return self._plist_from(candidate)
                 except Exception:
                     body = candidate
+            valid_pad = 0 < pad <= 16 and raw[-pad:] == bytes([pad]) * pad
+            heads.append("%s: pad %d (%s), head %s" % (label, pad, "valid" if valid_pad else "odd", body[:16].hex()))
+        try:
+            (workdir() / "signing").mkdir(parents=True, exist_ok=True)
+            (workdir() / "signing" / "last-spd.bin").write_bytes(sealed)
+        except Exception:
+            pass
         record_diagnostic(
             "session payload",
             self.apple_id,
@@ -621,14 +660,14 @@ class AppleLogin:
                 "ec": 0,
                 "em": "unreadable session payload",
                 "ciphertext bytes": len(sealed),
-                "pad byte": pad,
-                "plaintext head": body[:12].hex(),
+                "attempts": heads,
+                "session key fingerprint": hashlib.sha256(session).hexdigest()[:16],
             },
             self.anisette.server,
         )
         raise AppleError(
-            "Could not read the session Apple returned (%s bytes, starts %s)."
-            % (len(sealed), body[:4].hex() or "empty")
+            "Could not read the session Apple returned (%s bytes, starts %s). Details are in "
+            "last-error.txt." % (len(sealed), body[:4].hex() or "empty")
         )
 
 
