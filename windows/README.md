@@ -59,6 +59,9 @@ certificate and a provisioning profile for the connected iPhone, and signs the
   the top of `apple_sideload.py`; the first one that answers is used.
 - Apple's own error text is shown in the window, so a rejection is legible
   rather than a silent failure.
+- A "try again later" refusal is Apple throttling the ID, not a password
+  problem; the helper then waits 20 minutes before allowing another attempt,
+  because retrying straight away is what escalates to a locked account.
 
 ## What it does
 

@@ -40,8 +40,11 @@ TWO_FACTOR_MODES = ("trustedDeviceSecondaryAuth", "secondaryAuth")
 INCORRECT_CODE = -21669
 DEVELOPER = "https://developerservices2.apple.com/services/QH65B2/ios"
 ANISETTE_SERVERS = (
-    "https://ani.jkcoxson.com",
+    "https://anisette.lillq.me",
+    "https://new.ani.sidestore.io",
     "https://mac-ani.jkcoxson.com",
+    "https://ani.iloader.app",
+    "https://ani.jkcoxson.com",
     "https://ani2.stikstore.app",
 )
 ANISETTE_KEYS = ("X-Apple-I-MD", "X-Apple-I-MD-M", "X-Apple-I-MD-LU")
@@ -97,6 +100,71 @@ def attempts_file():
     folder = workdir() / "signing"
     folder.mkdir(parents=True, exist_ok=True)
     return folder / "attempts.json"
+
+
+def is_throttle(status):
+    lower = str(status.get("em") or "").lower()
+    return "try again later" in lower or "cannot be completed" in lower or "unable to sign you in" in lower
+
+
+def cooldown_file():
+    folder = workdir() / "signing"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder / "cooldown.json"
+
+
+def note_throttle(apple_id):
+    data = {}
+    try:
+        data = json.loads(cooldown_file().read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    data[apple_id.lower()] = time.time()
+    try:
+        cooldown_file().write_text(json.dumps(data), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def throttle_wait(apple_id):
+    try:
+        data = json.loads(cooldown_file().read_text(encoding="utf-8"))
+    except Exception:
+        return 0
+    stamp = data.get(apple_id.lower())
+    if not stamp:
+        return 0
+    return max(0, THROTTLE_COOLDOWN - (time.time() - float(stamp)))
+
+
+def explain(status):
+    code = status.get("ec")
+    message = str(status.get("em") or "").strip() or "Apple refused the sign-in."
+    label = "%s (Apple code %s)." % (message.rstrip("."), code) if code else message
+    lower = message.lower()
+    if "locked" in lower:
+        label += " Unlock it at appleid.apple.com, then sign in again."
+    elif "try again later" in lower or "cannot be completed" in lower or "unable to sign you in" in lower:
+        label += (
+            " Apple is refusing sign-ins for this Apple ID right now, usually after several attempts."
+            " Wait at least an hour before the next try; retrying quickly is what turns this into a"
+            " locked account."
+        )
+    return label
+
+
+def record_diagnostic(stage, apple_id, status, server):
+    lines = [
+        "when: %s" % time.strftime("%Y-%m-%d %H:%M:%S"),
+        "stage: %s" % stage,
+        "apple id: %s" % apple_id,
+        "anisette server: %s" % server,
+        "status: %r" % (status,),
+    ]
+    try:
+        (workdir() / "last-error.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    except Exception:
+        pass
 
 
 def rejects_credentials(status):
@@ -164,6 +232,7 @@ SRP_G = 2
 SRP_WIDTH = 256
 MAX_ATTEMPTS = 5
 ATTEMPT_WINDOW = 24 * 3600
+THROTTLE_COOLDOWN = 20 * 60
 CREDENTIAL_CODES = {-5000, -20970}
 CREDENTIAL_WORDS = (
     "entered incorrectly",
@@ -326,9 +395,10 @@ class AppleLogin:
             status = ((parsed or {}).get("Response") or {}).get("Status") or {}
             if status.get("au"):
                 return parsed["Response"]
-            raise AppleError(
-                status.get("em") or "Apple answered HTTP %s while signing in." % response.status_code
-            )
+            record_diagnostic("gsa http %s" % response.status_code, self.apple_id, status, self.anisette.server)
+            if status.get("ec"):
+                raise AppleError(explain(status))
+            raise AppleError("Apple answered HTTP %s while signing in." % response.status_code)
         if parsed is None:
             raise AppleError("Apple did not answer with a sign-in plist.")
         return parsed.get("Response", parsed)
@@ -351,6 +421,12 @@ class AppleLogin:
     def begin(self, password, counted=True, retry=False):
         if not retry:
             self._code_submitted = False
+            wait = throttle_wait(self.apple_id)
+            if wait:
+                raise AppleError(
+                    "Apple asked to wait after the last refusal. Try again in %d minutes, or sign in "
+                    "at appleid.apple.com meanwhile." % max(1, int(wait // 60))
+                )
         if not retry and len(recent_attempts(self.apple_id)) >= MAX_ATTEMPTS:
             raise AppleError(
                 "%d failed sign-ins for this Apple ID in the last day. Apple locks accounts after "
@@ -365,7 +441,10 @@ class AppleLogin:
         salt = start.get("s")
         server_public = start.get("B")
         if not salt or not server_public:
-            raise AppleError(status.get("em") or "Apple did not start the sign-in.")
+            if status.get("ec"):
+                record_diagnostic("init", self.apple_id, status, self.anisette.server)
+                raise AppleError(explain(status))
+            raise AppleError("Apple did not start the sign-in.")
         self._code = start.get("c")
         self._proof = self._srp.proof(
             self.apple_id,
@@ -381,7 +460,10 @@ class AppleLogin:
     def _accept(self, answer, counted=True):
         status = answer.get("Status") or {}
         if status.get("ec"):
-            message = status.get("em") or "Apple refused the sign-in."
+            record_diagnostic("complete", self.apple_id, status, self.anisette.server)
+            if is_throttle(status):
+                note_throttle(self.apple_id)
+            message = explain(status)
             if not counted or not rejects_credentials(status):
                 raise AppleError(message)
             count = record_attempt(self.apple_id)
