@@ -38,7 +38,7 @@ jobs:
 
       - name: Build the executable
         run: |
-          pyinstaller --onefile --console --name SuperStore-Setup --icon windows/SuperStore.ico --add-data "windows/SuperStore.ico;." --collect-all pymobiledevice3 --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
+          pyinstaller --onefile --console --name SuperStore-Setup --icon windows/SuperStore.ico --add-data "../windows/SuperStore.ico;." --collect-all pymobiledevice3 --copy-metadata pymobiledevice3 --distpath build --workpath build/work --specpath build windows/superstore_setup.py
           dir build
 
       - name: Upload
