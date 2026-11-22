@@ -165,6 +165,7 @@ public final class AppBootManager {
         do {
             try await startMinimuxer(pairingFile: pairingFile)
             debugLog("[AppBootManager] refreshPairingFromDisk(): minimuxer restarted with the new pairing file")
+            await PairingViewController.shared.dismissPairingFileAlert()
         } catch {
             debugLog("[AppBootManager] refreshPairingFromDisk(): minimuxer failed to start with the new pairing file: \(error)")
         }

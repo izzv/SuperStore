@@ -13,6 +13,8 @@ final class PairingViewController: NSObject {
     static let shared = PairingViewController()
 
     private var completion: ((URL?) -> Void)?
+    private weak var presentedAlert: UIAlertController?
+    private var pairingWatch: Task<Void, Never>?
 
     @MainActor
     func presentPairingFileAlert(on vc: UIViewController, isRetry: Bool, completion: ((URL?) -> Void)? = nil) {
@@ -26,6 +28,7 @@ final class PairingViewController: NSObject {
             : NSLocalizedString("Select the pairing file or select \"Help\" for help.", comment: "")
         let alert = UIAlertController(title: title, message: nil, preferredStyle: .alert)
         alert.setMarkdownMessage(message)
+        self.presentedAlert = alert
         alert.addAction(UIAlertAction(title: NSLocalizedString("Help", comment: ""), style: .default) { _ in
             UIApplication.shared.open(AppConstants.URLs.pairingDocumentation)
             if completion == nil {
@@ -52,6 +55,37 @@ final class PairingViewController: NSObject {
             }
         })
         vc.present(alert, animated: true)
+        self.startWatchingForPushedPairingFile()
+    }
+
+    /// Closes the prompt that is waiting for a pairing file once one has been
+    /// adopted and minimuxer is running on it again.
+    @MainActor
+    func dismissPairingFileAlert() {
+        guard let alert = self.presentedAlert else { return }
+        self.presentedAlert = nil
+        self.pairingWatch?.cancel()
+        self.pairingWatch = nil
+        let finish = self.completion
+        self.completion = nil
+        debugLog("[PairingFile] A new pairing file landed, closing the pairing prompt.")
+        alert.dismiss(animated: true)
+        finish?(nil)
+    }
+
+    /// The prompt can be on screen while the PC pushes a pairing file, with the
+    /// app in the foreground and no scene transition to carry the usual check.
+    @MainActor
+    private func startWatchingForPushedPairingFile() {
+        self.pairingWatch?.cancel()
+        self.pairingWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled, let self = self, self.presentedAlert != nil else { return }
+                guard PairingFileManager.shared.adoptPairingFileFromDisk() else { continue }
+                await AppBootManager.shared.refreshPairingFromDisk()
+            }
+        }
     }
 
     func showPairingWarningAndProceed(on vc: UIViewController) {
