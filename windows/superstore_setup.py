@@ -41,7 +41,8 @@ except Exception:
 
 SITE = "https://izzv.github.io/SuperStore"
 VERSIONS_URL = SITE + "/downloads/versions.json"
-DEVELOPMENT_ZIP = "https://nightly.link/izzv/SuperStore/workflows/verify.yml/develop/SuperStore-ipa.zip"
+DEVELOPMENT_ZIP = "https://github.com/izzv/SuperStore/releases/download/ios-build/SuperStore.ipa"
+DEVELOPMENT_ZIP_FALLBACK = "https://nightly.link/izzv/SuperStore/workflows/verify.yml/develop/SuperStore-ipa.zip"
 SETUP_RELEASE_URL = "https://api.github.com/repos/izzv/SuperStore/releases/tags/windows-setup"
 SETUP_DOWNLOAD_URL = "https://github.com/izzv/SuperStore/releases/download/windows-setup/SuperStore-Setup.exe"
 SETUP_CHECK_INTERVAL_MS = 30 * 60 * 1000
@@ -281,6 +282,7 @@ def describe_build(channel="stable"):
             "date": "",
             "size": "",
             "url": DEVELOPMENT_ZIP,
+            "fallback": DEVELOPMENT_ZIP_FALLBACK,
             "name": "SuperStore-development.ipa",
             "archive": True,
         }
@@ -336,6 +338,18 @@ def _stream(url, destination, progress=None, announce=False):
         say()
 
 
+def ipa_from_download(path):
+    """The .ipa inside a downloaded build, which may itself already be one."""
+    with zipfile.ZipFile(path) as archive:
+        names = archive.namelist()
+        entry = next((name for name in names if name.lower().endswith(".ipa")), None)
+        if entry is not None:
+            return archive.read(entry)
+        if any(name.startswith("Payload/") for name in names):
+            return Path(path).read_bytes()
+    raise RuntimeError("the download is not an .ipa")
+
+
 def download_build(channel="stable", destination=None, progress=None, announce=True):
     build = describe_build(channel)
     destination = Path(destination) if destination else workdir() / build["name"]
@@ -345,13 +359,25 @@ def download_build(channel="stable", destination=None, progress=None, announce=T
         say("Downloading the %s build from %s" % (build["label"].lower(), build["url"]))
 
     if build["archive"]:
-        archive_path = destination.with_suffix(".zip")
-        _stream(build["url"], archive_path, progress, announce)
-        with zipfile.ZipFile(archive_path) as archive:
-            entry = next((name for name in archive.namelist() if name.lower().endswith(".ipa")), None)
-            if entry is None:
-                raise RuntimeError("The development archive did not contain an .ipa.")
-            destination.write_bytes(archive.read(entry))
+        archive_path = destination.with_name(destination.name + ".download")
+        urls = [build["url"]]
+        if build.get("fallback"):
+            urls.append(build["fallback"])
+        failures = []
+        payload = None
+        for index, url in enumerate(urls):
+            try:
+                _stream(url, archive_path, progress, announce)
+                payload = ipa_from_download(archive_path)
+                break
+            except Exception as error:
+                failures.append("%s (%s)" % (url, error))
+                archive_path.unlink(missing_ok=True)
+                if index + 1 < len(urls) and announce:
+                    say("That download did not work, trying %s" % urls[index + 1])
+        if payload is None:
+            raise RuntimeError("The development build could not be downloaded: " + "; ".join(failures))
+        destination.write_bytes(payload)
         archive_path.unlink(missing_ok=True)
     else:
         _stream(build["url"], destination, progress, announce)

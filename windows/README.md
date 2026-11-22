@@ -27,9 +27,10 @@ channels end up as an ordinary `.ipa` in `%LOCALAPPDATA%\SuperStore\`.
 - **Stable** - whatever `downloads/versions.json` lists as `latest` on the site,
   so it follows the same release the download page shows.
 - **Development** - the newest successful build of `develop`, fetched from the
-  `SuperStore-ipa` artifact of the `verify` workflow through nightly.link. The
-  archive is unpacked and the real version is read out of the bundle's
-  `Info.plist`.
+  `SuperStore.ipa` asset of the `ios-build` release that the `verify` workflow
+  publishes on every green build. If that download fails it falls back to the
+  `SuperStore-ipa` artifact through nightly.link. The real version is read out
+  of the bundle's `Info.plist`.
 
 "Choose file" on step 3 still takes a signed `.ipa` if you already have one,
 and "Install .ipa" downloads the selected channel first when nothing is on disk

@@ -55,6 +55,8 @@ jobs:
     name: Build for iOS (unsigned)
     runs-on: macos-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -142,6 +144,24 @@ jobs:
           path: build/SuperStore.ipa
           if-no-files-found: error
           retention-days: 30
+
+      # The setup helper downloads this asset directly. It used to go through
+      # nightly.link, which serves the artifact only while that service is up.
+      - name: Publish the IPA to the ios-build release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=ios-build
+          NOTES="Unsigned SuperStore.ipa from develop at $(git rev-parse --short "${GITHUB_SHA}"), built $(date -u +%Y-%m-%dT%H:%M:%SZ). Sign it with your own Apple ID before installing."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" --title "SuperStore iOS build" --notes "$NOTES" --target "$GITHUB_SHA"
+          fi
+          gh release upload "$TAG" build/SuperStore.ipa --clobber
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/SuperStore.ipa"
 
   test:
     name: Run tests on iOS Simulator
