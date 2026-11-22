@@ -12,7 +12,7 @@ import SideSign
 public final class MaintenanceManager {
     public static let shared = MaintenanceManager()
 
-    public static let currentMaintenanceCounter = 9
+    public static let currentMaintenanceCounter = 10
 
     public static let maintenanceCounterFileName = ".maintenance_counter"
 
@@ -77,6 +77,8 @@ public final class MaintenanceManager {
                 await migratePairingFiles()
             case 9:
                 await removeSideStoreSources()
+            case 10:
+                await repairAnisetteServers()
             default:
                 break
             }
@@ -304,6 +306,41 @@ private extension MaintenanceManager {
                 }
             }
         }
+    }
+
+    static let retiredAnisetteServers = [
+        "https://ani.sidestore.io",
+        "https://ani.sidestore.app",
+        "https://win.ani.sidestore.io",
+        "http://5.249.163.88:6969",
+    ]
+
+    func repairAnisetteServers() async {
+        let retired = Set(Self.retiredAnisetteServers)
+        if UserDefaults.standard.menuAnisetteList == "https://servers.sidestore.io/servers.json"
+        {
+            UserDefaults.standard.menuAnisetteList = AppConstants.Anisette.Servers.defaultSource
+        }
+
+        let stored = await AnisetteServersManager.shared.loadLocalServers()
+        let alive = stored.filter { !retired.contains($0.address) }
+        if alive.count != stored.count
+        {
+            await AnisetteServersManager.shared.saveLocalServers(alive)
+            debugLog("[MaintenanceManager] Dropped \(stored.count - alive.count) Anisette server(s) that no longer answer.")
+        }
+
+        let current = UserDefaults.standard.menuAnisetteURL
+        if retired.contains(current) || !alive.contains(where: { $0.address == current })
+        {
+            let replacement = alive.first(where: { !$0.isHidden })?.address ?? AppConstants.Anisette.Servers.defaultServerURL
+            UserDefaults.standard.menuAnisetteURL = replacement
+            debugLog("[MaintenanceManager] Pointed the Anisette server at '\(replacement)'.")
+        }
+
+        AnisetteDataManager.shared.clearCache()
+        AnisetteConfigManager.shared.anisetteAdiBlob = nil
+        debugLog("[MaintenanceManager] Cleared cached Anisette data and the stored ADI provisioning session.")
     }
 
     func migratePairingFiles() async {

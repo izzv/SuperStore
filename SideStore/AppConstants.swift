@@ -88,8 +88,8 @@ public enum AppConstants {
         }
 
         public enum Servers {
-            public static let defaultSource        = "https://servers.sidestore.io/servers.json"
-            public static let defaultServerURL     = "https://ani.sidestore.io"
+            public static let defaultSource        = "https://izzv.github.io/SuperStore/anisette-servers.json"
+            public static let defaultServerURL     = "https://new.ani.sidestore.io"
             public static let connectivityCheckURL = URL(string: "https://www.apple.com/library/test/success.html")!
         }
 

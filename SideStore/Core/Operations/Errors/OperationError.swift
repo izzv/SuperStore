@@ -254,6 +254,12 @@ public enum SignInFailure {
             }
         }
 
+        let failure = String(describing: error as NSError)
+        if failure.contains("ADIProvisioningStart") || failure.contains("-45063")
+        {
+            return .serverUnavailable(statusCode: nil)
+        }
+
         return nil
     }
 
