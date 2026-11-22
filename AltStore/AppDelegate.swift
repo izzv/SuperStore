@@ -185,6 +185,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     {
         BackgroundServiceManager.ensureBackgroundServicesStarted()
         Task.detached {
+            await AppBootManager.shared.refreshPairingFromDisk()
+        }
+        Task.detached {
             await AppManager.shared.reconcileInstalledApps()
         }
     }

@@ -23,6 +23,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate
 
     func sceneWillEnterForeground(_ scene: UIScene)
     {
+        Task {
+            await AppBootManager.shared.refreshPairingFromDisk()
+        }
         guard DatabaseManager.shared.isStarted else { return }
         Task {
             await AppManager.shared.reconcileInstalledApps()

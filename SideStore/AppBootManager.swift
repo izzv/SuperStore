@@ -12,6 +12,9 @@ import Minimuxer
 public final class AppBootManager {
     public static let shared = AppBootManager()
     private let lock = NSLock()
+    private let pairingOperationLock = NSLock()
+    private var lastAppliedPairingFingerprint: String?
+    private var isPairingOperationRunning = false
     private var cachedNeedsPairingPrompt = false
     public var needsPairingPrompt: Bool {
         get { lock.withLock { cachedNeedsPairingPrompt } }
@@ -34,6 +37,7 @@ public final class AppBootManager {
 
         let preferred = PairingFileManager.shared.preferredProtocol
         try await minimuxerStart(pairingFile, preferred: preferred)
+        self.appliedPairingFingerprint = Self.fingerprint(of: pairingFile)
         do {
             debugLog("[AppBootManager] startMinimuxer(): Minimuxer fetchUDID() based connection starting...")
             let deviceUDID = try await fetchUDID(forceLive: true)
@@ -112,7 +116,13 @@ public final class AppBootManager {
         }()
         async let minimuxerCheck: Void = {
             debugLog("[AppBootManager] performBootSequence(): Minimuxer check starting")
-            defer { debugLog("[AppBootManager] performBootSequence(): Minimuxer check completed") }
+            let holdsPairingOperation = self.beginPairingOperation()
+            defer {
+                if holdsPairingOperation {
+                    self.endPairingOperation()
+                }
+                debugLog("[AppBootManager] performBootSequence(): Minimuxer check completed")
+            }
             PairingFileManager.shared.adoptPairingFileFromDisk()
             guard let pf = PairingFileManager.shared.fetchPairingFile() else {
                 #if !targetEnvironment(simulator)
@@ -128,5 +138,59 @@ public final class AppBootManager {
             }
         }()
         _ = await (jitCheck, minimuxerCheck)
+    }
+    public nonisolated func refreshPairingFromDisk() async {
+        guard beginPairingOperation() else {
+            debugLog("[AppBootManager] refreshPairingFromDisk(): a pairing update is already running, skipping this pass")
+            return
+        }
+        defer { endPairingOperation() }
+
+        let adopted = PairingFileManager.shared.adoptPairingFileFromDisk()
+        guard let pairingFile = PairingFileManager.shared.fetchPairingFile() else {
+            debugLog("[AppBootManager] refreshPairingFromDisk(): no pairing file in Documents, nothing to refresh")
+            return
+        }
+
+        let fingerprint = Self.fingerprint(of: pairingFile)
+        guard fingerprint != appliedPairingFingerprint else {
+            debugLog("[AppBootManager] refreshPairingFromDisk(): pairing file unchanged since last check (adopted new file: \(adopted))")
+            return
+        }
+
+        debugLog("[AppBootManager] refreshPairingFromDisk(): pairing file changed (adopted new file: \(adopted)), restarting minimuxer")
+        do {
+            try await startMinimuxer(pairingFile: pairingFile)
+            debugLog("[AppBootManager] refreshPairingFromDisk(): minimuxer restarted with the new pairing file")
+        } catch {
+            debugLog("[AppBootManager] refreshPairingFromDisk(): minimuxer failed to start with the new pairing file: \(error)")
+        }
+    }
+    private var appliedPairingFingerprint: String? {
+        get { lock.withLock { lastAppliedPairingFingerprint } }
+        set { lock.withLock { lastAppliedPairingFingerprint = newValue } }
+    }
+
+    private func beginPairingOperation() -> Bool {
+        pairingOperationLock.lock()
+        defer { pairingOperationLock.unlock() }
+        guard !isPairingOperationRunning else { return false }
+        isPairingOperationRunning = true
+        return true
+    }
+
+    private func endPairingOperation() {
+        pairingOperationLock.lock()
+        isPairingOperationRunning = false
+        pairingOperationLock.unlock()
+    }
+
+    private static func fingerprint(of contents: String) -> String {
+        var hash: UInt64 = 0xcbf29ce484222325
+        for byte in contents.utf8 {
+            hash ^= UInt64(byte)
+            hash = hash &* 0x100000001b3
+        }
+        return String(hash, radix: 16)
     }
 }
