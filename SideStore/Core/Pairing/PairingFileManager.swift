@@ -100,6 +100,57 @@ final class PairingFileManager: NSObject {
         try PairingFileParser.parse(content: content, preferred: preferred)
     }
 
+    nonisolated func candidatePairingFiles() -> [URL] {
+        let fm = FileManager.default
+        let documents = fm.documentsDirectory
+        let canonical = [
+            AppConstants.Pairing.lockdownPairingFileName,
+            AppConstants.Pairing.remotePairingFileName,
+            AppConstants.Pairing.legacyPairingFileName,
+            "pairingFile.plist"
+        ]
+        var urls = canonical.map { documents.appendingPathComponent($0) }
+        let known = Set(canonical.map { $0.lowercased() })
+        if let contents = try? fm.contentsOfDirectory(at: documents, includingPropertiesForKeys: nil) {
+            for url in contents.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+                let name = url.lastPathComponent.lowercased()
+                guard !known.contains(name) else { continue }
+                guard name.contains("pairing") || name.hasSuffix(".mobiledevicepairing") else { continue }
+                urls.append(url)
+            }
+        }
+        return urls
+    }
+
+    @discardableResult
+    nonisolated func adoptPairingFileFromDisk() -> Bool {
+        guard !UserDefaults.standard.isPairingReset else { return false }
+        let fm = FileManager.default
+        let storedMode = preferredProtocol ?? persistedActiveProtocol
+        let storedDate = storedMode.map { metadata(for: $0).modificationDate } ?? nil
+
+        for url in candidatePairingFiles() {
+            guard fm.fileExists(atPath: url.path),
+                  let data = try? Data(contentsOf: url),
+                  let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1),
+                  content.contains("<plist") else { continue }
+
+            let modified = (try? fm.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
+            if let storedDate, let modified, modified <= storedDate { continue }
+
+            do {
+                let parsed = try savePairingFile(contents: content)
+                persistedActiveProtocol = parsed.mode
+                preferredProtocol = parsed.mode
+                debugLog("[PairingFile] Adopted '\(url.lastPathComponent)' as the \(parsed.mode.rawValue) pairing file.")
+                return true
+            } catch {
+                debugLog("[PairingFile] Left '\(url.lastPathComponent)' alone: \(error)")
+            }
+        }
+        return false
+    }
+
     @discardableResult
     func savePairingFile(contents: String, preferred: PairingProtocol? = nil) throws -> any PairingFile {
         let parsed = try parse(content: contents, preferred: preferred)

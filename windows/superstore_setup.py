@@ -52,6 +52,7 @@ CHANNELS = (
 )
 BUNDLE_ID = "com.superstore.SuperStore"
 PAIRING_FILENAME = "pairingFile.plist"
+PAIRING_APP_FILENAME = "PairingFile_Lockdown.plist"
 PAIRING_PATTERNS = ("pairingFile.plist", "*.mobiledevicepairing")
 PAIRING_SEARCH_DIRS = (
     Path.home() / "Desktop",
@@ -373,13 +374,21 @@ def existing_pairing_file():
     return path if path.exists() else None
 
 
-def save_pairing_record(record, destination=None):
+def save_pairing_record(record, destination=None, udid=None):
     if not record:
         raise RuntimeError("The iPhone did not return a pairing record.")
 
+    values = dict(record)
+    if udid:
+        values.setdefault("UDID", udid)
+
     destination = Path(destination) if destination else workdir() / PAIRING_FILENAME
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(plistlib.dumps(record))
+    destination.write_bytes(plistlib.dumps(values))
+
+    companion = destination.with_name(PAIRING_APP_FILENAME)
+    if destination.name != companion.name:
+        companion.write_bytes(plistlib.dumps(values))
     return destination
 
 
@@ -480,20 +489,28 @@ async def _send_pairing_file(serial, path, on_wait=None):
 
 
 async def _push_pairing_file(serial, path):
+    path = Path(path)
+    uploads = [(path, PAIRING_FILENAME), (path.with_name(PAIRING_APP_FILENAME), PAIRING_APP_FILENAME)]
     async with await create_using_usbmux(serial=serial, autopair=True) as lockdown:
-        last = None
-        for documents_only, name in ((True, PAIRING_FILENAME), (False, "Documents/" + PAIRING_FILENAME)):
-            try:
-                async with await HouseArrestService.create(
-                    lockdown, BUNDLE_ID, documents_only=documents_only
-                ) as container:
-                    await container.push(Path(path), name, progress_bar=False)
-                return
-            except Exception as error:
-                if not folder_locked(error):
-                    raise
-                last = error
-        raise last
+        for source, name in uploads:
+            if not source.exists():
+                continue
+            last = None
+            pushed = False
+            for documents_only, target in ((True, name), (False, "Documents/" + name)):
+                try:
+                    async with await HouseArrestService.create(
+                        lockdown, BUNDLE_ID, documents_only=documents_only
+                    ) as container:
+                        await container.push(source, target, progress_bar=False)
+                    pushed = True
+                    break
+                except Exception as error:
+                    if not folder_locked(error):
+                        raise
+                    last = error
+            if not pushed:
+                raise last
 
 
 def install_ipa(serial, path, progress=None):
@@ -1642,7 +1659,7 @@ class SetupApp:
 
     def paired(self, payload):
         record, summary = payload
-        path = save_pairing_record(record)
+        path = save_pairing_record(record, udid=summary.get("serial"))
         self.pairing_path = path
         self.device = summary
         self.pair_status.configure(text="pairingFile.plist written to %s" % path, fg=OK)
