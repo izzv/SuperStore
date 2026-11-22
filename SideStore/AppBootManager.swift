@@ -15,6 +15,7 @@ public final class AppBootManager {
     private let pairingOperationLock = NSLock()
     private var lastAppliedPairingFingerprint: String?
     private var isPairingOperationRunning = false
+    private var cachedBootSequenceRunning = false
     private var cachedNeedsPairingPrompt = false
     public var needsPairingPrompt: Bool {
         get { lock.withLock { cachedNeedsPairingPrompt } }
@@ -97,7 +98,11 @@ public final class AppBootManager {
     }
     public nonisolated func performBootSequence() async {
         debugLog("[AppBootManager] performBootSequence() entered")
-        defer { debugLog("[AppBootManager] performBootSequence() exited") }
+        bootSequenceRunning = true
+        defer {
+            bootSequenceRunning = false
+            debugLog("[AppBootManager] performBootSequence() exited")
+        }
         async let jitCheck: Void = {
             debugLog("[AppBootManager] performBootSequence(): JIT check starting")
             defer { debugLog("[AppBootManager] performBootSequence(): JIT check completed") }
@@ -116,13 +121,7 @@ public final class AppBootManager {
         }()
         async let minimuxerCheck: Void = {
             debugLog("[AppBootManager] performBootSequence(): Minimuxer check starting")
-            let holdsPairingOperation = self.beginPairingOperation()
-            defer {
-                if holdsPairingOperation {
-                    self.endPairingOperation()
-                }
-                debugLog("[AppBootManager] performBootSequence(): Minimuxer check completed")
-            }
+            defer { debugLog("[AppBootManager] performBootSequence(): Minimuxer check completed") }
             PairingFileManager.shared.adoptPairingFileFromDisk()
             guard let pf = PairingFileManager.shared.fetchPairingFile() else {
                 #if !targetEnvironment(simulator)
@@ -140,6 +139,10 @@ public final class AppBootManager {
         _ = await (jitCheck, minimuxerCheck)
     }
     public nonisolated func refreshPairingFromDisk() async {
+        guard !bootSequenceRunning else {
+            debugLog("[AppBootManager] refreshPairingFromDisk(): the boot sequence is still reading the pairing file, skipping this pass")
+            return
+        }
         guard beginPairingOperation() else {
             debugLog("[AppBootManager] refreshPairingFromDisk(): a pairing update is already running, skipping this pass")
             return
@@ -169,6 +172,11 @@ public final class AppBootManager {
     private var appliedPairingFingerprint: String? {
         get { lock.withLock { lastAppliedPairingFingerprint } }
         set { lock.withLock { lastAppliedPairingFingerprint = newValue } }
+    }
+
+    private var bootSequenceRunning: Bool {
+        get { pairingOperationLock.withLock { cachedBootSequenceRunning } }
+        set { pairingOperationLock.withLock { cachedBootSequenceRunning = newValue } }
     }
 
     private func beginPairingOperation() -> Bool {
