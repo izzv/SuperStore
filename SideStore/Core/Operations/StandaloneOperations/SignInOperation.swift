@@ -17,6 +17,7 @@ struct SignInResult {
 }
 
 final class SignInOperation: BaseStandaloneOperation<StandaloneOperationContext, SignInResult>, @unchecked Sendable {
+    private static let signInAttempts = 3
     private var appleIDEmailAddress: String?
     private var requiresPostAuthFlow = false
     let signInHandler: SignInHandler
@@ -130,27 +131,40 @@ final class SignInOperation: BaseStandaloneOperation<StandaloneOperationContext,
     }
     private func signIn(appleID: String, password: String) async throws -> (ALTAccount, ALTAppleAPISession) {
         self.appleIDEmailAddress = appleID
-        let anisetteData = try await self.getAnisetteData()
         let handler = self.signInHandler
         let xcodeVersion = await AnisetteConfigManager.shared.resolvedXcodeVersion()
 
-        let (account, session) = try await AuthManager.shared.signIn(
-            appleID: appleID,
-            password: password,
-            anisetteData: anisetteData,
-            xcodeVersion: xcodeVersion,
-            accountRepairHandler: { url, message in
-                await handler.accountRepair(url: url, message: message)
-            },
-            verificationHandler: { request in
-                try await handler.verificationCode(for: request)
+        var attempt = 1
+        while true {
+            let anisetteData = try await self.getAnisetteData()
+            do {
+                let (account, session) = try await AuthManager.shared.signIn(
+                    appleID: appleID,
+                    password: password,
+                    anisetteData: anisetteData,
+                    xcodeVersion: xcodeVersion,
+                    accountRepairHandler: { url, message in
+                        await handler.accountRepair(url: url, message: message)
+                    },
+                    verificationHandler: { request in
+                        try await handler.verificationCode(for: request)
+                    }
+                )
+                AuthManager.shared.adsid = session.dsid
+                AuthManager.shared.xcodeToken = session.authToken
+                AuthManager.shared.currentAppleID = appleID
+                AuthManager.shared.password = password
+                return (account, session)
+            } catch {
+                let retryable = SignInFailure.shouldRetryOnAnotherServer(error)
+                guard attempt < Self.signInAttempts, retryable, !self.isCancelled else { throw error }
+                let wait = Double(attempt * 2)
+                self.debugLog("[SignInOperation] Sign-in attempt \(attempt) of \(Self.signInAttempts) failed with a temporary Apple failure (\(SignInFailure.logSummary(for: error))); fetching fresh Anisette data and trying again in \(Int(wait))s.")
+                SideSign.AnisetteDataManager.shared.clearCache()
+                try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                attempt += 1
             }
-        )
-        AuthManager.shared.adsid = session.dsid
-        AuthManager.shared.xcodeToken = session.authToken
-        AuthManager.shared.currentAppleID = appleID
-        AuthManager.shared.password = password
-        return (account, session)
+        }
     }
 
     private func provision(team: ALTTeam,

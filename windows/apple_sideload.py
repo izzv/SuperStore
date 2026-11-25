@@ -406,11 +406,23 @@ class AppleLogin:
         document = plistlib.dumps({"Header": {"Version": "1.0.1"}, "Request": body})
         merged = self._headers()
         merged.update(headers or {})
-        response = http().post(GSA, data=document, headers=merged, timeout=45)
-        try:
-            parsed = plistlib.loads(response.content)
-        except Exception:
-            parsed = None
+        attempts = 4
+        for attempt in range(1, attempts + 1):
+            response = http().post(GSA, data=document, headers=merged, timeout=45)
+            try:
+                parsed = plistlib.loads(response.content)
+            except Exception:
+                parsed = None
+            transient = response.status_code >= 500 or response.status_code == 429 or parsed is None
+            if not transient or attempt == attempts:
+                break
+            record_diagnostic(
+                "gsa http %s (retry %d of %d)" % (response.status_code, attempt, attempts),
+                self.apple_id,
+                {},
+                self.anisette.server,
+            )
+            time.sleep(min(2 * attempt, 8))
         if response.status_code >= 400:
             status = ((parsed or {}).get("Response") or {}).get("Status") or {}
             if status.get("au"):
