@@ -681,6 +681,11 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
         }
     }
     @MainActor
+    func anisetteStatus(_ message: String) async {
+        self.presentedAuthVC?.showSignInStatus(message.isEmpty ? nil : message)
+    }
+
+    @MainActor
     func signInStatus(_ message: String) async {
         self.presentedAuthVC?.showSignInStatus(message.isEmpty ? nil : message)
     }

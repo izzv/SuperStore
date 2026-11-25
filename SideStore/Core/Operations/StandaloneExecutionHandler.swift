@@ -10,6 +10,11 @@ import SideSign
 
 protocol AnisetteServerHandler: AnyObject {
     func warnOutdatedAnisetteServer() async throws -> Bool
+    func anisetteStatus(_ message: String) async
+}
+
+extension AnisetteServerHandler {
+    func anisetteStatus(_ message: String) async {}
 }
 
 enum ProvisioningErrorDecision {
