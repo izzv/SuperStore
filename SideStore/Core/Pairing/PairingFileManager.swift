@@ -127,7 +127,8 @@ final class PairingFileManager: NSObject {
         guard !UserDefaults.standard.isPairingReset else { return false }
         let fm = FileManager.default
         let storedMode = preferredProtocol ?? persistedActiveProtocol
-        let storedDate = storedMode.map { metadata(for: $0).modificationDate } ?? nil
+        let storedContents = storedMode.flatMap { fetchPairingFile(for: $0) }
+        let storedURL = storedMode.map { pairingFileURL(for: $0).standardizedFileURL }
 
         for url in candidatePairingFiles() {
             guard fm.fileExists(atPath: url.path),
@@ -135,8 +136,8 @@ final class PairingFileManager: NSObject {
                   let content = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1),
                   content.contains("<plist") else { continue }
 
-            let modified = (try? fm.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date
-            if let storedDate, let modified, modified <= storedDate { continue }
+            if let storedURL, url.standardizedFileURL == storedURL { continue }
+            if let storedContents, content == storedContents { continue }
 
             do {
                 let parsed = try savePairingFile(contents: content)

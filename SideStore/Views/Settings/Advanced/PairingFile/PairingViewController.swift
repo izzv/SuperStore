@@ -79,10 +79,14 @@ final class PairingViewController: NSObject {
     private func startWatchingForPushedPairingFile() {
         self.pairingWatch?.cancel()
         self.pairingWatch = Task { [weak self] in
+            var attempted: String?
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 guard !Task.isCancelled, let self = self, self.presentedAlert != nil else { return }
-                guard PairingFileManager.shared.adoptPairingFileFromDisk() else { continue }
+                PairingFileManager.shared.adoptPairingFileFromDisk()
+                guard let pairingFile = PairingFileManager.shared.fetchPairingFile() else { continue }
+                guard pairingFile != attempted else { continue }
+                attempted = pairingFile
                 await AppBootManager.shared.refreshPairingFromDisk()
             }
         }
