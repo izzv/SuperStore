@@ -30,7 +30,6 @@ enum AnisetteProvider {
 
         var attempted = 0
         var lastStatusCode: Int?
-        var lastError: Error?
 
         for pass in 0..<serverPasses {
             if pass > 0 {
@@ -42,10 +41,7 @@ enum AnisetteProvider {
 
             let serverUrlStrings = await AnisetteServersManager.shared.getActiveServerURLs()
             let servers = serverUrlStrings.compactMap { URL(string: $0) }
-            guard !servers.isEmpty else {
-                lastError = AnisetteError.noServersConfigured
-                continue
-            }
+            guard !servers.isEmpty else { continue }
 
             let lastServer = UserDefaults.standard.menuAnisetteURL
             let startIndex = servers.firstIndex(where: { $0.absoluteString == lastServer }) ?? 0
@@ -59,11 +55,7 @@ enum AnisetteProvider {
                 debugLog("[AnisetteProvider] Attempting server [\(attempted)]: \(server.absoluteString)")
 
                 if attempted > 1 {
-                    let status = String(
-                        format: NSLocalizedString("Anisette server did not answer. Trying another (%d)…", comment: ""),
-                        attempted
-                    )
-                    await handler?.anisetteStatus(status)
+                    await handler?.anisetteStatus(NSLocalizedString("Anisette server did not answer. Trying another…", comment: ""))
                 }
 
                 do {
@@ -98,7 +90,6 @@ enum AnisetteProvider {
                     debugLog("[AnisetteProvider] Successfully fetched Anisette data from \(server.absoluteString)")
                     return anisetteData
                 } catch {
-                    lastError = error
                     lastStatusCode = SignInFailure.classify(error)?.statusCode ?? lastStatusCode
                     debugLog("[AnisetteProvider] Server '\(server.absoluteString)' failed: \(SignInFailure.logSummary(for: error))")
 
@@ -117,15 +108,14 @@ enum AnisetteProvider {
                 debugLog("[AnisetteProvider] On-Device Anisette fallback succeeded")
                 return anisetteData
             } catch {
-                lastError = error
                 debugLog("[AnisetteProvider] On-Device Anisette fallback failed: \(SignInFailure.logSummary(for: error))")
             }
         }
 
         debugLog("[AnisetteProvider] All \(attempted) server attempt(s) failed. Last status: \(lastStatusCode.map { String($0) } ?? "n/a")")
 
-        if let lastError = lastError, !SignInFailure.shouldRetryOnAnotherServer(lastError) {
-            throw lastError
+        if attempted == 0 {
+            throw AnisetteError.noServersConfigured
         }
 
         throw OperationError.anisetteServerUnavailable(attempted: attempted, lastStatusCode: lastStatusCode)
