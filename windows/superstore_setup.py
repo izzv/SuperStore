@@ -11,6 +11,7 @@ import asyncio
 import ctypes
 import datetime
 import hashlib
+import io
 import json
 import logging
 import os
@@ -342,12 +343,19 @@ def ipa_from_download(path):
     """The .ipa inside a downloaded build, which may itself already be one."""
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
-        entry = next((name for name in names if name.lower().endswith(".ipa")), None)
-        if entry is not None:
-            return archive.read(entry)
-        if any(name.startswith("Payload/") for name in names):
+        if any(name.startswith("Payload/") and name.endswith(".app/") for name in names):
             return Path(path).read_bytes()
-    raise RuntimeError("the download is not an .ipa")
+        bundles = [
+            name for name in names
+            if name.lower().endswith(".ipa") and not name.startswith("Payload/")
+        ]
+        if not bundles:
+            raise RuntimeError("the download is not an .ipa")
+        payload = archive.read(min(bundles, key=lambda name: name.count("/")))
+    with zipfile.ZipFile(io.BytesIO(payload)) as inner:
+        if not any(name.endswith(".app/Info.plist") for name in inner.namelist()):
+            raise RuntimeError("the download is not an .ipa")
+    return payload
 
 
 def download_build(channel="stable", destination=None, progress=None, announce=True):
