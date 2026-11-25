@@ -34,5 +34,6 @@ protocol SignInHandler: AnyObject, CertificateProvisioningHandler, DeviceProvisi
     func resolveRevocation(certificates: [ALTX509Certificate], teamType: ALTTeamType) async throws -> RevokeDecision
     func showCertificateSkipAcknowledgment() async
     func showDeviceRegistrationSkipAcknowledgment() async
+    func signInStatus(_ message: String) async
     func complete() async
 }

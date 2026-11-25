@@ -14,6 +14,7 @@ final class AuthenticationViewController: UIViewController
     var authenticationHandler: ((String, String, @escaping (Result<(ALTAccount, ALTAppleAPISession), Error>) -> Void) -> Void)?
     var completionHandler: (((ALTAccount, ALTAppleAPISession, String)?) -> Void)?
     private weak var toastView: ToastView?
+    private let signInStatusLabel = UILabel()
     @IBOutlet private var appleIDTextField: UITextField!
     @IBOutlet private var passwordTextField: UITextField!
     @IBOutlet private var signInButton: UIButton!
@@ -37,6 +38,12 @@ final class AuthenticationViewController: UIViewController
         }
         self.signInButton.activityIndicatorView.style = .medium
         self.signInButton.activityIndicatorView.color = .white
+        self.signInStatusLabel.font = UIFont.preferredFont(forTextStyle: .footnote)
+        self.signInStatusLabel.textColor = .secondaryLabel
+        self.signInStatusLabel.textAlignment = .center
+        self.signInStatusLabel.numberOfLines = 0
+        self.signInStatusLabel.isHidden = true
+        self.contentStackView.addArrangedSubview(self.signInStatusLabel)
         for view in [self.appleIDBackgroundView!, self.passwordBackgroundView!, self.signInButton!]
         {
             #if !os(tvOS)
@@ -146,6 +153,7 @@ private extension AuthenticationViewController
         self.appleIDTextField.resignFirstResponder()
         self.passwordTextField.resignFirstResponder()
         self.signInButton.isIndicatingActivity = true
+        self.showSignInStatus(nil)
         self.authenticationHandler?(emailAddress, password) { (result) in
             switch result
             {
@@ -171,6 +179,7 @@ private extension AuthenticationViewController
                     toastView.textLabel.textColor = .altPrimary
                     toastView.detailTextLabel.textColor = .altPrimary
                     self.toastView = toastView
+                    self.showSignInStatus(nil)
                     self.signInButton.isIndicatingActivity = false
                 }
             case .success((let account, let session)):
@@ -180,6 +189,7 @@ private extension AuthenticationViewController
                         let image = UIImage(systemName: "checkmark.circle.fill")
                         self.signInButton.setTitle(title, for: .normal)
                         self.signInButton.setImage(image, for: .normal)
+                        self.showSignInStatus(nil)
                         self.signInButton.isIndicatingActivity = false
                         self.signInButton.layoutIfNeeded()
                     }
@@ -238,6 +248,15 @@ extension AuthenticationViewController: UITextFieldDelegate
 
 extension AuthenticationViewController
 {
+    func showSignInStatus(_ message: String?)
+    {
+        DispatchQueue.main.async {
+            let text = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            self.signInStatusLabel.text = text
+            self.signInStatusLabel.isHidden = text.isEmpty
+        }
+    }
+
     @objc func textFieldDidChangeText(_ notification: Notification)
     {
         self.update()

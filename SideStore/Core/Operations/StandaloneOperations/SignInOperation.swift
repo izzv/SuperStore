@@ -154,12 +154,19 @@ final class SignInOperation: BaseStandaloneOperation<StandaloneOperationContext,
                 AuthManager.shared.xcodeToken = session.authToken
                 AuthManager.shared.currentAppleID = appleID
                 AuthManager.shared.password = password
+                await self.signInHandler.signInStatus("")
                 return (account, session)
             } catch {
                 let retryable = SignInFailure.shouldRetryOnAnotherServer(error)
                 guard attempt < Self.signInAttempts, retryable, !self.isCancelled else { throw error }
                 let wait = Double(attempt * 2)
                 self.debugLog("[SignInOperation] Sign-in attempt \(attempt) of \(Self.signInAttempts) failed with a temporary Apple failure (\(SignInFailure.logSummary(for: error))); fetching fresh Anisette data and trying again in \(Int(wait))s.")
+                let status = String(
+                    format: NSLocalizedString("Apple did not answer. Trying again (%d of %d)…", comment: ""),
+                    attempt + 1,
+                    Self.signInAttempts
+                )
+                await self.signInHandler.signInStatus(status)
                 SideSign.AnisetteDataManager.shared.clearCache()
                 try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
                 attempt += 1

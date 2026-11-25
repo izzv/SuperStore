@@ -681,6 +681,11 @@ class SignInFlowHandler: AnyObject, SignInHandler, AnisetteServerHandler {
         }
     }
     @MainActor
+    func signInStatus(_ message: String) async {
+        self.presentedAuthVC?.showSignInStatus(message.isEmpty ? nil : message)
+    }
+
+    @MainActor
     func complete() async {
         if self.navigationController.presentingViewController != nil {
             self.navigationController.dismiss(animated: true)
